@@ -1,0 +1,56 @@
+<div class="container-fluid vh-100">
+  <div class="row h-100">
+    <!-- Left side with image -->
+    <div class="col-md-6 d-none d-md-block p-0">
+      <div class="bg-image h-100">
+        <div class="overlay d-flex flex-column justify-content-center align-items-center text-white p-4">
+          <!-- <h1 class="display-4">Welcome to Our App</h1>
+          <p class="lead">Login to access your account and start your journey.</p> -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Right side with login form -->
+    <div class="col-md-6 d-flex align-items-center justify-content-center">
+      <div class="card shadow-sm" style="width: 100%; max-width: 400px;border:0">
+        <div class="card-body p-4">
+          <h2 class="card-title text-center mb-4">Login</h2>
+          <form (ngSubmit)="onSubmit()">
+            <mat-form-field appearance="outline" class="w-100 mb-3">
+              <mat-label>Username</mat-label>
+              <input matInput [(ngModel)]="user.username" name="username" required>
+              <mat-icon matSuffix>person</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-100 mb-3">
+              <mat-label>Password</mat-label>
+              <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="user.password" name="password" required>
+              <mat-icon matSuffix (click)="hidePassword = !hidePassword">
+                {{hidePassword ? 'visibility_off' : 'visibility'}}
+              </mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-100 mb-3">
+              <mat-label>User Type</mat-label>
+              <mat-select [(ngModel)]="user.userType" name="userType" required>
+                <mat-option value="customer">Customer</mat-option>
+                <mat-option value="cook">Cook</mat-option>
+                <mat-option value="billing">Billing</mat-option>
+                <mat-option value="admin">Admin</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <div class="d-grid">
+              <button mat-raised-button color="primary" type="submit" class="w-100" style="height: 50px;">
+                Login
+              </button>
+            </div>
+          </form>
+          @if (error) {
+            <mat-error class="mt-3">{{ error }}</mat-error>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
