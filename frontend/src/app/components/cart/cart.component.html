@@ -1,0 +1,44 @@
+<div class="row bg-dark text-white p-2 px-1 align-items-center">
+    <div class="col-10">
+      <h2 class="m-0">THE BIERE STREET</h2>
+    </div>
+    <div class="col-2 text-end">
+      <button mat-icon-button (click)="logout()">
+        <mat-icon>exit_to_app</mat-icon>
+      </button>
+    </div>
+  </div>
+    <div class="container pt-0">
+      <div class="header">
+        <button mat-icon-button (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <h2 class="m-0">CART</h2>
+      </div>
+      
+      <div class="cart-items">
+        <div *ngFor="let cartItem of cartItems" class="cart-item">
+          <div class="item-details">
+            <h3 class="m-0"><strong>{{ cartItem.name }}</strong></h3>
+            <p>{{ cartItem.description }}</p>
+            <h4>₹{{ cartItem.price }}</h4>
+          </div>
+          <div class="item-actions position-relative">
+            <img [src]="getImageUrl(cartItem.imageUrl)" [alt]="cartItem.name" class="item-image">
+            <div class="quantity-control action-space">
+              <button mat-mini-fab color="warn" (click)="decreaseQuantity(cartItem)">—</button>
+              <span>{{ cartItem.quantity }}</span>
+              <button mat-mini-fab color="warn" (click)="increaseQuantity(cartItem)">＋</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="fixed-bottom-container">
+        <div class="total-bill d-flex align-items-center justify-content-between">
+          <h3 class="m-0">Total Bill</h3>
+          <h2 class="m-0">₹{{ getTotalPrice() }}</h2>
+        </div>
+        <button mat-raised-button color="warn" class="order-button animate__animated animate__pulse animate__faster" (click)="openConfirmationDialog()">ORDER NOW</button>
+      </div>
+    </div>

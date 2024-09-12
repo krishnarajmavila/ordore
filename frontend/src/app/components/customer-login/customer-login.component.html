@@ -1,0 +1,18 @@
+<div class="customer-login-container">
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="fill">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" required>
+        <mat-error *ngIf="loginForm.get('name')?.hasError('required')">Name is required</mat-error>
+      </mat-form-field>
+  
+      <mat-form-field appearance="fill">
+        <mat-label>Mobile Number</mat-label>
+        <input matInput formControlName="mobileNumber" required>
+        <mat-error *ngIf="loginForm.get('mobileNumber')?.hasError('required')">Mobile number is required</mat-error>
+        <mat-error *ngIf="loginForm.get('mobileNumber')?.hasError('pattern')">Please enter a valid 10-digit mobile number</mat-error>
+      </mat-form-field>
+  
+      <button mat-raised-button color="primary" type="submit" [disabled]="loginForm.invalid">Send OTP</button>
+    </form>
+  </div>

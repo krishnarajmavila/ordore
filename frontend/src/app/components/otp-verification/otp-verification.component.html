@@ -1,0 +1,16 @@
+<div class="otp-verification-container">
+    <h2>OTP Verification</h2>
+    <form [formGroup]="otpForm" (ngSubmit)="onVerifyOtp()">
+      <mat-form-field appearance="fill">
+        <mat-label>OTP</mat-label>
+        <input matInput formControlName="otp" placeholder="Enter OTP" />
+        <mat-error *ngIf="otpForm.controls['otp'].hasError('required')">
+          OTP is required.
+        </mat-error>
+      </mat-form-field>
+      <button mat-raised-button color="primary" type="submit" [disabled]="otpForm.invalid">
+        Verify OTP
+      </button>
+    </form>
+  </div>
+  

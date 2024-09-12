@@ -1,1 +1,64 @@
-<p>cook-dashboard works!</p>
+<div class="kanban-layout">
+  <mat-sidenav-container class="sidenav-container w-100">
+    <mat-sidenav mode="side" opened>
+      <h2 class="mb-0 mx-3 pt-4">Menu</h2>
+      <mat-nav-list class="mx-2">
+        <mat-list-item class="mt-2" (click)="activeView = 'orders'" [class.active]="activeView === 'orders'">
+          <mat-icon>assignment</mat-icon> Orders
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="activeView = 'menu'" [class.active]="activeView === 'menu'">
+          <mat-icon>restaurant_menu</mat-icon> Menu
+        </mat-list-item>
+      </mat-nav-list>
+    </mat-sidenav>
+    <mat-sidenav-content>
+      <div *ngIf="activeView === 'orders'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Orders</h2>
+          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+        </div>
+        <div class="kanban-board">
+          <div cdkDropListGroup class="board-columns">
+            <div *ngFor="let status of orderStatuses" class="column">
+              <h3 class="text-center m-3">{{ status }}</h3>
+              <div cdkDropList [id]="'orders-' + status" [cdkDropListData]="ordersByStatus[status]"
+                (cdkDropListDropped)="drop($event)" class="order-list">
+                <div *ngFor="let order of ordersByStatus[status]" cdkDrag [cdkDragData]="order" class="order-item">
+                  <h4>Table: {{ order.tableNumber }}</h4>
+                  <!-- <p>Customer: {{ order.customerName }}</p> -->
+                  <p>Items:</p>
+                  <ul>
+                    <li *ngFor="let item of order.items">
+                      {{ item.name }} - {{ item.quantity }}
+                    </li>
+                  </ul>
+                  <!-- <p><strong>Total: {{ order.totalPrice | currency }}</strong></p> -->
+                  <p>Status: {{ order.status }}</p>
+                  <p>Created: {{ order.createdAt | date:'short' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="activeView === 'menu'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Orders</h2>
+          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+        </div>
+        <div class="menu-items">
+          <mat-card *ngFor="let item of menuItems">
+            <mat-card-header> <img *ngIf="item.imageUrl" [src]="getImageUrl(item.imageUrl)" [alt]="item.name">
+              <mat-card-title>{{ item.name }}</mat-card-title>
+              <mat-card-subtitle>{{ item.category }}</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <p>{{ item.description }}</p>
+              <p><strong>Price: {{ item.price | currency }}</strong></p>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

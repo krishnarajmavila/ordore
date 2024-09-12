@@ -1,0 +1,43 @@
+.menu-items {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding-bottom: 5rem;
+}
+
+.mat-mdc-card {
+  margin-bottom: 16px;
+}
+
+.mat-mdc-card-content {
+  padding: 16px;
+}
+
+.mat-mdc-card-actions {
+  padding: 8px 16px;
+}
+
+.img-fluid {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.fixed-bottom {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  z-index: 1030;
+  border-radius: 8px;
+}
+.cart-item-desc{
+  font-size: 17px;
+  font-weight: 600;
+}
+
+::ng-deep{
+  .menu-items .mdc-card{
+    box-shadow: unset;
+    border-bottom: 1px solid #e2e2e2;
+  }
+}

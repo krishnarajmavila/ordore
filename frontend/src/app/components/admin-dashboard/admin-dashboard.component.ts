@@ -12,6 +12,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../../services/auth.service';
+import { Router } from '@angular/router';
 
 interface MenuItem {
   _id?: string;
@@ -46,14 +48,15 @@ export class AdminDashboardComponent implements OnInit {
   menuItems: MenuItem[] = [];
   editingItem: MenuItem | null = null;
   isLoading = false;
-  displayedColumns: string[] = ['name', 'category', 'price', 'description', 'actions'];
-
+  displayedColumns: string[] = ['name', 'category', 'price', 'description','image', 'actions'];
   categories = ['Appetizers', 'Mains', 'Desserts', 'Beverages'];
+  selectedFile: File | null = null;
 
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private authService: AuthService, private router: Router
   ) {
     this.menuForm = this.fb.group({
       name: ['', Validators.required],
@@ -86,20 +89,29 @@ export class AdminDashboardComponent implements OnInit {
   onSubmit() {
     if (this.menuForm.valid) {
       this.isLoading = true;
+      const formData = new FormData();
+      Object.keys(this.menuForm.controls).forEach(key => {
+        formData.append(key, this.menuForm.get(key)?.value);
+      });
+      
+      if (this.selectedFile) {
+        formData.append('image', this.selectedFile, this.selectedFile.name);
+      }
+
       if (this.editingItem) {
-        this.updateMenuItem();
+        this.updateMenuItem(formData);
       } else {
-        this.addMenuItem();
+        this.addMenuItem(formData);
       }
     } else {
       this.menuForm.markAllAsTouched();
     }
   }
 
-  addMenuItem() {
-    this.http.post<MenuItem>(`${environment.apiUrl}/food`, this.menuForm.value).subscribe({
+  addMenuItem(formData: FormData) {
+    this.http.post<MenuItem>(`${environment.apiUrl}/food`, formData).subscribe({
       next: (newItem) => {
-        this.menuItems = [...this.menuItems, newItem]; // Update local state
+        this.menuItems = [...this.menuItems, newItem];
         this.resetForm();
         this.snackBar.open('Menu item added successfully', 'Close', { duration: 3000 });
       },
@@ -113,18 +125,15 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  updateMenuItem() {
+  updateMenuItem(formData: FormData) {
     if (!this.editingItem?._id) return;
 
-    this.http.put<MenuItem>(`${environment.apiUrl}/food/${this.editingItem._id}`, this.menuForm.value).subscribe({
+    this.http.put<MenuItem>(`${environment.apiUrl}/food/${this.editingItem._id}`, formData).subscribe({
       next: (updatedItem) => {
         const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
         if (index !== -1) {
-          this.menuItems = [
-            ...this.menuItems.slice(0, index),
-            updatedItem,
-            ...this.menuItems.slice(index + 1)
-          ];
+          this.menuItems[index] = updatedItem;
+          this.menuItems = [...this.menuItems];
         }
         this.resetForm();
         this.snackBar.open('Menu item updated successfully', 'Close', { duration: 3000 });
@@ -142,6 +151,7 @@ export class AdminDashboardComponent implements OnInit {
   editItem(item: MenuItem) {
     this.editingItem = item;
     this.menuForm.patchValue(item);
+    this.selectedFile = null;
   }
 
   deleteItem(item: MenuItem) {
@@ -166,19 +176,25 @@ export class AdminDashboardComponent implements OnInit {
   resetForm() {
     this.menuForm.reset();
     this.editingItem = null;
+    this.selectedFile = null;
   }
-
+  getImageUrl(imageUrl: string | undefined): string {
+    if (!imageUrl) {
+      return 'assets/default-food-image.jpg'; // Path to a default image
+    }
+    // Remove '/api' from the environment.apiUrl and append the imageUrl
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
+  }
   onFileSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
-      // In a real application, you would upload the file to a server and get a URL back
-      // For this example, we'll just use a fake URL
-      this.menuForm.patchValue({
-        imageUrl: URL.createObjectURL(file)
-      });
+      this.selectedFile = file;
     }
   }
-
-  // Getter for easy access to form fields
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
   get f() { return this.menuForm.controls; }
 }
