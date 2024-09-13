@@ -5,8 +5,9 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarModule, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
+import { CustomerService } from '../../services/customer-service.service';
 
 @Component({
   selector: 'app-otp-verification',
@@ -26,12 +27,16 @@ export class OtpVerificationComponent implements OnInit {
   otpForm: FormGroup;
   mobileNumber: string = '';
   name: string = '';
+  tableOtp: string = '';
+  horizontalPosition: MatSnackBarHorizontalPosition = 'center';
+  verticalPosition: MatSnackBarVerticalPosition = 'top';
 
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private customerService: CustomerService
   ) {
     this.otpForm = this.formBuilder.group({
       otp: ['', Validators.required]
@@ -43,6 +48,7 @@ export class OtpVerificationComponent implements OnInit {
     if (otpData) {
       this.mobileNumber = otpData.mobileNumber;
       this.name = otpData.name;
+      this.tableOtp = otpData.tableOtp;
     } else {
       this.router.navigate(['/login']);
     }
@@ -51,19 +57,35 @@ export class OtpVerificationComponent implements OnInit {
   onVerifyOtp() {
     if (this.otpForm.valid) {
       const otp = this.otpForm.value.otp;
-      this.authService.verifyOtp(this.mobileNumber, otp).subscribe({
+      console.log('Verifying OTP:', otp);
+      this.authService.verifyOtp(this.mobileNumber, otp, this.tableOtp).subscribe({
         next: (response) => {
           if (response.valid) {
             console.log('OTP verified successfully', response);
-            this.authService.clearOtpRequested(); // Clear the OTP request flag
+            this.authService.clearOtpRequested();
+            this.authService.setOtpVerified(true);
+            
+            // Set customer info in CustomerService
+            this.customerService.setCustomerInfo({
+              name: this.name,
+              phoneNumber: this.mobileNumber,
+              tableOtp: this.tableOtp
+            });
+            
+            console.log('Navigating to customer dashboard');
             this.router.navigate(['/customer-dashboard']);
           } else {
-            this.snackBar.open('Invalid OTP. Please try again.', 'Close', { duration: 3000 });
+            console.log('Invalid OTP received');
+            this.snackBar.open('Invalid OTP. Please try again.', 'Close', {          duration: 5000,
+          horizontalPosition: this.horizontalPosition,
+          verticalPosition: this.verticalPosition  });
           }
         },
         error: (error) => {
           console.error('Error verifying OTP', error);
-          this.snackBar.open('Error verifying OTP. Please try again.', 'Close', { duration: 3000 });
+          this.snackBar.open('Error verifying OTP. Please try again.', 'Close', {          duration: 5000,
+          horizontalPosition: this.horizontalPosition,
+          verticalPosition: this.verticalPosition  });
         }
       });
     }

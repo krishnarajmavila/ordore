@@ -6,14 +6,14 @@ module.exports = function(io) {
   // POST route to create a new order
   router.post('/', async (req, res) => {
     try {
-      const { items, totalPrice, customerName, phoneNumber, tableNumber } = req.body;
+      const { items, totalPrice, customerName, phoneNumber, tableOtp } = req.body;
       
       const newOrder = new Order({
         items,
         totalPrice,
         customerName,
         phoneNumber,
-        tableNumber,
+        tableOtp,
         status: 'pending'
       });
 
@@ -31,10 +31,17 @@ module.exports = function(io) {
     }
   });
 
-  // GET route to fetch all orders
+  // GET route to fetch orders, with optional tableOtp filter
   router.get('/', async (req, res) => {
     try {
-      const orders = await Order.find().sort({ createdAt: -1 });
+      const { tableOtp } = req.query;
+      let query = {};
+      
+      if (tableOtp) {
+        query.tableOtp = tableOtp;
+      }
+
+      const orders = await Order.find(query).sort({ createdAt: -1 });
       res.json(orders);
     } catch (error) {
       res.status(500).json({ message: error.message });

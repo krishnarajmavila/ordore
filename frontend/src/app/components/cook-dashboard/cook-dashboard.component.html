@@ -2,7 +2,7 @@
   <mat-sidenav-container class="sidenav-container w-100">
     <mat-sidenav mode="side" opened>
       <!-- <h2 class="mb-0 mx-3 pt-4">Menu</h2> -->
-      <img class="p-3 pt-4 mt-2" width="100%"  src="assets/img/lm.png" />
+      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%"  src="assets/img/ibis.png" />
       <mat-nav-list class="mx-2">
         <mat-list-item class="mt-2" (click)="activeView = 'orders'" [class.active]="activeView === 'orders'">
           <mat-icon>assignment</mat-icon> Manage Orders
@@ -33,7 +33,8 @@
                     </li>
                   </ul>
                   <!-- <p><strong>Total: {{ order.totalPrice | currency }}</strong></p> -->
-                  <p class="m-0">Orders from table: {{ order.tableNumber }}</p>
+                  <p class="m-0">Orders from table: {{ order.tableOtp }}</p>
+                  <p class="m-0">Orders from Person: {{ order.customerName }}</p>
                   <!-- <p class="m-0">Status: {{ order.status }}</p> -->
                   <p class="m-0">Ordered On: {{ order.createdAt | date:'short' }}</p>
                 </div>

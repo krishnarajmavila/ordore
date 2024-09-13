@@ -1,18 +1,60 @@
-<div class="customer-login-container">
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <mat-form-field appearance="fill">
-        <mat-label>Name</mat-label>
-        <input matInput formControlName="name" required>
-        <mat-error *ngIf="loginForm.get('name')?.hasError('required')">Name is required</mat-error>
-      </mat-form-field>
-  
-      <mat-form-field appearance="fill">
-        <mat-label>Mobile Number</mat-label>
-        <input matInput formControlName="mobileNumber" required>
-        <mat-error *ngIf="loginForm.get('mobileNumber')?.hasError('required')">Mobile number is required</mat-error>
-        <mat-error *ngIf="loginForm.get('mobileNumber')?.hasError('pattern')">Please enter a valid 10-digit mobile number</mat-error>
-      </mat-form-field>
-  
+<form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="position-relative" style="    text-align: center;
+        width: 100%;
+        display: flex;
+        justify-content: center;    height: 200px;">
+      <img style="position: absolute; top: 40%; margin: 0 auto;" width="180px" src="assets/img/ibis.png" />
+    </div>
+    <div class="col-md-6" style="position: absolute; bottom: 36px;">
+      <div class="row">
+        <div class="d-flex w-100 align-items-center justify-content-center">
+          <h2>Login</h2>
+        </div>
+        <div class="col-12">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="name" required>
+            <mat-error *ngIf="isFieldInvalid('name')">
+              Name is required and must be at least 2 characters long
+            </mat-error>
+          </mat-form-field>
+        </div>
+        <div class="col-12">
+          <div class="row">
+            <div class="col-4">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>Code</mat-label>
+                <mat-select formControlName="countryCode">
+                  <mat-option value="+91">🇮🇳 +91</mat-option>
+                  <mat-option value="+1">🇺🇸 +1</mat-option>
+                  <mat-option value="+44">🇬🇧 +44</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="col-8">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>Mobile Number</mat-label>
+                <input matInput formControlName="mobileNumber" required>
+                <mat-error *ngIf="isFieldInvalid('mobileNumber')">
+                  Please enter a valid 10-digit mobile number
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Table OTP</mat-label>
+            <input matInput formControlName="tableOtp" required>
+            <mat-hint>Please get this number from waiter's</mat-hint>
+            <mat-error *ngIf="isFieldInvalid('tableOtp')">
+              Table OTP is required and must be 4-6 digits long
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
       <button mat-raised-button color="primary" type="submit" [disabled]="loginForm.invalid">Send OTP</button>
-    </form>
+    </div>
   </div>
+</form>

@@ -1,4 +1,3 @@
-// cart.service.ts
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
@@ -37,7 +36,7 @@ export class CartService {
   addToCart(item: CartItem) {
     const currentItems = this.cartItemsSubject.getValue();
     const existingItemIndex = currentItems.findIndex(i => i._id === item._id);
-    
+
     if (existingItemIndex > -1) {
       currentItems[existingItemIndex].quantity += 1;
     } else {
@@ -51,8 +50,8 @@ export class CartService {
   removeFromCart(itemId: string) {
     const currentItems = this.cartItemsSubject.getValue();
     const updatedItems = currentItems.map(item => 
-      item._id === itemId 
-        ? { ...item, quantity: item.quantity > 1 ? item.quantity - 1 : 0 } 
+      item._id === itemId
+        ? { ...item, quantity: item.quantity > 1 ? item.quantity - 1 : 0 }
         : item
     ).filter(item => item.quantity > 0);
 
@@ -67,5 +66,10 @@ export class CartService {
   clearCart() {
     this.cartItemsSubject.next([]);
     this.saveCartToLocalStorage([]);
+  }
+
+  // New method: resetCart
+  resetCart() {
+    this.clearCart(); // We can use the existing clearCart method
   }
 }

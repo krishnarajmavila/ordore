@@ -28,6 +28,7 @@ export class AuthService {
   private isBrowser: boolean;
   private mobileNumber: string | null = null;
   private name: string | null = null;
+  private tableOtp: string | null = null;
 
   constructor(
     private http: HttpClient,
@@ -91,6 +92,7 @@ export class AuthService {
     console.log('isLoggedIn check result:', loggedIn);
     return loggedIn;
   }
+
   logout(): void {
     if (this.isBrowser) {
       localStorage.removeItem(this.tokenKey);
@@ -110,13 +112,16 @@ export class AuthService {
     return this.isBrowser ? localStorage.getItem(this.otpRequestedKey) === 'true' : false;
   }
 
-  setOtpData(mobileNumber: string, name: string): void {
+  setOtpData(mobileNumber: string, name: string, tableOtp: string): void {
     this.mobileNumber = mobileNumber;
     this.name = name;
+    this.tableOtp = tableOtp;
   }
 
-  getOtpData(): { mobileNumber: string, name: string } | null {
-    return (this.mobileNumber && this.name) ? { mobileNumber: this.mobileNumber, name: this.name } : null;
+  getOtpData(): { mobileNumber: string, name: string, tableOtp: string } | null {
+    return (this.mobileNumber && this.name && this.tableOtp) 
+      ? { mobileNumber: this.mobileNumber, name: this.name, tableOtp: this.tableOtp } 
+      : null;
   }
 
   clearOtpRequested(): void {
@@ -141,8 +146,8 @@ export class AuthService {
     }
   }
 
-  sendOtp(name: string, mobileNumber: string): Observable<OtpSendResponse> {
-    return this.http.post<OtpSendResponse>(`${environment.apiUrl}/auth/send-otp`, { name, mobileNumber }).pipe(
+  sendOtp(name: string, mobileNumber: string, tableOtp: string): Observable<OtpSendResponse> {
+    return this.http.post<OtpSendResponse>(`${environment.apiUrl}/auth/send-otp`, { name, mobileNumber, tableOtp }).pipe(
       tap(() => {
         if (this.isBrowser) {
           this.setOtpRequested(true);
@@ -155,8 +160,8 @@ export class AuthService {
     );
   }
 
-  verifyOtp(mobileNumber: string, otp: string): Observable<OtpVerifyResponse> {
-    return this.http.post<OtpVerifyResponse>(`${environment.apiUrl}/auth/verify-otp`, { mobileNumber, otp }).pipe(
+  verifyOtp(mobileNumber: string, otp: string, tableOtp: string): Observable<OtpVerifyResponse> {
+    return this.http.post<OtpVerifyResponse>(`${environment.apiUrl}/auth/verify-otp`, { mobileNumber, otp, tableOtp }).pipe(
       tap(response => {
         if (response.valid && response.token) {
           this.setToken(response.token);

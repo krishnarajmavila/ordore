@@ -2,9 +2,11 @@ import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { CartItem } from '../../services/cart.service';
+import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
+import { CartItem, CartService } from '../../services/cart.service';
 import { OrderService } from '../../services/order.service';
+import { Router } from '@angular/router';
+import { CustomerService } from '../../services/customer-service.service';
 
 @Component({
   selector: 'app-confirmation-dialog',
@@ -28,12 +30,16 @@ import { OrderService } from '../../services/order.service';
 })
 export class ConfirmationDialogComponent {
   isSubmitting = false;
-
+  horizontalPosition: MatSnackBarHorizontalPosition = 'center';
+  verticalPosition: MatSnackBarVerticalPosition = 'top';
   constructor(
     public dialogRef: MatDialogRef<ConfirmationDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { cartItems: CartItem[], totalPrice: number },
     private orderService: OrderService,
-    private snackBar: MatSnackBar
+    private customerService: CustomerService,
+    private cartService: CartService,
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {}
 
   onCancel(): void {
@@ -42,15 +48,32 @@ export class ConfirmationDialogComponent {
 
   onConfirm(): void {
     this.isSubmitting = true;
-    this.orderService.submitOrder(this.data.cartItems, this.data.totalPrice).subscribe(
+    const customerInfo = this.customerService.getCustomerInfo();
+    
+    if (!customerInfo) {
+      this.snackBar.open('Customer information not found. Please log in again.', 'Close', {          duration: 5000,
+          horizontalPosition: this.horizontalPosition,
+          verticalPosition: this.verticalPosition  });
+      this.dialogRef.close(false);
+      this.router.navigate(['/login']);
+      return;
+    }
+    
+    this.orderService.submitOrder(this.data.cartItems, this.data.totalPrice, customerInfo).subscribe(
       response => {
         console.log('Order submitted successfully', response);
-        this.snackBar.open('Order submitted successfully!', 'Close', { duration: 3000 });
+        this.snackBar.open('Order submitted successfully!', 'Close', {          duration: 5000,
+          horizontalPosition: this.horizontalPosition,
+          verticalPosition: this.verticalPosition  });
+        this.cartService.resetCart(); // Use the new resetCart method
         this.dialogRef.close(true);
+        this.router.navigate(['/customer-dashboard']);
       },
       error => {
         console.error('Error submitting order', error);
-        this.snackBar.open('Error submitting order. Please try again.', 'Close', { duration: 3000 });
+        this.snackBar.open('Error submitting order. Please try again.', 'Close', {          duration: 5000,
+          horizontalPosition: this.horizontalPosition,
+          verticalPosition: this.verticalPosition  });
         this.isSubmitting = false;
       }
     );

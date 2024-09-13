@@ -96,7 +96,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
 
   logout() {
     this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/customer-login']);
   }
 
   selectCategory(category: string) {
@@ -189,5 +189,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
       }
     });
   }
-  
+  lookOrders(){
+    this.router.navigate(['/order-details']);
+  }
 }

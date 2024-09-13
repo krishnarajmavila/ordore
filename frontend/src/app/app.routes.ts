@@ -9,6 +9,7 @@ import { OtpVerificationComponent } from './components/otp-verification/otp-veri
 import { otpGuard } from './guards/otp.guard';
 import { authGuard } from './guards/auth.guard';
 import { CartComponent } from './components/cart/cart.component';
+import { OrderDetailsComponent } from './components/order-details/order-details.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -26,7 +27,7 @@ export const routes: Routes = [
   { 
     path: 'customer-dashboard', 
     component: CustomerDashboardComponent, 
-    canActivate: [authGuard]
+    canActivate: [otpGuard]
   },
   { 
     path: 'cook-dashboard', 
@@ -34,10 +35,15 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   { 
+    path: 'order-details', 
+    component: OrderDetailsComponent, 
+    canActivate: [otpGuard]
+  },
+  { 
     path: 'billing-dashboard', 
     component: BillingDashboardComponent
   },
-  { path: 'cart', component: CartComponent, canActivate: [authGuard] },
+  { path: 'cart', component: CartComponent, canActivate: [otpGuard] },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' },
 ];

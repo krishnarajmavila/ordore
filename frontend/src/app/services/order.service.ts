@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { CartItem } from './cart.service';
-import { CustomerService } from './customer-service.service';
+import { environment } from '../../environments/environment';
 
 export interface Order {
   _id: string;
@@ -11,7 +11,7 @@ export interface Order {
   totalPrice: number;
   customerName: string;
   phoneNumber: string;
-  tableNumber: string;
+  tableOtp: string;
   status: string;
   createdAt: Date;
 }
@@ -20,14 +20,11 @@ export interface Order {
   providedIn: 'root'
 })
 export class OrderService {
-  private apiUrl = 'http://localhost:5001/api/orders'; // Adjust this URL to match your server
+  private apiUrl = `${environment.apiUrl}/orders`;
   private ordersSubject = new BehaviorSubject<Order[]>([]);
   private refreshInterval: any;
 
-  constructor(
-    private http: HttpClient,
-    private customerService: CustomerService
-  ) {}
+  constructor(private http: HttpClient) {}
 
   getOrders(): Observable<Order[]> {
     return this.ordersSubject.asObservable();
@@ -44,14 +41,13 @@ export class OrderService {
     );
   }
 
-  submitOrder(cartItems: CartItem[], totalPrice: number): Observable<Order> {
-    const customerInfo = this.customerService.getCustomerInfo();
+  submitOrder(cartItems: CartItem[], totalPrice: number, customerInfo: { name: string, phoneNumber: string, tableOtp: string }): Observable<Order> {
     const orderData = {
       items: cartItems,
       totalPrice: totalPrice,
       customerName: customerInfo.name,
       phoneNumber: customerInfo.phoneNumber,
-      tableNumber: customerInfo.tableNumber
+      tableOtp: customerInfo.tableOtp
     };
 
     return this.http.post<Order>(this.apiUrl, orderData).pipe(
@@ -70,7 +66,7 @@ export class OrderService {
     return this.http.patch<Order>(`${this.apiUrl}/${orderId}`, { status: newStatus }).pipe(
       tap(updatedOrder => {
         const currentOrders = this.ordersSubject.value;
-        const updatedOrders = currentOrders.map(order => 
+        const updatedOrders = currentOrders.map(order =>
           order._id === updatedOrder._id ? updatedOrder : order
         );
         this.ordersSubject.next(updatedOrders);
@@ -83,7 +79,7 @@ export class OrderService {
   }
 
   startOrderRefresh(intervalMs: number = 30000): void {
-    this.stopOrderRefresh(); // Ensure any existing interval is cleared
+    this.stopOrderRefresh();
     this.refreshInterval = setInterval(() => this.fetchOrders(), intervalMs);
   }
 
@@ -91,5 +87,8 @@ export class OrderService {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
     }
+  }
+  getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.apiUrl}?tableOtp=${tableOtp}`);
   }
 }
