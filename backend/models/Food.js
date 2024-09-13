@@ -5,7 +5,8 @@ const FoodSchema = new mongoose.Schema({
   category: { type: String, required: true },
   price: { type: Number, required: true },
   description: { type: String },
-  imageUrl: { type: String }
+  imageUrl: { type: String },
+  isVegetarian: { type: Boolean, required: true }
 });
 
 module.exports = mongoose.model('Food', FoodSchema);

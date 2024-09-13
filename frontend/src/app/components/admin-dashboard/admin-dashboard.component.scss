@@ -1,0 +1,28 @@
+@import url(../cook-dashboard/cook-dashboard.component.scss);
+button{
+    height: 50px;
+}
+
+::ng-deep{
+    .menu-tbl th{
+        background-color: rgb(245, 248, 250);
+    }
+    .mat-expansion-panel{
+        padding: 10px !important;
+        box-shadow: unset !important;
+      }
+      .mat-expansion-panel-header {
+        border-bottom: 1px solid rgb(235, 241, 245) !important;
+      }
+      .mat-expansion-panel-header.mat-expanded:focus, .mat-expansion-panel-header.mat-expanded:hover {
+        border-bottom: 1px solid rgb(235, 241, 245) !important;
+      }
+      .mat-drawer-container {
+        background-color: #fff !important;
+      }
+      .mat-mdc-list-item-unscoped-content{
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+}

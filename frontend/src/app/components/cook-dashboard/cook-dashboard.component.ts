@@ -13,11 +13,12 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { trigger, state, style, transition, animate } from '@angular/animations';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 @Component({
   selector: 'app-cook-dashboard',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatCardModule, MatListModule, MatIconModule, DragDropModule, MatSidenavModule],
+  imports: [CommonModule, MatButtonModule, MatCardModule, MatListModule, MatIconModule, DragDropModule, MatSidenavModule, MatExpansionModule],
   templateUrl: './cook-dashboard.component.html',
   styleUrls: ['./cook-dashboard.component.scss'],
   animations: [
@@ -112,8 +113,8 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     if (!imageUrl) {
       return 'assets/default-food-image.jpg';
     }
-    const cleanImageUrl = imageUrl.startsWith('/api') ? imageUrl.slice(4) : imageUrl;
-    return `${environment.apiUrl}${cleanImageUrl}`;
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
   }
 
   drop(event: CdkDragDrop<Order[]>) {
@@ -137,9 +138,12 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
   getStatusFromContainerId(containerId: string): string {
     return containerId.split('-')[1]; // Assuming container IDs are in the format 'orders-status'
   }
-
+  getUniqueCategories(): string[] {
+    return Array.from(new Set(this.menuItems.map(item => item.category)));
+  }
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
+  
 }

@@ -9,6 +9,7 @@ export interface MenuItem {
   category: string;
   price: number;
   description?: string;
+  isVegetarian?: boolean;
   imageUrl?: string;
 }
 

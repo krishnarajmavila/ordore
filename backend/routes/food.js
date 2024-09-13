@@ -16,17 +16,18 @@ router.get('/', async (req, res) => {
 // Add a new food item
 router.post('/', upload.single('image'), async (req, res) => {
   try {
-    const { name, category, price, description } = req.body;
+    const { name, category, price, description, isVegetarian } = req.body;
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-
+    
     const newFood = new Food({
       name,
       category,
       price,
       description,
-      imageUrl
+      imageUrl,
+      isVegetarian: isVegetarian === 'true'
     });
-
+    
     const savedFood = await newFood.save();
     res.status(201).json(savedFood);
   } catch (error) {
@@ -38,13 +39,13 @@ router.post('/', upload.single('image'), async (req, res) => {
 // Update a food item
 router.put('/:id', upload.single('image'), async (req, res) => {
   try {
-    const { name, category, price, description } = req.body;
-    const updateData = { name, category, price, description };
+    const { name, category, price, description, isVegetarian } = req.body;
+    const updateData = { name, category, price, description, isVegetarian: isVegetarian === 'true' };
     
     if (req.file) {
       updateData.imageUrl = `/uploads/${req.file.filename}`;
     }
-
+    
     const updatedFood = await Food.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!updatedFood) {
       return res.status(404).json({ message: 'Food item not found' });

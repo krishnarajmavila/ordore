@@ -1,40 +1,41 @@
 <div class="kanban-layout">
   <mat-sidenav-container class="sidenav-container w-100">
     <mat-sidenav mode="side" opened>
-      <h2 class="mb-0 mx-3 pt-4">Menu</h2>
+      <!-- <h2 class="mb-0 mx-3 pt-4">Menu</h2> -->
+      <img class="p-3 pt-4 mt-2" width="100%"  src="assets/img/lm.png" />
       <mat-nav-list class="mx-2">
         <mat-list-item class="mt-2" (click)="activeView = 'orders'" [class.active]="activeView === 'orders'">
-          <mat-icon>assignment</mat-icon> Orders
+          <mat-icon>assignment</mat-icon> Manage Orders
         </mat-list-item>
         <mat-list-item class="mt-2" (click)="activeView = 'menu'" [class.active]="activeView === 'menu'">
-          <mat-icon>restaurant_menu</mat-icon> Menu
+          <mat-icon>restaurant_menu</mat-icon> View Menu
         </mat-list-item>
       </mat-nav-list>
     </mat-sidenav>
     <mat-sidenav-content>
       <div *ngIf="activeView === 'orders'">
         <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Orders</h2>
-          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          <h2 class="m-0">Hello Chef</h2>
+         <div class="d-flex align-items-center"> 
+          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button></div>
         </div>
         <div class="kanban-board">
           <div cdkDropListGroup class="board-columns">
             <div *ngFor="let status of orderStatuses" class="column">
-              <h3 class="text-center m-3">{{ status }}</h3>
+              <h3 class="text-center m-3">{{ status | titlecase}}</h3>
               <div cdkDropList [id]="'orders-' + status" [cdkDropListData]="ordersByStatus[status]"
                 (cdkDropListDropped)="drop($event)" class="order-list">
-                <div *ngFor="let order of ordersByStatus[status]" cdkDrag [cdkDragData]="order" class="order-item">
-                  <h4>Table: {{ order.tableNumber }}</h4>
+                <div *ngFor="let order of ordersByStatus[status]" cdkDrag [cdkDragData]="order" [ngClass]="status" class="order-item">
                   <!-- <p>Customer: {{ order.customerName }}</p> -->
-                  <p>Items:</p>
                   <ul>
                     <li *ngFor="let item of order.items">
-                      {{ item.name }} - {{ item.quantity }}
+                   {{ item.quantity }} - {{ item.name }} 
                     </li>
                   </ul>
                   <!-- <p><strong>Total: {{ order.totalPrice | currency }}</strong></p> -->
-                  <p>Status: {{ order.status }}</p>
-                  <p>Created: {{ order.createdAt | date:'short' }}</p>
+                  <p class="m-0">Orders from table: {{ order.tableNumber }}</p>
+                  <!-- <p class="m-0">Status: {{ order.status }}</p> -->
+                  <p class="m-0">Ordered On: {{ order.createdAt | date:'short' }}</p>
                 </div>
               </div>
             </div>
@@ -43,21 +44,33 @@
       </div>
       <div *ngIf="activeView === 'menu'">
         <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Orders</h2>
+          <h2 class="m-0">Hello Chef</h2>
           <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
         </div>
-        <div class="menu-items">
-          <mat-card *ngFor="let item of menuItems">
-            <mat-card-header> <img *ngIf="item.imageUrl" [src]="getImageUrl(item.imageUrl)" [alt]="item.name">
-              <mat-card-title>{{ item.name }}</mat-card-title>
-              <mat-card-subtitle>{{ item.category }}</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <p>{{ item.description }}</p>
-              <p><strong>Price: {{ item.price | currency }}</strong></p>
-            </mat-card-content>
-          </mat-card>
-        </div>
+        <mat-accordion multi="true" class="menu-categories">
+          <mat-expansion-panel *ngFor="let category of getUniqueCategories()" [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+               <h3 class="m-0"> {{ category }}</h3>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="menu-items row">
+              <ng-container *ngFor="let item of menuItems">
+                <mat-card class="col-2" *ngIf="item.category === category">
+                  <img *ngIf="item.imageUrl" class="img-fluid" [src]="getImageUrl(item.imageUrl)" [alt]="item.name">
+                  <mat-card-header class="px-0">
+                    <mat-card-title>{{ item.name }}</mat-card-title>
+                    <mat-card-subtitle>{{ item.category }}</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content class="px-0">
+                    <p>{{ item.description }}</p>
+                    <p><strong>Price: {{ item.price | currency }}</strong></p>
+                  </mat-card-content>
+                </mat-card>
+              </ng-container>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
       </div>
     </mat-sidenav-content>
   </mat-sidenav-container>

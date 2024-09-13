@@ -147,7 +147,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
   getFilteredMenuItems(): MenuItem[] {
     return this.menuItems.filter(item => 
       (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
-      (!this.isVegetarian || item.category !== 'Mains') // Assuming 'Mains' are non-vegetarian
+      (!this.isVegetarian || item.isVegetarian === true) // Assuming 'Mains' are non-vegetarian
     );
   }
 

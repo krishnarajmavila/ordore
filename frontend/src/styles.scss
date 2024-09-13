@@ -26,6 +26,10 @@ body{
     width: 0 !important;
     display: none !important;
   }
+  .bg-red{
+    // background: #C80000;
+    box-shadow: rgb(240, 241, 242) 0px 2px 4px;
+  }
   .action-space{
     background: #C80000;
     color: #fff;

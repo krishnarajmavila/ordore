@@ -1,96 +1,250 @@
-<div class="admin-dashboard">
-  <h1>Admin Dashboard - Menu Management</h1>
+<div class="kanban-layout">
+  <mat-sidenav-container class="sidenav-container w-100">
+    <mat-sidenav mode="side" opened>
+      <img class="p-3 pt-4 mt-2" width="100%" src="assets/img/lm.png" />
+      <mat-nav-list class="mx-2">
+        <mat-list-item class="mt-2" (click)="activeView = 'Add Menu'" [class.active]="activeView === 'Add Menu'">
+          <mat-icon>assignment</mat-icon> Manage Menu
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="activeView = 'tables'" [class.active]="activeView === 'tables'">
+          <mat-icon>table_chart</mat-icon> Manage Tables
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="activeView = 'menu'" [class.active]="activeView === 'menu'">
+          <mat-icon>restaurant_menu</mat-icon> View Menu
+        </mat-list-item>
+      </mat-nav-list>
+    </mat-sidenav>
+    <mat-sidenav-content>
+      <div *ngIf="activeView === 'Add Menu'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Hello Admin</h2>
+          <div class="d-flex align-items-center"> 
+            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          </div>
+        </div>
+        <div class="row m-0 p-2">
+          <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+            <h3>Add Menu</h3>
+            <form class="adding" [formGroup]="menuForm" (ngSubmit)="onSubmit()">
+              <mat-form-field appearance="outline">
+                <mat-label>Dish Name</mat-label>
+                <input matInput formControlName="name" required>
+                <mat-error *ngIf="f['name'].hasError('required')">Name is required</mat-error>
+              </mat-form-field>
+          
+              <mat-form-field appearance="outline">
+                <mat-label>Category</mat-label>
+                <mat-select formControlName="category" required>
+                  <mat-option *ngFor="let category of categories" [value]="category">
+                    {{category}}
+                  </mat-option>
+                </mat-select>
+                <mat-error *ngIf="f['category'].hasError('required')">Category is required</mat-error>
+              </mat-form-field>
+          
+              <mat-form-field appearance="outline">
+                <mat-label>Price</mat-label>
+                <input matInput type="number" formControlName="price" required>
+                <mat-error *ngIf="f['price'].hasError('required')">Price is required</mat-error>
+                <mat-error *ngIf="f['price'].hasError('min')">Price must be positive</mat-error>
+              </mat-form-field>
+          
+              <mat-form-field appearance="outline">
+                <mat-label>Description</mat-label>
+                <textarea matInput formControlName="description"></textarea>
+              </mat-form-field>
 
-  <form [formGroup]="menuForm" (ngSubmit)="onSubmit()">
-    <mat-form-field appearance="fill">
-      <mat-label>Dish Name</mat-label>
-      <input matInput formControlName="name" required>
-      <mat-error *ngIf="f['name'].hasError('required')">Name is required</mat-error>
-    </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Vegetarian</mat-label>
+                <mat-select formControlName="isVegetarian" required>
+                  <mat-option [value]="true">Vegetarian</mat-option>
+                  <mat-option [value]="false">Non-Vegetarian</mat-option>
+                </mat-select>
+                <mat-error *ngIf="f['isVegetarian'].hasError('required')">This field is required</mat-error>
+              </mat-form-field>
+          
+              <div>
+                <input type="file" (change)="onFileSelected($event)" accept="image/*" #fileInput style="display: none;">
+                <button mat-stroked-button type="button" (click)="fileInput.click()">
+                  <mat-icon>cloud_upload</mat-icon> Upload Image
+                </button>
+                <span *ngIf="selectedFile">{{selectedFile.name}}</span>
+              </div>
+          
+              <div class="form-actions">
+                <button class="mt-4" mat-raised-button color="primary" type="submit" [disabled]="menuForm.invalid || isLoading">
+                  <mat-icon>{{editingItem ? 'update' : 'add'}}</mat-icon>
+                  {{editingItem ? 'Update' : 'Add'}} Menu Item
+                </button>
+                <button class="mt-4" mat-raised-button type="button" (click)="resetForm()" *ngIf="editingItem">
+                  <mat-icon>cancel</mat-icon> Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="col-9 p-3">
+            <h3>View Menu</h3>
+            <hr class="mb-0">
+            <div class="table-container">
+              <table class="menu-tbl" mat-table [dataSource]="menuItems">
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef> Name </th>
+                  <td mat-cell *matCellDef="let item"> {{item.name}} </td>
+                </ng-container>
+          
+                <ng-container matColumnDef="category">
+                  <th mat-header-cell *matHeaderCellDef> Category </th>
+                  <td mat-cell *matCellDef="let item"> {{item.category}} </td>
+                </ng-container>
+          
+                <ng-container matColumnDef="price">
+                  <th mat-header-cell *matHeaderCellDef> Price </th>
+                  <td mat-cell *matCellDef="let item"> {{item.price | currency}} </td>
+                </ng-container>
+          
+                <ng-container matColumnDef="description">
+                  <th mat-header-cell *matHeaderCellDef> Description </th>
+                  <td mat-cell *matCellDef="let item"> {{item.description}} </td>
+                </ng-container>
 
-    <mat-form-field appearance="fill">
-      <mat-label>Category</mat-label>
-      <mat-select formControlName="category" required>
-        <mat-option *ngFor="let category of categories" [value]="category">
-          {{category}}
-        </mat-option>
-      </mat-select>
-      <mat-error *ngIf="f['category'].hasError('required')">Category is required</mat-error>
-    </mat-form-field>
+                <ng-container matColumnDef="isVegetarian">
+                  <th mat-header-cell *matHeaderCellDef> Vegetarian </th>
+                  <td mat-cell *matCellDef="let item"> {{item.isVegetarian ? 'Yes' : 'No'}} </td>
+                </ng-container>
 
-    <mat-form-field appearance="fill">
-      <mat-label>Price</mat-label>
-      <input matInput type="number" formControlName="price" required>
-      <mat-error *ngIf="f['price'].hasError('required')">Price is required</mat-error>
-      <mat-error *ngIf="f['price'].hasError('min')">Price must be positive</mat-error>
-    </mat-form-field>
+                <ng-container matColumnDef="image">
+                  <th mat-header-cell *matHeaderCellDef> Image </th>
+                  <td mat-cell *matCellDef="let item">
+                    <img [src]="getImageUrl(item?.imageUrl)" alt="{{item?.name}}" style="max-width: 100px; max-height: 100px;">
+                  </td>
+                </ng-container>
 
-    <mat-form-field appearance="fill">
-      <mat-label>Description</mat-label>
-      <textarea matInput formControlName="description"></textarea>
-    </mat-form-field>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef> Actions </th>
+                  <td mat-cell *matCellDef="let item">
+                    <button mat-icon-button color="primary" (click)="editItem(item)" matTooltip="Edit">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn" (click)="deleteItem(item)" matTooltip="Delete">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+          
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="activeView === 'menu'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Hello Admin</h2>
+          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+        </div>
+        <mat-accordion multi="true" class="menu-categories">
+          <mat-expansion-panel *ngFor="let category of getUniqueCategories()" [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+               <h3 class="m-0"> {{ category }}</h3>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="menu-items row">
+              <ng-container *ngFor="let item of menuItems">
+                <mat-card class="col-2" *ngIf="item.category === category">
+                  <img *ngIf="item.imageUrl" class="img-fluid" [src]="getImageUrl(item.imageUrl)" [alt]="item.name">
+                  <mat-card-header class="px-0">
+                    <mat-card-title>{{ item.name }}</mat-card-title>
+                    <mat-card-subtitle>{{ item.category }}</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content class="px-0">
+                    <p>{{ item.description }}</p>
+                    <p><strong>Price: {{ item.price | currency }}</strong></p>
+                  </mat-card-content>
+                </mat-card>
+              </ng-container>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </div>
+      <div *ngIf="activeView === 'tables'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Hello Admin</h2>
+          <div class="d-flex align-items-center"> 
+            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          </div>
+        </div>
+        <div class="row m-0 p-2">
+          <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+            <h3>Add Table</h3>
+            <form [formGroup]="tableForm" (ngSubmit)="onTableSubmit()">
+              <mat-form-field appearance="outline">
+                <mat-label>Table Number</mat-label>
+                <input matInput type="number" formControlName="number" required>
+                <mat-error *ngIf="tableForm.get('number')?.hasError('required')">Table number is required</mat-error>
+                <mat-error *ngIf="tableForm.get('number')?.hasError('min')">Table number must be positive</mat-error>
+              </mat-form-field>
+            
+              <mat-form-field appearance="outline">
+                <mat-label>Capacity</mat-label>
+                <input matInput type="number" formControlName="capacity" required>
+                <mat-error *ngIf="tableForm.get('capacity')?.hasError('required')">Capacity is required</mat-error>
+                <mat-error *ngIf="tableForm.get('capacity')?.hasError('min')">Capacity must be positive</mat-error>
+              </mat-form-field>
+            
+              <mat-checkbox formControlName="isOccupied">Is Occupied</mat-checkbox>
+            
+              <div class="form-actions">
+                <button mat-raised-button color="primary" type="submit" [disabled]="tableForm.invalid || isLoading">
+                  <mat-icon>{{editingTable ? 'update' : 'add'}}</mat-icon>
+                  {{editingTable ? 'Update' : 'Add'}} Table
+                </button>
+                <button mat-raised-button class="mt-4" type="button" (click)="resetTableForm()" *ngIf="editingTable">
+                  <mat-icon>cancel</mat-icon> Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="col-9 p-3">
+            <div class="table-container">
+              <h3>View Table</h3>
+              <hr class="mb-0">
+              <table mat-table [dataSource]="tables">
+                <ng-container matColumnDef="number">
+                  <th mat-header-cell *matHeaderCellDef> Number </th>
+                  <td mat-cell *matCellDef="let table"> {{table.number}} </td>
+                </ng-container>
 
-    <div>
-      <input type="file" (change)="onFileSelected($event)" accept="image/*" #fileInput style="display: none;">
-      <button mat-raised-button type="button" (click)="fileInput.click()">
-        <mat-icon>cloud_upload</mat-icon> Upload Image
-      </button>
-      <span *ngIf="selectedFile">{{selectedFile.name}}</span>
-    </div>
+                <ng-container matColumnDef="capacity">
+                  <th mat-header-cell *matHeaderCellDef> Capacity </th>
+                  <td mat-cell *matCellDef="let table"> {{table.capacity}} </td>
+                </ng-container>
 
-    <div class="form-actions">
-      <button mat-raised-button color="primary" type="submit" [disabled]="menuForm.invalid || isLoading">
-        <mat-icon>{{editingItem ? 'update' : 'add'}}</mat-icon>
-        {{editingItem ? 'Update' : 'Add'}} Menu Item
-      </button>
-      <button mat-button type="button" (click)="resetForm()" *ngIf="editingItem">
-        <mat-icon>cancel</mat-icon> Cancel
-      </button>
-    </div>
-  </form>
+                <ng-container matColumnDef="isOccupied">
+                  <th mat-header-cell *matHeaderCellDef> Occupied </th>
+                  <td mat-cell *matCellDef="let table"> {{table.isOccupied ? 'Yes' : 'No'}} </td>
+                </ng-container>
 
-  <div class="table-container">
-    <table mat-table [dataSource]="menuItems" class="mat-elevation-z8">
-      <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef> Name </th>
-        <td mat-cell *matCellDef="let item"> {{item.name}} </td>
-      </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef> Actions </th>
+                  <td mat-cell *matCellDef="let table">
+                    <button mat-icon-button color="primary" (click)="editTable(table)" matTooltip="Edit">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn" (click)="deleteTable(table)" matTooltip="Delete">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
 
-      <ng-container matColumnDef="category">
-        <th mat-header-cell *matHeaderCellDef> Category </th>
-        <td mat-cell *matCellDef="let item"> {{item.category}} </td>
-      </ng-container>
-
-      <ng-container matColumnDef="price">
-        <th mat-header-cell *matHeaderCellDef> Price </th>
-        <td mat-cell *matCellDef="let item"> {{item.price | currency}} </td>
-      </ng-container>
-
-      <ng-container matColumnDef="description">
-        <th mat-header-cell *matHeaderCellDef> Description </th>
-        <td mat-cell *matCellDef="let item"> {{item.description}} </td>
-      </ng-container>
-      <ng-container matColumnDef="image">
-        <th mat-header-cell *matHeaderCellDef> Image </th>
-        <td mat-cell *matCellDef="let item">
-          <img [src]="getImageUrl(item?.imageUrl)" alt="{{item?.name}}" style="max-width: 100px; max-height: 100px;">
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef> Actions </th>
-        <td mat-cell *matCellDef="let item">
-          <button mat-icon-button color="primary" (click)="editItem(item)" matTooltip="Edit">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button color="warn" (click)="deleteItem(item)" matTooltip="Delete">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-  </div>
+                <tr mat-header-row *matHeaderRowDef="displayedTableColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedTableColumns;"></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
 </div>
-<button mat-raised-button color="warn" (click)="logout()">Logout</button>

@@ -7,6 +7,7 @@ const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const foodRoutes = require('./routes/food');
 const otpRoutes = require('./routes/otpRoutes');
+const tableRoutes = require('./routes/tableRoutes'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +42,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/auth', otpRoutes);
+app.use('/api/tables', tableRoutes);
 
 // Pass io to orderRoutes, even if it's undefined
 const orderRoutes = require('./routes/orderRoutes')(io);
