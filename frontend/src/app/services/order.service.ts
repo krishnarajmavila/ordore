@@ -88,7 +88,7 @@ export class OrderService {
       clearInterval(this.refreshInterval);
     }
   }
-  getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
+   getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
     return this.http.get<Order[]>(`${this.apiUrl}?tableOtp=${tableOtp}`);
   }
 }

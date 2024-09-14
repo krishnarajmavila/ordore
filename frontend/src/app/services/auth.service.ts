@@ -1,6 +1,6 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { catchError, Observable, tap, throwError } from 'rxjs';
+import { catchError, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
@@ -15,6 +15,11 @@ interface OtpSendResponse {
 
 interface OtpVerifyResponse extends AuthResponse {
   valid: boolean;
+}
+interface TableOtpValidationResponse {
+  valid: boolean;
+  message?: string;
+  tableNumber?: number;
 }
 
 @Injectable({
@@ -146,20 +151,48 @@ export class AuthService {
     }
   }
 
+
   sendOtp(name: string, mobileNumber: string, tableOtp: string): Observable<OtpSendResponse> {
-    return this.http.post<OtpSendResponse>(`${environment.apiUrl}/auth/send-otp`, { name, mobileNumber, tableOtp }).pipe(
+    return this.validateTableOtp(tableOtp).pipe(
+      switchMap(validationResponse => {
+        if (!validationResponse.valid) {
+          // If Table OTP is invalid, throw an error to prevent sending the customer OTP
+          throw new Error(validationResponse.message || 'Invalid Table OTP');
+        }
+        
+        // If Table OTP is valid, proceed with sending the customer OTP using the correct endpoint
+        return this.http.post<OtpSendResponse>(`${environment.apiUrl}/auth/send-otp`, { name, mobileNumber, tableOtp });
+      }),
       tap(() => {
         if (this.isBrowser) {
           this.setOtpRequested(true);
         }
       }),
       catchError(error => {
-        console.error('Error sending OTP:', error);
+        console.error('Error in sendOtp:', error);
         return throwError(() => error);
       })
     );
   }
 
+  validateTableOtp(tableOtp: string): Observable<TableOtpValidationResponse> {
+    alert(tableOtp)
+    return this.http.post<TableOtpValidationResponse>(`${environment.apiUrl}/table-otp/validate`, { tableOtp }).pipe(
+      catchError(error => {
+        console.error('Error validating Table OTP:', error);
+        return throwError(() => new Error('Error validating Table OTP'));
+      })
+    );
+  }
+
+  refreshTableOtp(tableNumber: number): Observable<{ message: string, otp: string }> {
+    return this.http.post<{ message: string, otp: string }>(`${environment.apiUrl}/table-otp/refresh`, { tableNumber }).pipe(
+      catchError(error => {
+        console.error('Error refreshing Table OTP:', error);
+        return throwError(() => error);
+      })
+    );
+  }
   verifyOtp(mobileNumber: string, otp: string, tableOtp: string): Observable<OtpVerifyResponse> {
     return this.http.post<OtpVerifyResponse>(`${environment.apiUrl}/auth/verify-otp`, { mobileNumber, otp, tableOtp }).pipe(
       tap(response => {

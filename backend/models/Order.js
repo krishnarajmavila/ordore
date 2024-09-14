@@ -9,7 +9,8 @@ const OrderSchema = new mongoose.Schema({
   totalPrice: Number,
   customerName: String,
   phoneNumber: String,
-  tableOtp: String,  // Changed from tableNumber to tableOtp
+  tableOtp: String,
+  tableNumber: Number,  // Add this field
   status: String,
   createdAt: {
     type: Date,

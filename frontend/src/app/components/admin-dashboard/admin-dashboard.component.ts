@@ -35,6 +35,8 @@ interface Table {
   number: number;
   capacity: number;
   isOccupied: boolean;
+  otp: string;
+  otpGeneratedAt: Date;
 }
 
 @Component({
@@ -70,7 +72,7 @@ export class AdminDashboardComponent implements OnInit {
   editingTable: Table | null = null;
   isLoading = false;
   displayedColumns: string[] = ['name', 'category', 'price', 'description', 'isVegetarian', 'image', 'actions'];
-  displayedTableColumns: string[] = ['number', 'capacity', 'isOccupied', 'actions'];
+  displayedTableColumns: string[] = ['number', 'capacity', 'isOccupied', 'otp', 'actions'];
   categories = ['Appetizers', 'Mains', 'Desserts', 'Beverages'];
   selectedFile: File | null = null;
   activeView = 'Add Menu';
@@ -114,11 +116,7 @@ export class AdminDashboardComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
-        this.snackBar.open('Error loading menu items', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error loading menu items');
         this.isLoading = false;
       }
     });
@@ -133,11 +131,7 @@ export class AdminDashboardComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading tables:', error);
-        this.snackBar.open('Error loading tables', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error loading tables');
         this.isLoading = false;
       }
     });
@@ -185,19 +179,11 @@ export class AdminDashboardComponent implements OnInit {
       next: (newItem) => {
         this.menuItems = [...this.menuItems, newItem];
         this.resetForm();
-        this.snackBar.open('Menu item added successfully', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Menu item added successfully');
       },
       error: (error) => {
         console.error('Error adding menu item:', error);
-        this.snackBar.open('Error adding menu item', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error adding menu item');
       },
       complete: () => {
         this.isLoading = false;
@@ -216,19 +202,11 @@ export class AdminDashboardComponent implements OnInit {
           this.menuItems = [...this.menuItems];
         }
         this.resetForm();
-        this.snackBar.open('Menu item updated successfully', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Menu item updated successfully');
       },
       error: (error) => {
         console.error('Error updating menu item:', error);
-        this.snackBar.open('Error updating menu item', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error updating menu item');
       },
       complete: () => {
         this.isLoading = false;
@@ -241,19 +219,11 @@ export class AdminDashboardComponent implements OnInit {
       next: (newTable) => {
         this.tables = [...this.tables, newTable];
         this.resetTableForm();
-        this.snackBar.open('Table added successfully', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Table added successfully');
       },
       error: (error) => {
         console.error('Error adding table:', error);
-        this.snackBar.open('Error adding table', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error adding table');
       },
       complete: () => {
         this.isLoading = false;
@@ -272,19 +242,11 @@ export class AdminDashboardComponent implements OnInit {
           this.tables = [...this.tables];
         }
         this.resetTableForm();
-        this.snackBar.open('Table updated successfully', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Table updated successfully');
       },
       error: (error) => {
         console.error('Error updating table:', error);
-        this.snackBar.open('Error updating table', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error updating table');
       },
       complete: () => {
         this.isLoading = false;
@@ -317,19 +279,11 @@ export class AdminDashboardComponent implements OnInit {
     this.http.delete(`${environment.apiUrl}/food/${item._id}`).subscribe({
       next: () => {
         this.menuItems = this.menuItems.filter(menuItem => menuItem._id !== item._id);
-        this.snackBar.open('Menu item deleted successfully', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Menu item deleted successfully');
       },
       error: (error) => {
         console.error('Error deleting menu item:', error);
-        this.snackBar.open('Error deleting menu item', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error deleting menu item');
       },
       complete: () => {
         this.isLoading = false;
@@ -344,19 +298,32 @@ export class AdminDashboardComponent implements OnInit {
     this.http.delete(`${environment.apiUrl}/tables/${table._id}`).subscribe({
       next: () => {
         this.tables = this.tables.filter(t => t._id !== table._id);
-        this.snackBar.open('Table deleted successfully', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Table deleted successfully');
       },
       error: (error) => {
         console.error('Error deleting table:', error);
-        this.snackBar.open('Error deleting table', 'Close', { 
-          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition 
-        });
+        this.showSnackBar('Error deleting table');
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  refreshOTP(table: Table) {
+    this.isLoading = true;
+    this.http.post<Table>(`${environment.apiUrl}/tables/${table._id}/refresh-otp`, {}).subscribe({
+      next: (updatedTable) => {
+        const index = this.tables.findIndex(t => t._id === updatedTable._id);
+        if (index !== -1) {
+          this.tables[index] = updatedTable;
+          this.tables = [...this.tables];
+        }
+        this.showSnackBar('OTP refreshed successfully');
+      },
+      error: (error) => {
+        console.error('Error refreshing OTP:', error);
+        this.showSnackBar('Error refreshing OTP');
       },
       complete: () => {
         this.isLoading = false;
@@ -390,12 +357,22 @@ export class AdminDashboardComponent implements OnInit {
       this.selectedFile = file;
     }
   }
+
   getUniqueCategories(): string[] {
     return Array.from(new Set(this.menuItems.map(item => item.category)));
   }
+
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  showSnackBar(message: string) {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
   }
 
   get f() { return this.menuForm.controls; }

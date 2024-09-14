@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const foodRoutes = require('./routes/food');
 const otpRoutes = require('./routes/otpRoutes');
 const tableRoutes = require('./routes/tableRoutes'); 
+const tableOtpRoutes = require('./routes/tableOtpRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/auth', otpRoutes);
 app.use('/api/tables', tableRoutes);
+app.use('/api/table-otp', tableOtpRoutes);
 
 // Pass io to orderRoutes, even if it's undefined
 const orderRoutes = require('./routes/orderRoutes')(io);

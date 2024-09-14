@@ -70,4 +70,33 @@ export class OrderDetailsComponent implements OnInit {
     this.authService.logout();
     this.router.navigate(['/customer-login']);
   }
+  // Calculate Subtotal
+  subTotal() {
+    let total = 0;
+    this.orders.forEach(order => {
+      order.items.forEach(item => {
+        total += item.price * item.quantity;
+      });
+    });
+    return total;
+  }
+
+  // Calculate Service Charge (5% of Subtotal)
+  serviceCharge() {
+    return this.subTotal() * 0.05;
+  }
+
+  // Calculate GST (5% on Food)
+  gst() {
+    return this.subTotal() * 0.05;
+  }
+
+  // Calculate Total
+  total() {
+    return this.subTotal() + this.serviceCharge() + this.gst();
+  }
+
+  goBack() {
+    this.router.navigate(['/customer-dashboard']);
+  }
 }

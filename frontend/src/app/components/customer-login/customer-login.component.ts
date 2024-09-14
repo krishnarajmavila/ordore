@@ -30,6 +30,7 @@ export class CustomerLoginComponent implements OnInit {
   loginForm: FormGroup;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
+
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
@@ -57,6 +58,7 @@ export class CustomerLoginComponent implements OnInit {
     });
   }
 
+
   onSubmit() {
     if (this.loginForm.valid) {
       const { name, countryCode, mobileNumber, tableOtp } = this.loginForm.value;
@@ -69,25 +71,25 @@ export class CustomerLoginComponent implements OnInit {
           this.router.navigate(['/verify-otp']);
         },
         error: (error) => {
-          console.error('Error sending OTP', error);
-          this.snackBar.open('Error sending OTP. Please try again.', 'Close', {          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition  });
-        }
-      });
-    } else {
-      console.log('Form is invalid');
-      console.log('Form errors:', this.loginForm.errors);
-      Object.keys(this.loginForm.controls).forEach(key => {
-        const control = this.loginForm.get(key);
-        if (control?.invalid) {
-          console.log(`${key} is invalid:`, control.errors);
+          console.error('Error:', error);
+          if (error.message.includes('Table OTP')) {
+            this.snackBar.open('Invalid Table OTP. Please check with the waiter.', 'Close', { duration: 5000 });
+          } else {
+            this.snackBar.open('Error sending OTP. Please try again.', 'Close', { duration: 5000 });
+          }
         }
       });
     }
   }
 
-  // Helper method to check if a form control is invalid and touched
+  showSnackBar(message: string) {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
+  }
+
   isFieldInvalid(fieldName: string): boolean {
     const control = this.loginForm.get(fieldName);
     return control ? (control.invalid && (control.touched || control.dirty)) : false;

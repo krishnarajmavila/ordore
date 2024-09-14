@@ -22,4 +22,15 @@ export class MenuService {
   getMenuItems(): Observable<MenuItem[]> {
     return this.http.get<MenuItem[]>(`${environment.apiUrl}/food`);
   }
+
+  searchMenuItems(query: string): Observable<MenuItem[]> {
+    // If the query is empty, return all menu items
+    if (!query.trim()) {
+      return this.getMenuItems();
+    }
+    // Otherwise, call the search endpoint
+    return this.http.get<MenuItem[]>(`${environment.apiUrl}/food/search`, {
+      params: { query }
+    });
+  }
 }

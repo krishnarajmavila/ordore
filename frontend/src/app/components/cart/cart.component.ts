@@ -45,7 +45,9 @@ export class CartComponent implements OnInit {
   goBack() {
     this.router.navigate(['/customer-dashboard']);
   }
-
+  lookOrders(){
+    this.router.navigate(['/order-details']);
+  }
   increaseQuantity(cartItem: CartItem) {
     this.cartService.addToCart(cartItem);
   }

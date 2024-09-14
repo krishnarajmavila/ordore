@@ -23,6 +23,13 @@
     </div>
   </div>
 
+  <div class="row mt-3 mb-3 px-1 align-items-center">
+    <div class="col">
+      <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()" class="form-control ds-input" id="search-input" placeholder="Search..." 
+      dir="auto">
+    </div>
+  </div>
+
   <mat-tab-group #tabGroup (selectedIndexChange)="onTabChange($event)">
     <mat-tab *ngFor="let category of categories" [label]="category">
     </mat-tab>

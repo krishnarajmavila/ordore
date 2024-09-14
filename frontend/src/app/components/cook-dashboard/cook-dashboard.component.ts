@@ -89,7 +89,6 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
       }
     });
   }
-
   updateOrdersByStatus() {
     this.ordersByStatus = {};
     this.orderStatuses.forEach(status => {

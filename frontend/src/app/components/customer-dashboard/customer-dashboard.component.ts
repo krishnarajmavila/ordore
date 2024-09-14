@@ -1,7 +1,6 @@
-// customer-dashboard.component.ts
 import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
@@ -25,6 +24,7 @@ import { CartService, CartItem } from '../../services/cart.service';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
@@ -51,6 +51,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
   selectedCategory: string = 'All';
   isVegetarian: boolean = false;
   cartItems: CartItem[] = [];
+  searchQuery: string = '';
 
   constructor(
     private menuService: MenuService,
@@ -69,7 +70,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
   }
 
   loadMenuItems() {
-    this.menuService.getMenuItems().subscribe({
+    this.menuService.searchMenuItems(this.searchQuery).subscribe({
       next: (items) => {
         this.menuItems = items;
         this.categories = ['All', ...new Set(items.map(item => item.category))];
@@ -147,7 +148,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
   getFilteredMenuItems(): MenuItem[] {
     return this.menuItems.filter(item => 
       (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
-      (!this.isVegetarian || item.isVegetarian === true) // Assuming 'Mains' are non-vegetarian
+      (!this.isVegetarian || item.isVegetarian === true)
     );
   }
 
@@ -166,7 +167,6 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
       }
     }
   }
-  
 
   private enableSwipeGesture() {
     let touchStartX: number;
@@ -189,7 +189,12 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
       }
     });
   }
-  lookOrders(){
+
+  lookOrders() {
     this.router.navigate(['/order-details']);
+  }
+
+  onSearch() {
+    this.loadMenuItems();
   }
 }

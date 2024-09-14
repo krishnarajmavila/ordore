@@ -15,7 +15,10 @@
 .mat-mdc-card-actions {
   padding: 8px 16px;
 }
-
+.form-control:focus {
+  border-color: unset;
+  box-shadow: 0 0 0 0.2rem rgba(255, 239, 239, 0.25);
+} 
 .img-fluid {
   width: 100px;
   height: 100px;

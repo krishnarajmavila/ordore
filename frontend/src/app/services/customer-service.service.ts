@@ -5,6 +5,7 @@ interface CustomerInfo {
   name: string;
   phoneNumber: string;
   tableOtp: string;
+  tableNumber?: number;  // Add tableNumber as an optional property
 }
 
 @Injectable({
@@ -47,6 +48,17 @@ export class CustomerService {
 
   getTableOtp(): string {
     return this.customerInfo?.tableOtp || '';
+  }
+
+  getTableNumber(): number | undefined {
+    return this.customerInfo?.tableNumber;
+  }
+
+  setTableNumber(tableNumber: number): void {
+    if (this.customerInfo) {
+      this.customerInfo.tableNumber = tableNumber;
+      this.saveCustomerInfo();
+    }
   }
 
   getCustomerInfo(): CustomerInfo | null {

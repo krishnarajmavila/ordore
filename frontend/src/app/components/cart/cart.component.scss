@@ -57,7 +57,17 @@
     font-size: 18px;
     font-weight: bold;
   }
-
+  .empty-cart-ico{
+    font-size: 34px;
+    width: 32px;
+    height: 32px;
+  }
+  .empty-cart-message {
+    display: flex;
+    justify-content: center;  /* Horizontally center the content */
+    align-items: center;      /* Vertically center the content */
+    height: 50vh;            /* Full height of the viewport */
+  }
   .fixed-bottom-container {
     position: fixed;
     bottom: 0;

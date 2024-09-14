@@ -15,13 +15,17 @@
     position: relative;
     overflow: hidden;
     border: none;
-    background-color: rgb(214, 225, 232) !important;
+    background-color: rgb(235, 241, 245) !important;
     padding-top: 20px;
     padding-bottom: 20px;
+    line-height: 1.9;
 }
-.item-body{
-    padding-bottom: 109px !important;
-}
+.pay-button {
+    width: 100%;
+    height: 56px;
+    font-size: 18px;
+    font-weight: bold;
+  }
 .dashed-separator {
     position: absolute;
     left: 20px;
@@ -53,7 +57,7 @@
 }
 
 .dashed-separator-top {
-    top: 60%;
+    top: 10px;
 }
 
 .dashed-separator-bottom {
@@ -69,7 +73,7 @@
     background-image: radial-gradient(
         circle at 15px 21px,
         #ffffff 9px,
-        #d6e1e8 11px);
+        rgb(235, 241, 245) 11px);
     background-size: 28px 27px;
     background-repeat: repeat-x;
 }
