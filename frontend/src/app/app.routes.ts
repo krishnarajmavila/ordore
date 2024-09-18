@@ -10,6 +10,8 @@ import { otpGuard } from './guards/otp.guard';
 import { authGuard } from './guards/auth.guard';
 import { CartComponent } from './components/cart/cart.component';
 import { OrderDetailsComponent } from './components/order-details/order-details.component';
+import { DiningSpecialistComponent } from './components/dining-specialist/dining-specialist.component';
+import { OrderManagementComponent } from './components/order-management/order-management.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -43,7 +45,22 @@ export const routes: Routes = [
     path: 'billing-dashboard', 
     component: BillingDashboardComponent
   },
+  { 
+    path: 'dining-specialist', 
+    component: DiningSpecialistComponent, 
+    canActivate: [authGuard]
+  },
+  {
+    path: 'dining-specialist',
+    component: DiningSpecialistComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'order-management/:tableId',
+    component: OrderManagementComponent,
+    canActivate: [authGuard]
+  },
   { path: 'cart', component: CartComponent, canActivate: [otpGuard] },
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: '**', redirectTo: '/login' },
+  { path: '', redirectTo: '/customer-login', pathMatch: 'full' },
+  { path: '**', redirectTo: '/customer-login' },
 ];

@@ -181,7 +181,7 @@
             <form [formGroup]="tableForm" (ngSubmit)="onTableSubmit()">
               <mat-form-field appearance="outline">
                 <mat-label>Table Number</mat-label>
-                <input matInput type="number" formControlName="number" required>
+                <input matInput formControlName="number" required>
                 <mat-error *ngIf="tableForm.get('number')?.hasError('required')">Table number is required</mat-error>
                 <mat-error *ngIf="tableForm.get('number')?.hasError('min')">Table number must be positive</mat-error>
               </mat-form-field>
@@ -237,9 +237,9 @@
                     <button mat-icon-button color="primary" (click)="editTable(table)" matTooltip="Edit">
                       <mat-icon>edit</mat-icon>
                     </button>
-                    <!-- <button mat-icon-button color="accent" (click)="refreshOTP(table)" matTooltip="Refresh OTP">
+                    <button mat-icon-button color="primary" (click)="refreshOTP(table)" matTooltip="Refresh OTP">
                       <mat-icon>refresh</mat-icon>
-                    </button> -->
+                    </button>
                     <button mat-icon-button color="warn" (click)="deleteTable(table)" matTooltip="Delete">
                       <mat-icon>delete</mat-icon>
                     </button>

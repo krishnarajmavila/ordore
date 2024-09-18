@@ -66,6 +66,9 @@ export class LoginComponent {
       case 'admin':
         this.router.navigate(['/admin-dashboard']);
         break;
+        case 'diningspecialist':
+          this.router.navigate(['/dining-specialist']);
+          break;
       default:
         console.error('Unknown user type:', userType);
         this.error = 'Unknown user type';

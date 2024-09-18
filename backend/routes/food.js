@@ -36,6 +36,25 @@ router.post('/', upload.single('image'), async (req, res) => {
   }
 });
 
+
+router.patch('/:id/stock', async (req, res) => {
+  try {
+    const { isInStock } = req.body;
+    const updatedFood = await Food.findByIdAndUpdate(
+      req.params.id, 
+      { isInStock }, 
+      { new: true }
+    );
+    if (!updatedFood) {
+      return res.status(404).json({ message: 'Food item not found' });
+    }
+    res.json(updatedFood);
+  } catch (error) {
+    console.error('Error updating stock status:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Update a food item
 router.put('/:id', upload.single('image'), async (req, res) => {
   try {

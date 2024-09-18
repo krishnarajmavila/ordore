@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, BehaviorSubject, throwError } from 'rxjs';
+import { tap, catchError, map } from 'rxjs/operators';
 import { CartItem } from './cart.service';
 import { environment } from '../../environments/environment';
 
@@ -32,10 +32,7 @@ export class OrderService {
 
   fetchOrders(): void {
     this.http.get<Order[]>(this.apiUrl).pipe(
-      catchError(error => {
-        console.error('Error fetching orders:', error);
-        return [];
-      })
+      catchError(this.handleError)
     ).subscribe(
       orders => this.ordersSubject.next(orders)
     );
@@ -55,10 +52,7 @@ export class OrderService {
         const currentOrders = this.ordersSubject.value;
         this.ordersSubject.next([...currentOrders, newOrder]);
       }),
-      catchError(error => {
-        console.error('Error submitting order:', error);
-        throw error;
-      })
+      catchError(this.handleError)
     );
   }
 
@@ -71,10 +65,7 @@ export class OrderService {
         );
         this.ordersSubject.next(updatedOrders);
       }),
-      catchError(error => {
-        console.error('Error updating order status:', error);
-        throw error;
-      })
+      catchError(this.handleError)
     );
   }
 
@@ -88,7 +79,48 @@ export class OrderService {
       clearInterval(this.refreshInterval);
     }
   }
-   getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}?tableOtp=${tableOtp}`);
+
+  getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.apiUrl}?tableOtp=${tableOtp}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getLastOrderTime(tableOtp: string): Observable<Date | undefined> {
+    return this.getOrdersByTableOtp(tableOtp).pipe(
+      map(orders => {
+        if (orders.length === 0) {
+          return undefined;
+        }
+        const latestOrder = orders.reduce((latest, current) => 
+          latest.createdAt > current.createdAt ? latest : current
+        );
+        return new Date(latestOrder.createdAt);
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  deleteOrder(orderId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${orderId}`).pipe(
+      tap(() => console.log(`Order ${orderId} deleted successfully`)),
+      catchError(this.handleError)
+    );
+  }
+
+  private handleError(error: HttpErrorResponse) {
+    let errorMessage = 'An unknown error occurred';
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = `Error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+      if (error.error && typeof error.error === 'object') {
+        errorMessage += `\nDetails: ${JSON.stringify(error.error)}`;
+      }
+    }
+    console.error('Error in OrderService:', errorMessage);
+    return throwError(() => new Error(errorMessage));
   }
 }

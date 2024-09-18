@@ -22,21 +22,25 @@
         <div class="kanban-board">
           <div cdkDropListGroup class="board-columns">
             <div *ngFor="let status of orderStatuses" class="column">
-              <h3 class="text-center m-3">{{ status | titlecase}}</h3>
+              <h3 class="text-center m-3">{{ status | titlecase }}</h3>
               <div cdkDropList [id]="'orders-' + status" [cdkDropListData]="ordersByStatus[status]"
                 (cdkDropListDropped)="drop($event)" class="order-list">
                 <div *ngFor="let order of ordersByStatus[status]" cdkDrag [cdkDragData]="order" [ngClass]="status" class="order-item">
-                  <!-- <p>Customer: {{ order.customerName }}</p> -->
                   <ul>
                     <li *ngFor="let item of order.items">
-                   {{ item.quantity }} - {{ item.name }} 
+                      {{ item.quantity }} - {{ item.name }}
                     </li>
                   </ul>
-                  <!-- <p><strong>Total: {{ order.totalPrice | currency }}</strong></p> -->
                   <p class="m-0">Orders from table: {{ order.tableOtp }}</p>
                   <p class="m-0">Orders from Person: {{ order.customerName }}</p>
-                  <!-- <p class="m-0">Status: {{ order.status }}</p> -->
                   <p class="m-0">Ordered On: {{ order.createdAt | date:'short' }}</p>
+                  
+                  <!-- Add delete button for completed orders -->
+                  <button *ngIf="status === 'completed'" 
+                          (click)="deleteOrder(order._id)" 
+                          class="btn btn-danger btn-sm mt-2">
+                    Delete Order
+                  </button>
                 </div>
               </div>
             </div>
@@ -52,7 +56,7 @@
           <mat-expansion-panel *ngFor="let category of getUniqueCategories()" [expanded]="true">
             <mat-expansion-panel-header>
               <mat-panel-title>
-               <h3 class="m-0"> {{ category }}</h3>
+                <h3 class="m-0">{{ category }}</h3>
               </mat-panel-title>
             </mat-expansion-panel-header>
             <div class="menu-items row">
@@ -66,6 +70,12 @@
                   <mat-card-content class="px-0">
                     <p>{{ item.description }}</p>
                     <p><strong>Price: {{ item.price | currency }}</strong></p>
+                    <mat-slide-toggle
+                      [checked]="item.isInStock"
+                      (change)="toggleStockStatus(item)"
+                    >
+                      {{ item.isInStock ? 'In Stock' : 'Out of Stock' }}
+                    </mat-slide-toggle>
                   </mat-card-content>
                 </mat-card>
               </ng-container>

@@ -176,7 +176,6 @@ export class AuthService {
   }
 
   validateTableOtp(tableOtp: string): Observable<TableOtpValidationResponse> {
-    alert(tableOtp)
     return this.http.post<TableOtpValidationResponse>(`${environment.apiUrl}/table-otp/validate`, { tableOtp }).pipe(
       catchError(error => {
         console.error('Error validating Table OTP:', error);

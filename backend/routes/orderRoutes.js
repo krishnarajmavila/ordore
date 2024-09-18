@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
+const ArchivedOrder = require('../models/archivedOrder.model');
 
 module.exports = function(io) {
   // POST route to create a new order
@@ -67,6 +68,41 @@ module.exports = function(io) {
       res.json(updatedOrder);
     } catch (error) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  router.delete('/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const orderToDelete = await Order.findById(id);
+
+      if (!orderToDelete) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      if (orderToDelete.status !== 'completed') {
+        return res.status(400).json({ message: 'Only completed orders can be deleted' });
+      }
+
+      // Create an archived order
+      const archivedOrder = new ArchivedOrder({
+        originalOrder: orderToDelete._id,
+        orderData: orderToDelete.toObject()
+      });
+
+      await archivedOrder.save();
+
+      // Delete the original order
+      await Order.findByIdAndDelete(id);
+
+      if (io && typeof io.emit === 'function') {
+        io.emit('orderDeleted', id);
+      }
+
+      res.json({ message: 'Order deleted and archived successfully' });
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
     }
   });
 

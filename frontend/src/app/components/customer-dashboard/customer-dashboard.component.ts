@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
@@ -18,6 +18,9 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CartFilterPipe } from '../../pipe/cart-filter.pipe';
 import { CartService, CartItem } from '../../services/cart.service';
+import { Observable, BehaviorSubject, Subscription } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { WebSocketService } from '../../services/web-socket.service';
 
 @Component({
   selector: 'app-customer-dashboard',
@@ -42,7 +45,7 @@ import { CartService, CartItem } from '../../services/cart.service';
   templateUrl: './customer-dashboard.component.html',
   styleUrls: ['./customer-dashboard.component.scss']
 })
-export class CustomerDashboardComponent implements OnInit, AfterViewInit {
+export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('tabGroup') tabGroup!: MatTabGroup;
   @ViewChild('tabGroup', { read: ElementRef }) tabGroupElement!: ElementRef;
 
@@ -53,31 +56,41 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
   cartItems: CartItem[] = [];
   searchQuery: string = '';
 
+  private menuItemsSubject = new BehaviorSubject<MenuItem[]>([]);
+  menuItems$ = this.menuItemsSubject.asObservable();
+  private menuUpdateSubscription!: Subscription;
+
   constructor(
     private menuService: MenuService,
     private authService: AuthService,
     private router: Router,
-    private cartService: CartService
+    private cartService: CartService,
+    private webSocketService: WebSocketService
   ) {}
 
   ngOnInit() {
     this.loadMenuItems();
     this.loadCart();
+    this.subscribeToMenuUpdates();
+    this.menuService.startMenuRefresh(30000);
   }
 
   ngAfterViewInit() {
     this.enableSwipeGesture();
   }
 
+  ngOnDestroy() {
+    if (this.menuUpdateSubscription) {
+      this.menuUpdateSubscription.unsubscribe();
+    }
+    this.menuService.stopMenuRefresh();
+  }
+
   loadMenuItems() {
-    this.menuService.searchMenuItems(this.searchQuery).subscribe({
-      next: (items) => {
-        this.menuItems = items;
-        this.categories = ['All', ...new Set(items.map(item => item.category))];
-      },
-      error: (error) => {
-        console.error('Error loading menu items:', error);
-      }
+    this.menuService.fetchMenuItems();
+    this.menuService.menuItems$.subscribe(items => {
+      this.menuItems = items;
+      this.categories = ['All', ...new Set(items.map(item => item.category))];
     });
   }
 
@@ -145,12 +158,16 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
     this.router.navigate(['/cart']);
   }
 
-  getFilteredMenuItems(): MenuItem[] {
-    return this.menuItems.filter(item => 
-      (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
-      (!this.isVegetarian || item.isVegetarian === true)
+  getFilteredMenuItems(): Observable<MenuItem[]> {
+    return this.menuService.menuItems$.pipe(
+      map(items => items.filter(item => 
+        (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
+        (!this.isVegetarian || item.isVegetarian === true) &&
+        item.isInStock
+      ))
     );
   }
+
 
   onTabChange(index: number) {
     this.selectCategory(this.categories[index]);
@@ -195,6 +212,30 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit {
   }
 
   onSearch() {
-    this.loadMenuItems();
+    this.menuService.searchMenuItems(this.searchQuery).subscribe({
+      next: (items) => {
+        this.menuItems = items;
+        this.menuItemsSubject.next(items);
+      },
+      error: (error) => {
+        console.error('Error searching menu items:', error);
+      }
+    });
+  }
+
+  private subscribeToMenuUpdates() {
+    this.menuUpdateSubscription = this.webSocketService.listen('menuUpdate').subscribe(
+      (updatedItem: MenuItem) => {
+        this.updateMenuItem(updatedItem);
+      }
+    );
+  }
+
+  private updateMenuItem(updatedItem: MenuItem) {
+    const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
+    if (index !== -1) {
+      this.menuItems[index] = updatedItem;
+      this.menuItemsSubject.next([...this.menuItems]);
+    }
   }
 }

@@ -14,11 +14,23 @@ import { Subscription } from 'rxjs';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { WebSocketService } from '../../services/web-socket.service';
 
 @Component({
   selector: 'app-cook-dashboard',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatCardModule, MatListModule, MatIconModule, DragDropModule, MatSidenavModule, MatExpansionModule],
+  imports: [
+    CommonModule, 
+    MatButtonModule, 
+    MatCardModule, 
+    MatListModule, 
+    MatIconModule, 
+    DragDropModule, 
+    MatSidenavModule, 
+    MatExpansionModule, 
+    MatSlideToggleModule
+  ],
   templateUrl: './cook-dashboard.component.html',
   styleUrls: ['./cook-dashboard.component.scss'],
   animations: [
@@ -41,33 +53,41 @@ import { MatExpansionModule } from '@angular/material/expansion';
 export class CookDashboardComponent implements OnInit, OnDestroy {
   menuItems: MenuItem[] = [];
   orders: Order[] = [];
-  orderStatuses: string[] = ['pending', 'preparing', 'ready'];
+  orderStatuses: string[] = ['pending', 'preparing', 'ready', 'completed'];
   ordersByStatus: { [key: string]: Order[] } = {};
   activeView = 'orders';
   private ordersSubscription?: Subscription;
+  private menuSubscription?: Subscription;
 
   constructor(
     private menuService: MenuService,
     private orderService: OrderService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private webSocketService: WebSocketService
   ) {}
 
   ngOnInit() {
     this.loadMenuItems();
     this.loadOrders();
-    this.orderService.startOrderRefresh(30000);
+    this.orderService.startOrderRefresh(3000);
+    this.menuService.startMenuRefresh(3000);
+    this.setupWebSocketListeners();
   }
 
   ngOnDestroy() {
     if (this.ordersSubscription) {
       this.ordersSubscription.unsubscribe();
     }
+    if (this.menuSubscription) {
+      this.menuSubscription.unsubscribe();
+    }
     this.orderService.stopOrderRefresh();
+    this.menuService.stopMenuRefresh();
   }
 
   loadMenuItems() {
-    this.menuService.getMenuItems().subscribe({
+    this.menuSubscription = this.menuService.menuItems$.subscribe({
       next: (items) => {
         this.menuItems = items;
       },
@@ -89,10 +109,27 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
       }
     });
   }
+
   updateOrdersByStatus() {
     this.ordersByStatus = {};
     this.orderStatuses.forEach(status => {
       this.ordersByStatus[status] = this.orders.filter(order => order.status === status);
+    });
+  }
+
+  toggleStockStatus(item: MenuItem) {
+    const newStockStatus = !item.isInStock;
+    this.menuService.updateStockStatus(item._id, newStockStatus).subscribe({
+      next: (updatedItem) => {
+        console.log('Stock status updated:', updatedItem);
+        // The menuItems array will be automatically updated via the BehaviorSubject in MenuService
+        this.webSocketService.emit('stockUpdate', updatedItem);
+      },
+      error: (error) => {
+        console.error('Error updating stock status:', error);
+        // Revert the local change if the API call fails
+        item.isInStock = !newStockStatus;
+      }
     });
   }
 
@@ -106,6 +143,21 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
         console.error('Error updating order status:', error);
       }
     });
+  }
+
+  deleteOrder(orderId: string) {
+    if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      this.orderService.deleteOrder(orderId).subscribe({
+        next: () => {
+          console.log('Order deleted successfully');
+          this.loadOrders();
+        },
+        error: (error) => {
+          console.error('Error deleting order:', error);
+          alert(`Failed to delete order. ${error.message}`);
+        }
+      });
+    }
   }
 
   getImageUrl(imageUrl: string | undefined): string {
@@ -137,12 +189,26 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
   getStatusFromContainerId(containerId: string): string {
     return containerId.split('-')[1]; // Assuming container IDs are in the format 'orders-status'
   }
+
   getUniqueCategories(): string[] {
     return Array.from(new Set(this.menuItems.map(item => item.category)));
   }
+
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
-  
+
+  private setupWebSocketListeners() {
+    this.webSocketService.listen('menuUpdate').subscribe((updatedItem: MenuItem) => {
+      const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
+      if (index !== -1) {
+        this.menuItems[index] = updatedItem;
+      }
+    });
+
+    this.webSocketService.listen('orderUpdate').subscribe((updatedOrder: Order) => {
+      this.loadOrders(); // Reload all orders when an update is received
+    });
+  }
 }

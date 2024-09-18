@@ -21,6 +21,8 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { TableResetDialogComponent } from '../table-reset-dialog/table-reset-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import { OrderManagementComponent } from '../order-management/order-management.component';
+import { TableSelectionComponent } from '../table-selection/table-selection.component';
 
 interface MenuItem {
   _id?: string;
@@ -42,7 +44,7 @@ interface Table {
 }
 
 @Component({
-  selector: 'app-admin-dashboard',
+  selector: 'app-dining-specialist',
   standalone: true,
   imports: [
     CommonModule,
@@ -60,26 +62,26 @@ interface Table {
     DragDropModule,
     MatSidenavModule,
     MatCheckboxModule,
-    MatExpansionModule
+    MatExpansionModule,
+    TableSelectionComponent,
+    OrderManagementComponent
   ],
-  templateUrl: './admin-dashboard.component.html',
-  styleUrls: ['./admin-dashboard.component.scss']
+  templateUrl: './dining-specialist.component.html',
+  styleUrls: ['./dining-specialist.component.scss']
 })
-export class AdminDashboardComponent implements OnInit {
-  menuForm: FormGroup;
+export class DiningSpecialistComponent implements OnInit {
   tableForm: FormGroup;
   menuItems: MenuItem[] = [];
   tables: Table[] = [];
-  editingItem: MenuItem | null = null;
   editingTable: Table | null = null;
   isLoading = false;
-  displayedColumns: string[] = ['name', 'category', 'price', 'description', 'isVegetarian', 'image', 'actions'];
   displayedTableColumns: string[] = ['number', 'capacity', 'isOccupied', 'otp', 'actions'];
   categories = ['Appetizers', 'Mains', 'Desserts', 'Beverages'];
-  selectedFile: File | null = null;
-  activeView = 'Add Menu';
+  activeView = 'tables';
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
+  
+  selectedTable: Table | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -89,15 +91,6 @@ export class AdminDashboardComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog
   ) {
-    this.menuForm = this.fb.group({
-      name: ['', Validators.required],
-      category: ['', Validators.required],
-      price: ['', [Validators.required, Validators.min(0)]],
-      description: [''],
-      imageUrl: [''],
-      isVegetarian: [null, Validators.required]
-    });
-
     this.tableForm = this.fb.group({
       number: ['', [Validators.required, Validators.min(1)]],
       capacity: ['', [Validators.required, Validators.min(1)]],
@@ -140,28 +133,6 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  onSubmit() {
-    if (this.menuForm.valid) {
-      this.isLoading = true;
-      const formData = new FormData();
-      Object.keys(this.menuForm.controls).forEach(key => {
-        formData.append(key, this.menuForm.get(key)?.value);
-      });
-
-      if (this.selectedFile) {
-        formData.append('image', this.selectedFile, this.selectedFile.name);
-      }
-
-      if (this.editingItem) {
-        this.updateMenuItem(formData);
-      } else {
-        this.addMenuItem(formData);
-      }
-    } else {
-      this.menuForm.markAllAsTouched();
-    }
-  }
-
   onTableSubmit() {
     if (this.tableForm.valid) {
       this.isLoading = true;
@@ -175,46 +146,6 @@ export class AdminDashboardComponent implements OnInit {
     } else {
       this.tableForm.markAllAsTouched();
     }
-  }
-
-  addMenuItem(formData: FormData) {
-    this.http.post<MenuItem>(`${environment.apiUrl}/food`, formData).subscribe({
-      next: (newItem) => {
-        this.menuItems = [...this.menuItems, newItem];
-        this.resetForm();
-        this.showSnackBar('Menu item added successfully');
-      },
-      error: (error) => {
-        console.error('Error adding menu item:', error);
-        this.showSnackBar('Error adding menu item');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
-    });
-  }
-
-  updateMenuItem(formData: FormData) {
-    if (!this.editingItem?._id) return;
-
-    this.http.put<MenuItem>(`${environment.apiUrl}/food/${this.editingItem._id}`, formData).subscribe({
-      next: (updatedItem) => {
-        const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
-        if (index !== -1) {
-          this.menuItems[index] = updatedItem;
-          this.menuItems = [...this.menuItems];
-        }
-        this.resetForm();
-        this.showSnackBar('Menu item updated successfully');
-      },
-      error: (error) => {
-        console.error('Error updating menu item:', error);
-        this.showSnackBar('Error updating menu item');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
-    });
   }
 
   addTable(tableData: Table) {
@@ -257,40 +188,12 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  editItem(item: MenuItem) {
-    this.editingItem = item;
-    this.menuForm.patchValue({
-      ...item,
-      isVegetarian: item.isVegetarian
-    });
-    this.selectedFile = null;
-  }
-
   editTable(table: Table) {
     this.editingTable = table;
     this.tableForm.patchValue({
       number: table.number,
       capacity: table.capacity,
       isOccupied: table.isOccupied
-    });
-  }
-
-  deleteItem(item: MenuItem) {
-    if (!item._id) return;
-
-    this.isLoading = true;
-    this.http.delete(`${environment.apiUrl}/food/${item._id}`).subscribe({
-      next: () => {
-        this.menuItems = this.menuItems.filter(menuItem => menuItem._id !== item._id);
-        this.showSnackBar('Menu item deleted successfully');
-      },
-      error: (error) => {
-        console.error('Error deleting menu item:', error);
-        this.showSnackBar('Error deleting menu item');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
     });
   }
 
@@ -343,12 +246,6 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  resetForm() {
-    this.menuForm.reset();
-    this.editingItem = null;
-    this.selectedFile = null;
-  }
-
   resetTableForm() {
     this.tableForm.reset();
     this.editingTable = null;
@@ -363,15 +260,12 @@ export class AdminDashboardComponent implements OnInit {
     return `${baseUrl}${imageUrl}`;
   }
 
-  onFileSelected(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (file) {
-      this.selectedFile = file;
-    }
-  }
-
   getUniqueCategories(): string[] {
     return Array.from(new Set(this.menuItems.map(item => item.category)));
+  }
+
+  onTableSelected(table: Table) {
+    this.router.navigate(['/order-management', table._id], { state: { table } });
   }
 
   logout() {
@@ -386,6 +280,4 @@ export class AdminDashboardComponent implements OnInit {
       verticalPosition: this.verticalPosition
     });
   }
-
-  get f() { return this.menuForm.controls; }
 }

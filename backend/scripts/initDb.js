@@ -9,6 +9,7 @@ const users = [
   { username: 'cook1', password: 'password123', userType: 'cook' },
   { username: 'billing1', password: 'password123', userType: 'billing' },
   { username: 'admin1', password: 'password123', userType: 'admin' },
+  { username: 'diningspecialist1', password: 'password123', userType: 'diningspecialist' },
 ];
 
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ordore', {
@@ -39,7 +40,6 @@ db.once('open', async function() {
     // Log all users
     const allUsers = await User.find({}, 'username userType');
     console.log('All users:', allUsers);
-
   } catch (error) {
     console.error('Error initializing database:', error);
   } finally {

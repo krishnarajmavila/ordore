@@ -1,0 +1,17 @@
+<h2 mat-dialog-title>Confirm Table Reset</h2>
+<mat-dialog-content>
+  <p [ngStyle]="{'color': 'red'}">Please confirm the following for table {{data.tableNumber}}:</p>
+  <ul [ngStyle]="{'color': 'red'}">
+    <li>The customer has finished eating</li>
+    <li>The bill has been settled</li>
+    <li>The table is cleared and ready for the next customer</li>
+  </ul>
+  <hr>
+  <p class="text-center">Are you sure you want to reset this table and refresh its OTP?</p>
+</mat-dialog-content>
+<mat-dialog-actions>
+<div class="d-flex align-items-center w-100">
+<button mat-button [mat-dialog-close]="false">Cancel</button>
+<button mat-raised-button color="primary" [mat-dialog-close]="true" cdkFocusInitial>Confirm Reset</button>
+</div>
+</mat-dialog-actions>

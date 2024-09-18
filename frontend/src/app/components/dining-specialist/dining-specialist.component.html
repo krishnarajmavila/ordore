@@ -1,0 +1,149 @@
+<div class="kanban-layout">
+  <mat-sidenav-container class="sidenav-container w-100">
+    <mat-sidenav mode="side" opened>
+      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%" src="assets/img/ibis.png" />
+      <mat-nav-list class="mx-2">
+        <mat-list-item class="mt-2" (click)="activeView = 'tables'" [class.active]="activeView === 'tables'">
+          <mat-icon>table_chart</mat-icon> Manage Tables
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="activeView = 'menu'" [class.active]="activeView === 'menu'">
+          <mat-icon>restaurant_menu</mat-icon> View Menu
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="activeView = 'order-management'" [class.active]="activeView === 'order-management'">
+          <mat-icon>assignment</mat-icon> Manage Order
+        </mat-list-item>
+      </mat-nav-list>
+    </mat-sidenav>
+    <mat-sidenav-content>
+      <div *ngIf="activeView === 'tables'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Manage Tables</h2>
+          <div class="d-flex align-items-center"> 
+            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          </div>
+        </div>
+        <div class="row m-0 p-2">
+          <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+            <h3>{{editingTable ? 'Edit' : 'Add'}} Table</h3>
+            <form [formGroup]="tableForm" (ngSubmit)="onTableSubmit()">
+              <mat-form-field appearance="outline">
+                <mat-label>Table Number</mat-label>
+                <input matInput type="number" formControlName="number" required>
+                <mat-error *ngIf="tableForm.get('number')?.hasError('required')">Table number is required</mat-error>
+                <mat-error *ngIf="tableForm.get('number')?.hasError('min')">Table number must be positive</mat-error>
+              </mat-form-field>
+          
+              <mat-form-field appearance="outline">
+                <mat-label>Capacity</mat-label>
+                <input matInput type="number" formControlName="capacity" required>
+                <mat-error *ngIf="tableForm.get('capacity')?.hasError('required')">Capacity is required</mat-error>
+                <mat-error *ngIf="tableForm.get('capacity')?.hasError('min')">Capacity must be positive</mat-error>
+              </mat-form-field>
+          
+              <mat-checkbox formControlName="isOccupied">Is Occupied</mat-checkbox>
+          
+              <div class="form-actions">
+                <button mat-raised-button color="primary" type="submit" [disabled]="tableForm.invalid || isLoading">
+                  <mat-icon>{{editingTable ? 'update' : 'add'}}</mat-icon>
+                  {{editingTable ? 'Update' : 'Add'}} Table
+                </button>
+                <button mat-raised-button class="mt-2" type="button" (click)="resetTableForm()" *ngIf="editingTable">
+                  <mat-icon>cancel</mat-icon> Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="col-9 p-3">
+            <div class="table-container">
+              <h3>View Tables</h3>
+              <hr class="mb-0">
+              <table mat-table [dataSource]="tables">
+                <ng-container matColumnDef="number">
+                  <th mat-header-cell *matHeaderCellDef>Table Number </th>
+                  <td mat-cell *matCellDef="let table"> {{table.number}} </td>
+                </ng-container>
+      
+                <ng-container matColumnDef="capacity">
+                  <th mat-header-cell *matHeaderCellDef> Capacity </th>
+                  <td mat-cell *matCellDef="let table"> {{table.capacity}} </td>
+                </ng-container>
+      
+                <ng-container matColumnDef="isOccupied">
+                  <th mat-header-cell *matHeaderCellDef> Occupied </th>
+                  <td mat-cell *matCellDef="let table"> {{table.isOccupied ? 'Yes' : 'No'}} </td>
+                </ng-container>
+      
+                <ng-container matColumnDef="otp">
+                  <th mat-header-cell *matHeaderCellDef> Table OTP </th>
+                  <td mat-cell *matCellDef="let table"> {{table.otp}} </td>
+                </ng-container>
+      
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef> Actions </th>
+                  <td mat-cell *matCellDef="let table">
+                    <button mat-icon-button color="primary" (click)="editTable(table)" matTooltip="Edit">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="primary" (click)="refreshOTP(table)" matTooltip="Refresh OTP">
+                      <mat-icon>refresh</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn" (click)="deleteTable(table)" matTooltip="Delete">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+      
+                <tr mat-header-row *matHeaderRowDef="displayedTableColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedTableColumns;"></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="activeView === 'menu'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">View Menu</h2>
+          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+        </div>
+        <mat-accordion multi="true" class="menu-categories">
+          <mat-expansion-panel *ngFor="let category of getUniqueCategories()" [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+               <h3 class="m-0"> {{ category }}</h3>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="menu-items row">
+              <ng-container *ngFor="let item of menuItems">
+                <mat-card class="col-2" *ngIf="item.category === category">
+                  <img *ngIf="item.imageUrl" class="img-fluid" [src]="getImageUrl(item.imageUrl)" [alt]="item.name">
+                  <mat-card-header class="px-0">
+                    <mat-card-title>{{ item.name }}</mat-card-title>
+                    <mat-card-subtitle>{{ item.category }}</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content class="px-0">
+                    <p>{{ item.description }}</p>
+                    <p><strong>Price: {{ item.price | currency }}</strong></p>
+                    <p><strong>Vegetarian: {{ item.isVegetarian ? 'Yes' : 'No' }}</strong></p>
+                  </mat-card-content>
+                </mat-card>
+              </ng-container>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </div>
+      <div *ngIf="activeView === 'order-management'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Order Management</h2>
+          <div class="d-flex align-items-center"> 
+            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <app-table-selection [tables]="tables" (tableSelected)="onTableSelected($event)"></app-table-selection>
+          </div>
+        </div>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

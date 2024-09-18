@@ -7,7 +7,14 @@ import { CartItem, CartService } from '../../services/cart.service';
 import { OrderService } from '../../services/order.service';
 import { Router } from '@angular/router';
 import { CustomerService } from '../../services/customer-service.service';
-
+import { AuthService } from '../../services/auth.service';
+export interface CustomerInfo {
+  name: string;
+  phoneNumber: string;
+  tableOtp: string;
+  tableNumber?: number;
+  otpTimestamp?: number;
+}
 @Component({
   selector: 'app-confirmation-dialog',
   standalone: true,
@@ -32,6 +39,7 @@ export class ConfirmationDialogComponent {
   isSubmitting = false;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
+
   constructor(
     public dialogRef: MatDialogRef<ConfirmationDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { cartItems: CartItem[], totalPrice: number },
@@ -39,7 +47,8 @@ export class ConfirmationDialogComponent {
     private customerService: CustomerService,
     private cartService: CartService,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private authService: AuthService,
   ) {}
 
   onCancel(): void {
@@ -51,31 +60,62 @@ export class ConfirmationDialogComponent {
     const customerInfo = this.customerService.getCustomerInfo();
     
     if (!customerInfo) {
-      this.snackBar.open('Customer information not found. Please log in again.', 'Close', {          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition  });
+      this.showErrorSnackBar('Customer information not found. Please log in again.');
       this.dialogRef.close(false);
-      this.router.navigate(['/login']);
+      this.router.navigate(['/customer-login']);
       return;
     }
     
-    this.orderService.submitOrder(this.data.cartItems, this.data.totalPrice, customerInfo).subscribe(
-      response => {
+    this.customerService.validateOtpWithServer().subscribe({
+      next: (isValid) => {
+        if (isValid) {
+          this.submitOrder(customerInfo);
+        } else {
+          this.showErrorSnackBar('Table OTP is not valid. Please request a new OTP from a waiter.');
+          this.customerService.clearCustomerInfo();
+          this.dialogRef.close(false);
+          this.router.navigate(['/customer-login']);
+          this.authService.logout();
+        }
+      },
+      error: (error) => {
+        console.error('Error validating OTP:', error);
+        this.showErrorSnackBar('Error validating Table OTP. Please try again or contact a waiter.');
+        this.isSubmitting = false;
+      }
+    });
+  }
+
+  private submitOrder(customerInfo: CustomerInfo): void {
+    this.orderService.submitOrder(this.data.cartItems, this.data.totalPrice, customerInfo).subscribe({
+      next: (response) => {
         console.log('Order submitted successfully', response);
-        this.snackBar.open('Order submitted successfully!', 'Close', {          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition  });
-        this.cartService.resetCart(); // Use the new resetCart method
+        this.showSuccessSnackBar('Order submitted successfully!');
+        this.cartService.resetCart();
         this.dialogRef.close(true);
         this.router.navigate(['/customer-dashboard']);
       },
-      error => {
+      error: (error) => {
         console.error('Error submitting order', error);
-        this.snackBar.open('Error submitting order. Please try again.', 'Close', {          duration: 5000,
-          horizontalPosition: this.horizontalPosition,
-          verticalPosition: this.verticalPosition  });
+        this.showErrorSnackBar('Error submitting order. Please try again or contact a waiter.');
         this.isSubmitting = false;
       }
-    );
+    });
+  }
+
+  private showSuccessSnackBar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
+  }
+
+  private showErrorSnackBar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
   }
 }

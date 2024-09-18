@@ -10,8 +10,12 @@ const OrderSchema = new mongoose.Schema({
   customerName: String,
   phoneNumber: String,
   tableOtp: String,
-  tableNumber: Number,  // Add this field
-  status: String,
+  tableNumber: Number,
+  status: {
+    type: String,
+    enum: ['pending', 'preparing', 'ready', 'completed'],
+    default: 'pending'
+  },
   createdAt: {
     type: Date,
     default: Date.now

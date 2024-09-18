@@ -18,7 +18,19 @@ async function checkAndRefreshOTP(table) {
     await table.save();
   }
 }
-
+// Get a single table by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const table = await Table.findById(req.params.id);
+    if (!table) {
+      return res.status(404).json({ message: 'Table not found' });
+    }
+    await checkAndRefreshOTP(table);
+    res.json(table);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 // Get all tables
 router.get('/', async (req, res) => {
   try {

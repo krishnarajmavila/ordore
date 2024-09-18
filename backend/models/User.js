@@ -6,7 +6,7 @@ const SALT_WORK_FACTOR = 10;
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  userType: { type: String, enum: ['customer', 'cook', 'billing', 'admin'], required: true },
+  userType: { type: String, enum: ['customer', 'cook', 'billing', 'admin', 'diningspecialist'], required: true },
 });
 
 UserSchema.pre('save', async function(next) {
