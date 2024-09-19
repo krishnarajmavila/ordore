@@ -1,15 +1,15 @@
-<div class="kanban-layout">
+<!-- <div class="kanban-layout">
   <mat-sidenav-container class="sidenav-container w-100">
     <mat-sidenav mode="side" opened>
       <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%" src="assets/img/ibis.png" />
       <mat-nav-list class="mx-2">
-        <mat-list-item class="mt-2" (click)="activeView = 'tables'" [class.active]="activeView === 'tables'">
+        <mat-list-item class="mt-2" (click)="setActiveView('tables')" [class.active]="activeView === 'tables'">
           <mat-icon>table_chart</mat-icon> Manage Tables
         </mat-list-item>
-        <mat-list-item class="mt-2" (click)="activeView = 'menu'" [class.active]="activeView === 'menu'">
+        <mat-list-item class="mt-2" (click)="setActiveView('menu')" [class.active]="activeView === 'menu'">
           <mat-icon>restaurant_menu</mat-icon> View Menu
         </mat-list-item>
-        <mat-list-item class="mt-2" (click)="activeView = 'order-management'" [class.active]="activeView === 'order-management'">
+        <mat-list-item class="mt-2" (click)="setActiveView('order-management')" [class.active]="activeView === 'order-management'">
           <mat-icon>assignment</mat-icon> Manage Order
         </mat-list-item>
       </mat-nav-list>
@@ -140,10 +140,70 @@
         </div>
         <div class="row">
           <div class="col-md-12">
-            <app-table-selection [tables]="tables" (tableSelected)="onTableSelected($event)"></app-table-selection>
+            <app-table-selection 
+            *ngIf="!selectedTable" 
+            [tables]="tables" 
+            (tableSelected)="onTableSelected($event)"
+            (otpRefreshRequested)="refreshOTP($event)">
+          </app-table-selection>
+            <ng-container *ngTemplateOutlet="orderManagementTemplate"></ng-container>
           </div>
         </div>
       </div>
     </mat-sidenav-content>
   </mat-sidenav-container>
+</div>
+
+<ng-template #orderManagementTemplate>
+  <app-order-management *ngIf="selectedTable" [table]="selectedTable" (backToTableSelection)="onBackToTableSelection()"></app-order-management>
+</ng-template> -->
+
+
+<div class="container-fluid">
+  <div class="row bg-red text-dark p-2 px-1 align-items-center">
+    <div class="col">
+      <img width="15%" src="assets/img/ibis.png">
+    </div>
+    <div class="col-5 text-end d-flex align-items-center">
+      <button mat-stroked-button color="primary"  class="mx-2">ORDERS</button>
+      <button mat-icon-button (click)="logout()">
+        <mat-icon>exit_to_app</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="row mt-3 mb-3 px-1 align-items-center">
+    <div class="col">
+      <h2 class="text-danger m-0">TABLE</h2>
+    </div>
+    <!-- <div class="col text-end">
+      <mat-slide-toggle >
+        PURE VEG
+      </mat-slide-toggle>
+    </div> -->
+  </div>
+  <div class="row mt-3 mb-3 px-1 align-items-center">
+    <div class="col">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Order Management</h2>
+          <div class="d-flex align-items-center"> 
+            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <app-table-selection 
+            *ngIf="!selectedTable" 
+            [tables]="tables" 
+            (tableSelected)="onTableSelected($event)"
+            (otpRefreshRequested)="refreshOTP($event)">
+          </app-table-selection>
+            <ng-container *ngTemplateOutlet="orderManagementTemplate"></ng-container>
+          </div>
+        </div>
+        <ng-template #orderManagementTemplate>
+          <app-order-management *ngIf="selectedTable" [table]="selectedTable" (backToTableSelection)="onBackToTableSelection()"></app-order-management>
+        </ng-template>
+  </div>
+</div>
 </div>

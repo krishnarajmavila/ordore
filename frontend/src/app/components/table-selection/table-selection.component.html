@@ -1,1 +1,21 @@
-<p>table-selection works!</p>
+<div class="table-cards">
+    <mat-card *ngFor="let table of tables$ | async" 
+              class="table-card" 
+              [ngClass]="{'has-orders': table.hasOrders, 'is-occupied': table.isOccupied}">
+      <mat-card-header>
+        <mat-card-title>Table {{table.number}}</mat-card-title>
+        <mat-card-subtitle>OTP: {{table.otp}}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Capacity: {{table.capacity}}</p>
+        <p>Status: {{table.isOccupied ? 'Occupied' : 'Available'}}</p>
+        <p>Orders: {{table.hasOrders ? 'Yes' : 'No'}}</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-button color="primary" (click)="selectTable(table)">Select</button>
+        <button mat-icon-button color="accent" (click)="refreshOTP(table)" matTooltip="Refresh OTP">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>

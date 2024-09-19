@@ -1,5 +1,8 @@
 <div class="order-management-container">
   <h2>Order Management for Table {{table?.number}}</h2>
+  <button mat-icon-button color="primary" (click)="goBackToTableSelection()" aria-label="Back to table selection">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
   <div class="row">
     <div class="col-md-6">
       <mat-card>

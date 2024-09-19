@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { tap, catchError, map } from 'rxjs/operators';
+import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
+import { tap, catchError, map, switchMap } from 'rxjs/operators';
 import { CartItem } from './cart.service';
 import { environment } from '../../environments/environment';
 
@@ -16,11 +16,21 @@ export interface Order {
   createdAt: Date;
 }
 
+interface Table {
+  _id: string;
+  number: string;
+  capacity: number;
+  isOccupied: boolean;
+  otp: string;
+  otpGeneratedAt: Date;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class OrderService {
   private apiUrl = `${environment.apiUrl}/orders`;
+  private tableApiUrl = `${environment.apiUrl}/tables`;
   private ordersSubject = new BehaviorSubject<Order[]>([]);
   private refreshInterval: any;
 
@@ -48,6 +58,11 @@ export class OrderService {
     };
 
     return this.http.post<Order>(this.apiUrl, orderData).pipe(
+      switchMap(newOrder => {
+        return this.updateTableStatus(customerInfo.tableOtp, true).pipe(
+          map(() => newOrder)
+        );
+      }),
       tap(newOrder => {
         const currentOrders = this.ordersSubject.value;
         this.ordersSubject.next([...currentOrders, newOrder]);
@@ -104,6 +119,19 @@ export class OrderService {
   deleteOrder(orderId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${orderId}`).pipe(
       tap(() => console.log(`Order ${orderId} deleted successfully`)),
+      catchError(this.handleError)
+    );
+  }
+
+  private updateTableStatus(tableOtp: string, isOccupied: boolean): Observable<void> {
+    return this.http.get<Table[]>(`${this.tableApiUrl}?otp=${tableOtp}`).pipe(
+      switchMap(tables => {
+        if (tables.length === 0) {
+          return throwError(() => new Error('Table not found'));
+        }
+        const table = tables[0];
+        return this.http.patch<void>(`${this.tableApiUrl}/${table._id}`, { isOccupied });
+      }),
       catchError(this.handleError)
     );
   }

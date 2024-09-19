@@ -1,6 +1,7 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -8,22 +9,26 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { Table, MenuItem } from '../../interfaces/shared-interfaces';
 import { environment } from '../../../environments/environment';
-import { MenuService, MenuItem } from '../../services/menu.service';
-import { OrderService, Order } from '../../services/order.service';
-import { AuthService } from '../../services/auth.service';
-import { CartItem } from '../../services/cart.service';
+import { catchError } from 'rxjs/operators';
+import { Subscription, throwError } from 'rxjs';
+import { OrderService } from '../../services/order.service';
 
-interface Table {
-  _id: string;
-  number: string;
-  capacity: number;
-  isOccupied: boolean;
-  otp: string;
-  otpGeneratedAt: Date;
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface Order {
+  _id?: string;
+  customerName: string;
+  phoneNumber: string;
+  items: OrderItem[];
+  status: string;
+  totalPrice: number;
+  createdAt: Date;
 }
 
 @Component({
@@ -32,7 +37,6 @@ interface Table {
   imports: [
     CommonModule,
     FormsModule,
-    ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
@@ -44,183 +48,175 @@ interface Table {
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
 })
-export class OrderManagementComponent implements OnInit {
-  table: Table | null = null;
+export class OrderManagementComponent implements OnInit, OnChanges {
+  @Input() table!: Table;
+  @Output() backToTableSelection = new EventEmitter<void>();
   menuItems: MenuItem[] = [];
-  currentOrder: {
-    items: CartItem[];
-    totalPrice: number;
-    customerName: string;
-    phoneNumber: string;
-  } = {
-    items: [],
-    totalPrice: 0,
+  orders: Order[] = [];
+  currentOrder: Order = {
     customerName: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    items: [],
+    status: 'Pending',
+    totalPrice: 0,
+    createdAt: new Date()
   };
   selectedItem: MenuItem | null = null;
   selectedQuantity: number = 1;
   displayedColumns: string[] = ['name', 'quantity', 'price', 'actions'];
-  orders: Order[] = [];
+  isLoading: boolean = false;
+  loadError: string | null = null;
+  private ordersSubscription: Subscription | null = null;
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private http: HttpClient,
-    private menuService: MenuService,
-    private orderService: OrderService,
-    private authService: AuthService,
-    private snackBar: MatSnackBar,
-    private changeDetectorRef: ChangeDetectorRef
-  ) {}
+  constructor(private http: HttpClient, private orderService: OrderService) {}
 
   ngOnInit() {
-    this.route.params.subscribe(params => {
-      const tableId = params['tableId'];
-      this.loadTable(tableId);
-    });
+    console.log('Component initialized with table:', this.table);
     this.loadMenuItems();
+    if (this.table && this.table.otp) {
+      this.loadExistingOrders();
+    }
   }
 
-  loadTable(tableId: string) {
-    this.http.get<Table>(`${environment.apiUrl}/tables/${tableId}`).subscribe({
-      next: (table) => {
-        this.table = table;
-        this.loadOrdersForTable();
-        this.loadOrderFromStorage();
-      },
-      error: (error) => {
-        console.error('Error loading table:', error);
-        this.snackBar.open('Error loading table details', 'Close', { duration: 3000 });
-        this.router.navigate(['/dining-specialist']);
-      }
-    });
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['table'] && !changes['table'].firstChange) {
+      console.log('Table changed:', this.table);
+      this.loadExistingOrders();
+    }
   }
 
   loadMenuItems() {
-    this.menuService.getMenuItems().subscribe({
-      next: (items) => {
-        this.menuItems = items;
+    this.http.get<MenuItem[]>(`${environment.apiUrl}/food`)
+      .pipe(catchError(this.handleError))
+      .subscribe({
+        next: (items) => {
+          this.menuItems = items;
+          console.log('Menu items loaded:', this.menuItems);
+        },
+        error: (error) => {
+          console.error('Error loading menu items:', error);
+        }
+      });
+  }
+
+  loadExistingOrders() {
+    if (!this.table.otp) {
+      this.loadError = 'Table OTP is missing, cannot load orders';
+      console.error(this.loadError);
+      return;
+    }
+    
+    this.isLoading = true;
+    this.loadError = null;
+    
+    console.log('Loading orders for table OTP:', this.table.otp);
+    this.ordersSubscription = this.orderService.getOrdersByTableOtp(this.table.otp).subscribe({
+      next: (orders) => {
+        this.orders = orders;
+        this.isLoading = false;
+        console.log('Existing orders loaded:', this.orders);
       },
       error: (error) => {
-        console.error('Error loading menu items:', error);
-        this.snackBar.open('Error loading menu items', 'Close', { duration: 3000 });
+        this.loadError = 'Error loading existing orders. Please try again.';
+        this.isLoading = false;
+        console.error('Error loading existing orders:', error);
       }
     });
   }
-
-  loadOrdersForTable() {
-    if (!this.table) return;
-    
-    this.orderService.getOrdersByTableOtp(this.table.otp).subscribe({
-      next: (orders: Order[]) => {
-        this.orders = orders;
-      },
-      error: (error: any) => {
-        console.error(`Error loading orders for table ${this.table?.otp}:`, error);
-        this.snackBar.open('Error loading orders', 'Close', { duration: 3000 });
-      }
-    });
-  }
-
   addItemToOrder() {
     if (this.selectedItem && this.selectedQuantity > 0) {
-      const existingItemIndex = this.currentOrder.items.findIndex(item => item._id === this.selectedItem!._id);
-      if (existingItemIndex !== -1) {
+      const existingItemIndex = this.currentOrder.items.findIndex(item => item.name === this.selectedItem!.name);
+      
+      if (existingItemIndex > -1) {
         this.currentOrder.items[existingItemIndex].quantity += this.selectedQuantity;
       } else {
-        this.currentOrder.items.push({ ...this.selectedItem, quantity: this.selectedQuantity });
+        this.currentOrder.items.push({
+          name: this.selectedItem.name,
+          quantity: this.selectedQuantity,
+          price: this.selectedItem.price
+        });
       }
+      
       this.selectedItem = null;
       this.selectedQuantity = 1;
-      this.updateOrder();
-      this.changeDetectorRef.detectChanges(); // Force change detection
-    } else {
-      this.snackBar.open('Please select an item and specify a quantity', 'Close', { duration: 3000 });
+      console.log('Current order updated:', this.currentOrder);
     }
   }
+
   removeItemFromOrder(index: number) {
     this.currentOrder.items.splice(index, 1);
-    this.updateOrder();
-    this.changeDetectorRef.detectChanges(); // Force change detection
-  }
-
-  updateOrder() {
-    this.currentOrder.totalPrice = this.calculateTotalPrice();
-    this.saveOrderToStorage();
-    this.changeDetectorRef.detectChanges(); // Force change detection
+    console.log('Item removed from order, current order:', this.currentOrder);
   }
 
   calculateTotalPrice(): number {
-    return this.currentOrder.items.reduce((total, item) => total + item.price * item.quantity, 0);
+    return this.currentOrder.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
 
   submitOrder() {
-    if (this.currentOrder.items.length === 0) {
-      this.snackBar.open('Please add items to the order', 'Close', { duration: 3000 });
+    if (!this.table.otp) {
+      console.error('Table OTP is missing');
       return;
     }
 
-    if (!this.table) {
-      this.snackBar.open('Table information is missing', 'Close', { duration: 3000 });
-      return;
-    }
-
-    this.orderService.submitOrder(
-      this.currentOrder.items,
-      this.currentOrder.totalPrice,
-      {
-        name: this.currentOrder.customerName,
-        phoneNumber: this.currentOrder.phoneNumber,
-        tableOtp: this.table.otp
-      }
-    ).subscribe({
-      next: (response) => {
-        console.log('Order submitted successfully', response);
-        this.snackBar.open('Order submitted successfully!', 'Close', { duration: 3000 });
-        this.clearOrder();
-        this.loadOrdersForTable();
-      },
-      error: (error) => {
-        console.error('Error submitting order', error);
-        this.snackBar.open('Error submitting order. Please try again.', 'Close', { duration: 3000 });
-      }
-    });
-  }
-
-  clearOrder() {
-    this.currentOrder = {
-      items: [],
-      totalPrice: 0,
-      customerName: '',
-      phoneNumber: ''
+    const orderData = {
+      ...this.currentOrder,
+      tableOtp: this.table.otp,
+      totalPrice: this.calculateTotalPrice()
     };
-    this.saveOrderToStorage();
+
+    console.log('Submitting order:', orderData);
+
+    this.http.post<Order>(`${environment.apiUrl}/orders`, orderData)
+      .pipe(catchError(this.handleError))
+      .subscribe({
+        next: (newOrder) => {
+          this.orders.push(newOrder);
+          this.currentOrder = {
+            customerName: '',
+            phoneNumber: '',
+            items: [],
+            status: 'Pending',
+            totalPrice: 0,
+            createdAt: new Date()
+          };
+          console.log('Order submitted successfully, new order:', newOrder);
+          console.log('Updated orders list:', this.orders);
+          this.refreshTableData();
+        },
+        error: (error) => {
+          console.error('Error submitting order:', error);
+        }
+      });
   }
 
-  saveOrderToStorage() {
-    if (this.table) {
-      localStorage.setItem(`currentOrder_${this.table._id}`, JSON.stringify(this.currentOrder));
+  refreshTableData() {
+    if (!this.table._id) return;
+
+    this.http.get<Table>(`${environment.apiUrl}/tables/${this.table._id}`)
+      .pipe(catchError(this.handleError))
+      .subscribe({
+        next: (updatedTable) => {
+          this.table = updatedTable;
+          console.log('Table data refreshed:', this.table);
+        },
+        error: (error) => {
+          console.error('Error refreshing table data:', error);
+        }
+      });
+  }
+  goBackToTableSelection() {
+    this.backToTableSelection.emit();
+  }
+  private handleError(error: HttpErrorResponse) {
+    let errorMessage = 'An unknown error occurred!';
+    if (error.error instanceof ErrorEvent) {
+      // Client-side or network error
+      errorMessage = `Error: ${error.error.message}`;
+    } else {
+      // Backend returned an unsuccessful response code
+      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
     }
-  }
-
-  loadOrderFromStorage() {
-    if (this.table) {
-      const savedOrder = localStorage.getItem(`currentOrder_${this.table._id}`);
-      if (savedOrder) {
-        this.currentOrder = JSON.parse(savedOrder);
-      } else {
-        this.clearOrder();
-      }
-    }
-  }
-
-  goBack() {
-    this.router.navigate(['/dining-specialist']);
-  }
-
-  logout() {
-    this.authService.logout();
-    this.router.navigate(['/login']);
+    console.error(errorMessage);
+    return throwError(() => new Error(errorMessage));
   }
 }

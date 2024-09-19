@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -23,25 +23,9 @@ import { TableResetDialogComponent } from '../table-reset-dialog/table-reset-dia
 import { MatDialog } from '@angular/material/dialog';
 import { OrderManagementComponent } from '../order-management/order-management.component';
 import { TableSelectionComponent } from '../table-selection/table-selection.component';
-
-interface MenuItem {
-  _id?: string;
-  name: string;
-  category: string;
-  price: number;
-  description?: string;
-  imageUrl?: string;
-  isVegetarian: boolean;
-}
-
-interface Table {
-  _id?: string;
-  number: string;
-  capacity: number;
-  isOccupied: boolean;
-  otp: string;
-  otpGeneratedAt: Date;
-}
+import { Table, MenuItem } from '../../interfaces/shared-interfaces';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
+import {MatButtonToggleModule} from '@angular/material/button-toggle';
 
 @Component({
   selector: 'app-dining-specialist',
@@ -64,7 +48,9 @@ interface Table {
     MatCheckboxModule,
     MatExpansionModule,
     TableSelectionComponent,
-    OrderManagementComponent
+    OrderManagementComponent,
+    MatSlideToggle,
+    MatButtonToggleModule
   ],
   templateUrl: './dining-specialist.component.html',
   styleUrls: ['./dining-specialist.component.scss']
@@ -82,6 +68,7 @@ export class DiningSpecialistComponent implements OnInit {
   verticalPosition: MatSnackBarVerticalPosition = 'top';
   
   selectedTable: Table | null = null;
+  @ViewChild('orderManagementTemplate', { static: true }) orderManagementTemplate!: TemplateRef<any>;
 
   constructor(
     private fb: FormBuilder,
@@ -96,6 +83,7 @@ export class DiningSpecialistComponent implements OnInit {
       capacity: ['', [Validators.required, Validators.min(1)]],
       isOccupied: [false]
     });
+    this.activeView = this.getStoredActiveView();
   }
 
   ngOnInit() {
@@ -265,7 +253,13 @@ export class DiningSpecialistComponent implements OnInit {
   }
 
   onTableSelected(table: Table) {
-    this.router.navigate(['/order-management', table._id], { state: { table } });
+    if (table && table._id) {
+      this.selectedTable = table;
+      this.activeView = 'order-management';
+    } else {
+      console.error('Selected table is invalid:', table);
+      this.showSnackBar('Error: Invalid table selected');
+    }
   }
 
   logout() {
@@ -279,5 +273,21 @@ export class DiningSpecialistComponent implements OnInit {
       horizontalPosition: this.horizontalPosition,
       verticalPosition: this.verticalPosition
     });
+  }
+  onBackToTableSelection() {
+    this.selectedTable = null;
+    this.activeView = 'order-management';
+  }
+  setActiveView(view: string) {
+    this.activeView = view;
+    this.storeActiveView(view);
+  }
+
+  private getStoredActiveView(): string {
+    return localStorage.getItem('activeView') || 'tables';
+  }
+
+  private storeActiveView(view: string): void {
+    localStorage.setItem('activeView', view);
   }
 }

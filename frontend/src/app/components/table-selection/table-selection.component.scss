@@ -1,0 +1,15 @@
+.table-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .table-card {
+    width: 200px;
+    cursor: pointer;
+  }
+  .table-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  .table-card.has-orders {
+    background-color: rgb(252, 220, 155);
+  }
