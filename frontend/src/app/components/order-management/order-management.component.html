@@ -1,124 +1,97 @@
-<div class="order-management-container">
-  <h2>Order Management for Table {{table?.number}}</h2>
-  <button mat-icon-button color="primary" (click)="goBackToTableSelection()" aria-label="Back to table selection">
-    <mat-icon>arrow_back</mat-icon>
-  </button>
-  <div class="row">
-    <div class="col-md-6">
-      <mat-card>
-        <mat-card-header>
-          <mat-card-title>Add Items to Order</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <form (ngSubmit)="addItemToOrder()" #orderForm="ngForm">
-            <mat-form-field appearance="fill">
-              <mat-label>Customer Name</mat-label>
-              <input matInput [(ngModel)]="currentOrder.customerName" name="customerName" required>
-            </mat-form-field>
-
-            <mat-form-field appearance="fill">
-              <mat-label>Phone Number</mat-label>
-              <input matInput [(ngModel)]="currentOrder.phoneNumber" name="phoneNumber" required>
-            </mat-form-field>
-
-            <mat-form-field appearance="fill">
-              <mat-label>Select Item</mat-label>
-              <mat-select [(ngModel)]="selectedItem" name="selectedItem" required>
-                <mat-option *ngFor="let item of menuItems" [value]="item">
-                  {{item.name}} - {{item.price | currency}}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="fill">
-              <mat-label>Quantity</mat-label>
-              <input matInput type="number" [(ngModel)]="selectedQuantity" name="quantity" min="1" required>
-            </mat-form-field>
-
-            <button mat-raised-button color="primary" type="submit" [disabled]="!orderForm.form.valid">
-              Add to Order
-            </button>
-          </form>
-        </mat-card-content>
-      </mat-card>
+<div class="container-fluid">
+  <div class="row mt-3 mb-1 px-1 align-items-center">
+    <div class="col">
+      <button class="ord-btn" (click)="showCart ? goBackToMenu() : goBackToTableSelection()">
+        <mat-icon class="mx-2">keyboard_backspace</mat-icon>
+      </button>
     </div>
-
-    <div class="col-md-6">
-      <mat-card>
-        <mat-card-header>
-          <mat-card-title>Current Order</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div *ngIf="currentOrder.items.length > 0; else noItems">
-            <table mat-table [dataSource]="currentOrder.items" class="mat-elevation-z8">
-              <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef> Name </th>
-                <td mat-cell *matCellDef="let item"> {{item.name}} </td>
-              </ng-container>
-    
-              <ng-container matColumnDef="quantity">
-                <th mat-header-cell *matHeaderCellDef> Quantity </th>
-                <td mat-cell *matCellDef="let item"> {{item.quantity}} </td>
-              </ng-container>
-    
-              <ng-container matColumnDef="price">
-                <th mat-header-cell *matHeaderCellDef> Price </th>
-                <td mat-cell *matCellDef="let item"> {{item.price * item.quantity | currency}} </td>
-              </ng-container>
-    
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef> Actions </th>
-                <td mat-cell *matCellDef="let item; let i = index">
-                  <button mat-icon-button color="warn" (click)="removeItemFromOrder(i)">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </td>
-              </ng-container>
-    
-              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-            </table>
-    
-            <p class="total-price mt-3">
-              Total: {{calculateTotalPrice() | currency}}
-            </p>
-    
-            <button mat-raised-button color="primary" (click)="submitOrder()" class="mt-3">
-              Submit Order
-            </button>
-          </div>
-    
-          <ng-template #noItems>
-            <p>No items in the current order.</p>
-          </ng-template>
-        </mat-card-content>
-      </mat-card>
+    <div class="col text-end" style="line-height: 0.3;">
+      <h2 class="text-danger m-0">TABLE {{table?.number}}({{table.otp}})</h2>
     </div>
   </div>
 
-  <div class="row mt-4">
-    <div class="col-md-12">
-      <mat-card>
-        <mat-card-header>
-          <mat-card-title>Existing Orders for Table {{table?.number}}</mat-card-title>
-        </mat-card-header>
+  <ng-container *ngIf="!showCart; else cartView">
+    <div class="row mt-3 mb-3 px-1 align-items-center">
+      <div class="col">
+        <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()"
+          class="form-control ds-input" id="search-input" placeholder="Search..." dir="auto">
+      </div>
+      <div class="col-auto">
+        <mat-slide-toggle [checked]="isVegetarian" (change)="toggleVegetarian()">
+          VEG
+        </mat-slide-toggle>
+      </div>
+    </div>
+
+    <mat-tab-group #tabGroup (selectedIndexChange)="onTabChange($event)">
+      <mat-tab *ngFor="let category of categories" [label]="category">
+      </mat-tab>
+    </mat-tab-group>
+
+    <div class="menu-items mt-3">
+      <mat-card *ngFor="let item of getFilteredMenuItems()" class="p-0 mb-3">
         <mat-card-content>
-          <div *ngFor="let order of orders" class="existing-order">
-            <h4>Order ID: {{order._id}}</h4>
-            <p>Customer: {{order.customerName}}</p>
-            <p>Phone: {{order.phoneNumber}}</p>
-            <p>Status: {{order.status}}</p>
-            <p>Total: {{order.totalPrice | currency}}</p>
-            <p>Created At: {{order.createdAt | date:'medium'}}</p>
-            <h5>Items:</h5>
-            <ul>
-              <li *ngFor="let item of order.items">
-                {{item.name}} - Quantity: {{item.quantity}} - Price: {{item.price * item.quantity | currency}}
-              </li>
-            </ul>
+          <div class="row">
+            <div class="col-8">
+              <h3 class="mb-1"><strong>{{ item.name }}</strong></h3>
+              <p>{{ item.description }}</p>
+              <h4>₹{{ item.price }}</h4>
+            </div>
+            <div class="col-4">
+              <img [src]="getImageUrl(item.imageUrl)" [alt]="item.name" class="img-fluid rounded">
+              <div class="action-space d-flex justify-content-between align-items-center mt-2">
+                <ng-container *ngIf="getOrderItemQuantity(item) === 0; else quantityControl">
+                  <button mat-raised-button color="warn" (click)="addItemToOrder(item)">ADD</button>
+                </ng-container>
+                <ng-template #quantityControl>
+                  <button mat-mini-fab color="warn" (click)="removeItemFromOrder(item)">－</button>
+                  <span>{{ getOrderItemQuantity(item) }}</span>
+                  <button mat-mini-fab color="warn" (click)="addItemToOrder(item)">＋</button>
+                </ng-template>
+              </div>
+            </div>
           </div>
         </mat-card-content>
       </mat-card>
+    </div>
+  </ng-container>
+
+  <ng-template #cartView>
+    <div class="cart-items mt-4">
+      <h2 class="m-0">Your Cart</h2>
+      <hr>
+      <div class="row align-items-center" *ngFor="let item of currentOrder.items" style="padding: 7px 0;
+    border-bottom: 1px solid #e7e7e7;">
+        <div class="col">
+          <h3 class="m-0">{{ item.name }}</h3>
+          <h3 class="m-0">₹{{ item.price }} x {{ item.quantity }}</h3>
+        </div>
+        <div class="col-auto">
+          <div class="col-auto text-end action-space">
+            <button mat-mini-fab color="warn" (click)="decrementCartItem(item)">－</button>
+            <span class="mx-2">{{ item.quantity }}</span>
+            <button mat-mini-fab color="warn" (click)="incrementCartItem(item)">＋</button>
+          </div>
+        </div>
+      </div>
+
+
+      <div *ngIf="currentOrder.items.length === 0" class="text-center mt-5">
+        <h3>Your cart is empty</h3>
+        <button mat-raised-button color="primary" (click)="goBackToMenu()">Add Items</button>
+      </div>
+    </div>
+  </ng-template>
+
+  <div class="fixed-bottom bg-danger text-white p-3 animate__animated animate__slideInUp animate__faster"
+    *ngIf="getOrderItemCount() > 0">
+    <div class="row align-items-center" (click)="showCart ? submitOrder() : navigateToCart()">
+      <div class="col-6 cart-item-desc">
+        {{ getOrderItemCount() }} Item{{ getOrderItemCount() !== 1 ? 's' : '' }} | ₹{{ currentOrder.totalPrice }}
+      </div>
+      <div class="col-6 text-end">
+        <h3 class="m-0" style="color: #fff;"><strong>{{ showCart ? 'PLACE ORDER' : 'VIEW CART' }}</strong></h3>
+      </div>
     </div>
   </div>
 </div>

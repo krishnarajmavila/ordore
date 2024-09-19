@@ -1,7 +1,7 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -9,16 +9,21 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
 import { Table, MenuItem } from '../../interfaces/shared-interfaces';
 import { environment } from '../../../environments/environment';
-import { catchError } from 'rxjs/operators';
-import { Subscription, throwError } from 'rxjs';
 import { OrderService } from '../../services/order.service';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { CartFilterPipe } from '../../pipe/cart-filter.pipe';
+import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 
 interface OrderItem {
   name: string;
   quantity: number;
   price: number;
+  imageUrl?: string;
 }
 
 interface Order {
@@ -37,22 +42,34 @@ interface Order {
   imports: [
     CommonModule,
     FormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatTableModule
+    MatTableModule,
+    MatSlideToggleModule,
+    MatTabsModule,
+    CartFilterPipe
   ],
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
 })
-export class OrderManagementComponent implements OnInit, OnChanges {
+export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() table!: Table;
   @Output() backToTableSelection = new EventEmitter<void>();
+  @ViewChild('tabGroup') tabGroup!: MatTabGroup;
+  @ViewChild('tabGroup', { read: ElementRef }) tabGroupElement!: ElementRef;
+  horizontalPosition: MatSnackBarHorizontalPosition = 'center';
+  verticalPosition: MatSnackBarVerticalPosition = 'top';
   menuItems: MenuItem[] = [];
   orders: Order[] = [];
+  categories: string[] = [];
+  selectedCategory: string = 'All';
+  isVegetarian: boolean = false;
+  searchQuery: string = '';
   currentOrder: Order = {
     customerName: '',
     phoneNumber: '',
@@ -61,17 +78,18 @@ export class OrderManagementComponent implements OnInit, OnChanges {
     totalPrice: 0,
     createdAt: new Date()
   };
-  selectedItem: MenuItem | null = null;
-  selectedQuantity: number = 1;
   displayedColumns: string[] = ['name', 'quantity', 'price', 'actions'];
-  isLoading: boolean = false;
-  loadError: string | null = null;
-  private ordersSubscription: Subscription | null = null;
+  showCart: boolean = false;
 
-  constructor(private http: HttpClient, private orderService: OrderService) {}
+  constructor(
+    private http: HttpClient,
+    private orderService: OrderService,
+    private router: Router,
+    private authService: AuthService,
+    private snackBar: MatSnackBar
+  ) {}
 
   ngOnInit() {
-    console.log('Component initialized with table:', this.table);
     this.loadMenuItems();
     if (this.table && this.table.otp) {
       this.loadExistingOrders();
@@ -80,143 +98,251 @@ export class OrderManagementComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['table'] && !changes['table'].firstChange) {
-      console.log('Table changed:', this.table);
       this.loadExistingOrders();
     }
   }
 
+  ngAfterViewInit() {
+    this.enableSwipeGesture();
+  }
+
   loadMenuItems() {
-    this.http.get<MenuItem[]>(`${environment.apiUrl}/food`)
-      .pipe(catchError(this.handleError))
-      .subscribe({
-        next: (items) => {
-          this.menuItems = items;
-          console.log('Menu items loaded:', this.menuItems);
-        },
-        error: (error) => {
-          console.error('Error loading menu items:', error);
-        }
-      });
+    this.http.get<MenuItem[]>(`${environment.apiUrl}/food`).subscribe({
+      next: (items) => {
+        this.menuItems = items;
+        this.categories = ['All', ...new Set(items.map(item => item.category))];
+      },
+      error: (error) => {
+        console.error('Error loading menu items:', error);
+      }
+    });
   }
 
   loadExistingOrders() {
     if (!this.table.otp) {
-      this.loadError = 'Table OTP is missing, cannot load orders';
-      console.error(this.loadError);
+      console.error('Table OTP is missing, cannot load orders');
       return;
     }
     
-    this.isLoading = true;
-    this.loadError = null;
-    
-    console.log('Loading orders for table OTP:', this.table.otp);
-    this.ordersSubscription = this.orderService.getOrdersByTableOtp(this.table.otp).subscribe({
+    this.orderService.getOrdersByTableOtp(this.table.otp).subscribe({
       next: (orders) => {
         this.orders = orders;
-        this.isLoading = false;
-        console.log('Existing orders loaded:', this.orders);
       },
       error: (error) => {
-        this.loadError = 'Error loading existing orders. Please try again.';
-        this.isLoading = false;
         console.error('Error loading existing orders:', error);
       }
     });
   }
-  addItemToOrder() {
-    if (this.selectedItem && this.selectedQuantity > 0) {
-      const existingItemIndex = this.currentOrder.items.findIndex(item => item.name === this.selectedItem!.name);
-      
-      if (existingItemIndex > -1) {
-        this.currentOrder.items[existingItemIndex].quantity += this.selectedQuantity;
+
+  addItemToOrder(item: MenuItem) {
+    const existingItemIndex = this.currentOrder.items.findIndex(orderItem => orderItem.name === item.name);
+    
+    if (existingItemIndex > -1) {
+      this.currentOrder.items[existingItemIndex].quantity += 1;
+    } else {
+      this.currentOrder.items.push({
+        name: item.name,
+        quantity: 1,
+        price: item.price,
+        imageUrl:item.imageUrl
+
+      });
+    }
+    
+    this.calculateTotalPrice();
+  }
+
+  removeItemFromOrder(item: MenuItem) {
+    const existingItemIndex = this.currentOrder.items.findIndex(orderItem => orderItem.name === item.name);
+  
+    if (existingItemIndex > -1) {
+      if (this.currentOrder.items[existingItemIndex].quantity > 1) {
+        // Decrease the quantity by 1
+        this.currentOrder.items[existingItemIndex].quantity -= 1;
       } else {
-        this.currentOrder.items.push({
-          name: this.selectedItem.name,
-          quantity: this.selectedQuantity,
-          price: this.selectedItem.price
-        });
+        // Remove the item from the order if quantity becomes 0
+        this.currentOrder.items.splice(existingItemIndex, 1);
       }
-      
-      this.selectedItem = null;
-      this.selectedQuantity = 1;
-      console.log('Current order updated:', this.currentOrder);
+  
+      this.calculateTotalPrice();
     }
   }
 
-  removeItemFromOrder(index: number) {
-    this.currentOrder.items.splice(index, 1);
-    console.log('Item removed from order, current order:', this.currentOrder);
-  }
-
-  calculateTotalPrice(): number {
-    return this.currentOrder.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  calculateTotalPrice() {
+    this.currentOrder.totalPrice = this.currentOrder.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
 
   submitOrder() {
     if (!this.table.otp) {
       console.error('Table OTP is missing');
+      this.snackBar.open('Table OTP is missing. Unable to submit order.', 'Close', {
+        duration: 3000,
+        panelClass: ['error-snackbar']
+      });
       return;
     }
-
+  
     const orderData = {
       ...this.currentOrder,
-      tableOtp: this.table.otp,
-      totalPrice: this.calculateTotalPrice()
+      tableOtp: this.table.otp
     };
-
-    console.log('Submitting order:', orderData);
-
-    this.http.post<Order>(`${environment.apiUrl}/orders`, orderData)
-      .pipe(catchError(this.handleError))
-      .subscribe({
-        next: (newOrder) => {
-          this.orders.push(newOrder);
-          this.currentOrder = {
-            customerName: '',
-            phoneNumber: '',
-            items: [],
-            status: 'Pending',
-            totalPrice: 0,
-            createdAt: new Date()
-          };
-          console.log('Order submitted successfully, new order:', newOrder);
-          console.log('Updated orders list:', this.orders);
-          this.refreshTableData();
-        },
-        error: (error) => {
-          console.error('Error submitting order:', error);
-        }
-      });
+  
+    this.http.post<Order>(`${environment.apiUrl}/orders`, orderData).subscribe({
+      next: (newOrder) => {
+        this.orders.push(newOrder);
+        this.currentOrder = {
+          customerName: '',
+          phoneNumber: '',
+          items: [],
+          status: 'Pending',
+          totalPrice: 0,
+          createdAt: new Date()
+        };
+        this.refreshTableData();
+        this.showCart = false;
+  
+        this.showSuccessSnackBar('Order submitted successfully!');
+      },
+      error: (error) => {
+        console.error('Error submitting order:', error);
+        this.showErrorSnackBar('Error submitting order. Please try again.');
+      }
+    });
+  }
+  private showSuccessSnackBar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
   }
 
+  private showErrorSnackBar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
+  }
   refreshTableData() {
     if (!this.table._id) return;
 
-    this.http.get<Table>(`${environment.apiUrl}/tables/${this.table._id}`)
-      .pipe(catchError(this.handleError))
-      .subscribe({
-        next: (updatedTable) => {
-          this.table = updatedTable;
-          console.log('Table data refreshed:', this.table);
-        },
-        error: (error) => {
-          console.error('Error refreshing table data:', error);
-        }
-      });
+    this.http.get<Table>(`${environment.apiUrl}/tables/${this.table._id}`).subscribe({
+      next: (updatedTable) => {
+        this.table = updatedTable;
+      },
+      error: (error) => {
+        console.error('Error refreshing table data:', error);
+      }
+    });
   }
+
   goBackToTableSelection() {
     this.backToTableSelection.emit();
   }
-  private handleError(error: HttpErrorResponse) {
-    let errorMessage = 'An unknown error occurred!';
-    if (error.error instanceof ErrorEvent) {
-      // Client-side or network error
-      errorMessage = `Error: ${error.error.message}`;
-    } else {
-      // Backend returned an unsuccessful response code
-      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
+  selectCategory(category: string) {
+    this.selectedCategory = category;
+  }
+
+  toggleVegetarian() {
+    this.isVegetarian = !this.isVegetarian;
+  }
+
+  getImageUrl(imageUrl: string | undefined): string {
+    if (!imageUrl) {
+      return 'assets/default-food-image.jpg';
     }
-    console.error(errorMessage);
-    return throwError(() => new Error(errorMessage));
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
+  }
+
+  onTabChange(index: number) {
+    this.selectCategory(this.categories[index]);
+  }
+
+  onSwipe(event: TouchEvent, direction: string) {
+    const currentIndex = this.tabGroup?.selectedIndex;
+  
+    if (currentIndex !== null && currentIndex !== undefined) {
+      if (direction === 'left' && currentIndex < this.categories.length - 1) {
+        this.tabGroup.selectedIndex = currentIndex + 1;
+      } else if (direction === 'right' && currentIndex > 0) {
+        this.tabGroup.selectedIndex = currentIndex - 1;
+      }
+    }
+  }
+
+  private enableSwipeGesture() {
+    let touchStartX: number;
+    const element = this.tabGroupElement.nativeElement;
+  
+    element.addEventListener('touchstart', (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+    });
+  
+    element.addEventListener('touchend', (e: TouchEvent) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const diff = touchStartX - touchEndX;
+  
+      if (Math.abs(diff) > 50) { // Minimum swipe distance
+        if (diff > 0) {
+          this.onSwipe(e, 'left');
+        } else {
+          this.onSwipe(e, 'right');
+        }
+      }
+    });
+  }
+
+  onSearch() {
+    // Implement search functionality
+  }
+
+  getFilteredMenuItems(): MenuItem[] {
+    return this.menuItems.filter(item => 
+      (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
+      (!this.isVegetarian || item.isVegetarian === true) &&
+      item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+    );
+  }
+
+  getOrderItemQuantity(item: MenuItem): number {
+    const orderItem = this.currentOrder.items.find(i => i.name === item.name);
+    return orderItem ? orderItem.quantity : 0;
+  }
+
+  getOrderItemCount(): number {
+    return this.currentOrder.items.reduce((total, item) => total + item.quantity, 0);
+  }
+
+  navigateToCart() {
+    this.showCart = true;
+  }
+
+  goBackToMenu() {
+    this.showCart = false;
+  }
+
+  incrementCartItem(item: OrderItem) {
+    item.quantity++;
+    this.calculateTotalPrice();
+  }
+
+  decrementCartItem(item: OrderItem) {
+    if (item.quantity > 1) {
+      item.quantity--;
+    } else {
+      const index = this.currentOrder.items.indexOf(item);
+      if (index > -1) {
+        this.currentOrder.items.splice(index, 1);
+      }
+    }
+    this.calculateTotalPrice();
   }
 }

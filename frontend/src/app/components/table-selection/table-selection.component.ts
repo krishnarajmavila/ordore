@@ -7,6 +7,8 @@ import { BehaviorSubject, Observable, of, Subscription, forkJoin } from 'rxjs';
 import { catchError, map, tap, switchMap, take } from 'rxjs/operators';
 import { environment } from '../../../environments/environment'; // Adjust the path as needed
 import { MatIconModule } from '@angular/material/icon';
+import { AuthService } from '../../services/auth.service';
+import { Router } from '@angular/router';
 
 interface Table {
   _id?: string;
@@ -40,7 +42,10 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
   @Output() tableSelected = new EventEmitter<Table>();
   @Output() otpRefreshRequested = new EventEmitter<Table>();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient,
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
   @Input() set tables(value: Table[]) {
     this.tablesSubject.next(value);
@@ -55,7 +60,10 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.subscription.unsubscribe();
   }
-
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
   selectTable(table: Table) {
     this.tableSelected.emit(table);
   }

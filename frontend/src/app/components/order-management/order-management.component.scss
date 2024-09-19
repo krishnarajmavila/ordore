@@ -5,3 +5,60 @@ mat-form-field {
     width: 100%;
     margin-top: 20px;
   }
+::ng-deep{
+  .mat-button-toggle-label-content{
+    min-width: 115px !important;
+  }
+  .mat-button-toggle-appearance-standard.mat-button-toggle-checked {
+    background-color: rgb(245, 248, 250) !important;
+    color: #c80000 !important;
+}
+}
+
+.menu-items {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding-bottom: 5rem;
+}
+
+.mat-mdc-card {
+  margin-bottom: 16px;
+}
+
+.mat-mdc-card-content {
+  padding: 16px;
+}
+
+.mat-mdc-card-actions {
+  padding: 8px 16px;
+}
+.form-control:focus {
+  border-color: unset;
+  box-shadow: 0 0 0 0.2rem rgba(255, 239, 239, 0.25);
+} 
+.img-fluid {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.fixed-bottom {
+  box-shadow: 10px 10px 21px 30px #fff;
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  z-index: 1030;
+  border-radius: 8px;
+}
+.cart-item-desc{
+  font-size: 17px;
+  font-weight: 600;
+}
+
+::ng-deep{
+  .menu-items .mdc-card{
+    box-shadow: unset;
+    border-bottom: 1px solid #e2e2e2;
+  }
+}

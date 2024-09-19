@@ -160,38 +160,10 @@
 
 
 <div class="container-fluid">
-  <div class="row bg-red text-dark p-2 px-1 align-items-center">
-    <div class="col">
-      <img width="15%" src="assets/img/ibis.png">
-    </div>
-    <div class="col-5 text-end d-flex align-items-center">
-      <button mat-stroked-button color="primary"  class="mx-2">ORDERS</button>
-      <button mat-icon-button (click)="logout()">
-        <mat-icon>exit_to_app</mat-icon>
-      </button>
-    </div>
-  </div>
 
-  <div class="row mt-3 mb-3 px-1 align-items-center">
-    <div class="col">
-      <h2 class="text-danger m-0">TABLE</h2>
-    </div>
-    <!-- <div class="col text-end">
-      <mat-slide-toggle >
-        PURE VEG
-      </mat-slide-toggle>
-    </div> -->
-  </div>
-  <div class="row mt-3 mb-3 px-1 align-items-center">
-    <div class="col">
-        <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Order Management</h2>
-          <div class="d-flex align-items-center"> 
-            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
-          </div>
-        </div>
+  <div class="row px-1 align-items-center">
+    <div class="col px-0">
         <div class="row">
-          <div class="col-md-12">
             <app-table-selection 
             *ngIf="!selectedTable" 
             [tables]="tables" 
@@ -199,7 +171,6 @@
             (otpRefreshRequested)="refreshOTP($event)">
           </app-table-selection>
             <ng-container *ngTemplateOutlet="orderManagementTemplate"></ng-container>
-          </div>
         </div>
         <ng-template #orderManagementTemplate>
           <app-order-management *ngIf="selectedTable" [table]="selectedTable" (backToTableSelection)="onBackToTableSelection()"></app-order-management>

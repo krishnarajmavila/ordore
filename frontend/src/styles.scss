@@ -47,4 +47,15 @@ html{
       background: #F5F8FA;
       
   }
-  
+  h1,h2,h3,p{
+    color: rgb(23, 25, 28);
+  }
+  .ord-btn{
+    background: rgb(255, 255, 255);
+    box-shadow: rgba(13, 19, 35, 0.08) 0px 2px 4px 0px;
+    border: 0;
+    width: auto;
+    padding: 5px 5px 0px 5px;
+    color: #c80000;
+    border-radius: 6px;
+  }

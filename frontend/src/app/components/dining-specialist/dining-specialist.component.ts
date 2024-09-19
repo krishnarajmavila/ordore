@@ -206,7 +206,7 @@ export class DiningSpecialistComponent implements OnInit {
 
   refreshOTP(table: Table) {
     const dialogRef = this.dialog.open(TableResetDialogComponent, {
-      width: '40%',
+      width: '90%',
       data: { tableNumber: table.number }
     });
 
