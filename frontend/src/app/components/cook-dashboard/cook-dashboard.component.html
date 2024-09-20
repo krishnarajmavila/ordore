@@ -2,13 +2,13 @@
   <mat-sidenav-container class="sidenav-container w-100">
     <mat-sidenav mode="side" opened>
       <!-- <h2 class="mb-0 mx-3 pt-4">Menu</h2> -->
-      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%"  src="assets/img/ibis.png" />
+      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%"  src="assets/img/ordore.png" />
       <mat-nav-list class="mx-2">
         <mat-list-item class="mt-2" (click)="activeView = 'orders'" [class.active]="activeView === 'orders'">
           <mat-icon>assignment</mat-icon> Manage Orders
         </mat-list-item>
         <mat-list-item class="mt-2" (click)="activeView = 'menu'" [class.active]="activeView === 'menu'">
-          <mat-icon>restaurant_menu</mat-icon> View Menu
+          <mat-icon>restaurant_menu</mat-icon>Manage Stocks
         </mat-list-item>
       </mat-nav-list>
     </mat-sidenav>
@@ -39,7 +39,7 @@
                   <button *ngIf="status === 'completed'" 
                           (click)="deleteOrder(order._id)" 
                           class="btn btn-danger btn-sm mt-2">
-                    Delete Order
+                    Remove
                   </button>
                 </div>
               </div>
