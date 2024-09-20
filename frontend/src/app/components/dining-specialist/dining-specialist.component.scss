@@ -3,7 +3,11 @@
 button {
   height: 50px;
 }
-
+@media (min-width: 768px) {
+  body {
+    background-color: #f0f0f0;
+  }
+}
 ::ng-deep {
   .menu-tbl th {
     background-color: rgb(245, 248, 250);

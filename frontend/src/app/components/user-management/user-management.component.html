@@ -1,0 +1,56 @@
+<div class="user-management">
+    <div class="row m-0 p-2">
+        <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+            <h3>Add Users</h3>
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="outline">
+        <mat-label>Username</mat-label>
+        <input matInput formControlName="username" required>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" required>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>User Type</mat-label>
+        <mat-select formControlName="userType" required>
+          <mat-option value="customer">Customer</mat-option>
+          <mat-option value="cook">Cook</mat-option>
+          <mat-option value="billing">Billing</mat-option>
+          <mat-option value="admin">Admin</mat-option>
+          <mat-option value="diningspecialist">Dining Specialist</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-raised-button color="primary" type="submit" [disabled]="userForm.invalid">
+        {{editingUser ? 'Update' : 'Add'}} User
+      </button>
+    </form>
+    </div>
+    <div class="col-9 p-3">
+        <h3>View Users</h3>
+        <hr class="mb-0">
+    <table mat-table [dataSource]="users">
+      <ng-container matColumnDef="username">
+        <th mat-header-cell *matHeaderCellDef>Username</th>
+        <td mat-cell *matCellDef="let user">{{user.username}}</td>
+      </ng-container>
+      <ng-container matColumnDef="userType">
+        <th mat-header-cell *matHeaderCellDef>User Type</th>
+        <td mat-cell *matCellDef="let user">{{user.userType}}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let user">
+          <button mat-icon-button color="primary" (click)="editUser(user)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deleteUser(user)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+    </div>
+  </div>

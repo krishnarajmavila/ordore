@@ -9,18 +9,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarModule, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
-import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { TableResetDialogComponent } from '../table-reset-dialog/table-reset-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import { UserManagementComponent } from '../user-management/user-management.component';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 interface MenuItem {
   _id?: string;
@@ -57,10 +58,11 @@ interface Table {
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatListModule,
-    DragDropModule,
     MatSidenavModule,
     MatCheckboxModule,
-    MatExpansionModule
+    MatExpansionModule,
+    UserManagementComponent,
+    MatToolbarModule
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
@@ -77,9 +79,11 @@ export class AdminDashboardComponent implements OnInit {
   displayedTableColumns: string[] = ['number', 'capacity', 'isOccupied', 'otp', 'actions'];
   categories = ['Appetizers', 'Mains', 'Desserts', 'Beverages'];
   selectedFile: File | null = null;
-  activeView = 'Add Menu';
+  activeView: string;
+  sidenavCollapsed: boolean = false;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
+  
 
   constructor(
     private fb: FormBuilder,
@@ -103,6 +107,9 @@ export class AdminDashboardComponent implements OnInit {
       capacity: ['', [Validators.required, Validators.min(1)]],
       isOccupied: [false]
     });
+
+    this.activeView = localStorage.getItem('activeView') || 'Add Menu';
+    this.sidenavCollapsed = localStorage.getItem('sidenavCollapsed') === 'true';
   }
 
   ngOnInit() {
@@ -372,6 +379,25 @@ export class AdminDashboardComponent implements OnInit {
 
   getUniqueCategories(): string[] {
     return Array.from(new Set(this.menuItems.map(item => item.category)));
+  }
+
+  setActiveView(view: string) {
+    this.activeView = view;
+    localStorage.setItem('activeView', view);
+  }
+
+  toggleSidenav() {
+    this.sidenavCollapsed = !this.sidenavCollapsed;
+    localStorage.setItem('sidenavCollapsed', this.sidenavCollapsed.toString());
+  }
+
+  navigateTo(view: string) {
+    this.setActiveView(view);
+    // You can add additional logic here if needed
+  }
+
+  isUserManagementActive(): boolean {
+    return this.activeView === 'User Management';
   }
 
   logout() {

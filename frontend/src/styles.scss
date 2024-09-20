@@ -59,3 +59,14 @@ html{
     color: #c80000;
     border-radius: 6px;
   }
+  .btn-primary {
+    background-color: #C80000;
+    border-color: #C80000;
+  }
+
+  .btn-primary:hover,
+  .btn-primary:focus,
+  .btn-primary:active {
+    background-color: #A00000 !important;
+    border-color: #A00000 !important;
+  }

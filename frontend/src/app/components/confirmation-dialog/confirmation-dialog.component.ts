@@ -97,7 +97,11 @@ export class ConfirmationDialogComponent {
       },
       error: (error) => {
         console.error('Error submitting order', error);
-        this.showErrorSnackBar('Error submitting order. Please try again or contact a waiter.');
+        let errorMessage = 'Error submitting order. Please try again or contact a waiter.';
+        if (error.message.includes('Table not found') || error.message.includes('Failed to update table status')) {
+          errorMessage += ' Your order may have been placed, but there was an issue updating the table status.';
+        }
+        this.showErrorSnackBar(errorMessage);
         this.isSubmitting = false;
       }
     });

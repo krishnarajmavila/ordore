@@ -24,7 +24,7 @@
           <!-- <p class="card-text">{{table.isOccupied ? 'Occupied' : 'Available'}}</p> -->
         </div>
         <div class="card-footer d-flex align-items-center justify-content-between">
-          <h4 class="card-subtitle m-0 text-muted">OTC: {{table.otp}}</h4>
+          <h4 class="card-subtitle m-0 text-muted">{{table.otp}}</h4>
           <button class="ord-btn" (click)="refreshOTP(table); $event.stopPropagation();" title="Refresh OTP">
             <mat-icon>autorenew</mat-icon>
              </button>

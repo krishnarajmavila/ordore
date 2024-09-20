@@ -60,7 +60,11 @@ export class OrderService {
     return this.http.post<Order>(this.apiUrl, orderData).pipe(
       switchMap(newOrder => {
         return this.updateTableStatus(customerInfo.tableOtp, true).pipe(
-          map(() => newOrder)
+          map(() => newOrder),
+          catchError(error => {
+            console.warn('Failed to update table status, but order was submitted:', error);
+            return of(newOrder);
+          })
         );
       }),
       tap(newOrder => {
@@ -132,7 +136,10 @@ export class OrderService {
         const table = tables[0];
         return this.http.patch<void>(`${this.tableApiUrl}/${table._id}`, { isOccupied });
       }),
-      catchError(this.handleError)
+      catchError(error => {
+        console.error('Error updating table status:', error);
+        return throwError(() => new Error('Failed to update table status'));
+      })
     );
   }
 
