@@ -94,6 +94,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     if (this.table && this.table.otp) {
       this.loadExistingOrders();
     }
+    this.currentOrder.customerName = `${this.authService.getUsername()}(DS)`;
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -144,8 +145,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
         name: item.name,
         quantity: 1,
         price: item.price,
-        imageUrl:item.imageUrl
-
+        imageUrl: item.imageUrl
       });
     }
     
@@ -157,10 +157,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   
     if (existingItemIndex > -1) {
       if (this.currentOrder.items[existingItemIndex].quantity > 1) {
-        // Decrease the quantity by 1
         this.currentOrder.items[existingItemIndex].quantity -= 1;
       } else {
-        // Remove the item from the order if quantity becomes 0
         this.currentOrder.items.splice(existingItemIndex, 1);
       }
   
@@ -184,20 +182,14 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   
     const orderData = {
       ...this.currentOrder,
-      tableOtp: this.table.otp
+      tableOtp: this.table.otp,
+      customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`
     };
   
     this.http.post<Order>(`${environment.apiUrl}/orders`, orderData).subscribe({
       next: (newOrder) => {
         this.orders.push(newOrder);
-        this.currentOrder = {
-          customerName: '',
-          phoneNumber: '',
-          items: [],
-          status: 'Pending',
-          totalPrice: 0,
-          createdAt: new Date()
-        };
+        this.resetCurrentOrder();
         this.refreshTableData();
         this.showCart = false;
   
@@ -209,6 +201,18 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       }
     });
   }
+
+  resetCurrentOrder() {
+    this.currentOrder = {
+      customerName: `${this.authService.getUsername()}(DS)`,
+      phoneNumber: '',
+      items: [],
+      status: 'Pending',
+      totalPrice: 0,
+      createdAt: new Date()
+    };
+  }
+
   private showSuccessSnackBar(message: string): void {
     this.snackBar.open(message, 'Close', {
       duration: 5000,
@@ -224,6 +228,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       verticalPosition: this.verticalPosition
     });
   }
+
   refreshTableData() {
     if (!this.table._id) return;
 

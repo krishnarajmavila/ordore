@@ -22,6 +22,7 @@ import { TableResetDialogComponent } from '../table-reset-dialog/table-reset-dia
 import { MatDialog } from '@angular/material/dialog';
 import { UserManagementComponent } from '../user-management/user-management.component';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { ReportingComponent } from '../reports/reporting.component';
 
 interface MenuItem {
   _id?: string;
@@ -62,7 +63,8 @@ interface Table {
     MatCheckboxModule,
     MatExpansionModule,
     UserManagementComponent,
-    MatToolbarModule
+    MatToolbarModule,
+    ReportingComponent
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
@@ -404,7 +406,9 @@ export class AdminDashboardComponent implements OnInit {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
-
+  isReportingActive(): boolean {
+    return this.activeView === 'Reporting';
+  }
   showSnackBar(message: string) {
     this.snackBar.open(message, 'Close', {
       duration: 5000,

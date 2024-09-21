@@ -12,6 +12,9 @@
         <mat-list-item class="mt-2" (click)="navigateTo('User Management')" [class.active]="activeView === 'User Management'">
           <mat-icon>group</mat-icon> Manage Users
         </mat-list-item>
+        <mat-list-item class="mt-2" (click)="navigateTo('Reporting')" [class.active]="activeView === 'Reporting'">
+          <mat-icon>bar_chart</mat-icon> Reporting
+        </mat-list-item>
       </mat-nav-list>
     </mat-sidenav>
     <mat-sidenav-content>
@@ -259,6 +262,13 @@
           <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
         </div>
         <app-user-management></app-user-management>
+      </div>
+      <div *ngIf="activeView === 'Reporting'">
+        <div class="headers d-flex align-items-center justify-content-between">
+          <h2 class="m-0">Reporting</h2>
+          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+        </div>
+        <app-reporting></app-reporting>
       </div>
     </mat-sidenav-content>
   </mat-sidenav-container>

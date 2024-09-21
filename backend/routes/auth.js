@@ -4,7 +4,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const path = require('path');
-const auth = require('../middleware/auth'); // Assuming you have an auth middleware
+const auth = require('../middleware/auth');
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -12,7 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 console.log('Auth Route - Environment variables loaded:', Object.keys(process.env));
 console.log('Auth Route - JWT_SECRET:', process.env.JWT_SECRET ? 'Is set' : 'Is not set');
 
-// Login route (existing)
+// Login route (updated)
 router.post('/login', async (req, res) => {
   try {
     const { username, password, userType } = req.body;
@@ -44,13 +44,13 @@ router.post('/login', async (req, res) => {
 
     try {
       const token = jwt.sign(
-        { userId: user._id, userType: user.userType },
+        { userId: user._id, username: user.username, userType: user.userType },
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
 
       console.log('Token generated successfully');
-      res.json({ token, userType: user.userType });
+      res.json({ token, userType: user.userType, username: user.username });
     } catch (jwtError) {
       console.error('Error generating JWT:', jwtError);
       return res.status(500).json({ message: 'Error generating authentication token' });
@@ -61,7 +61,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Registration route (existing)
+// Registration route
 router.post('/register', auth, async (req, res) => {
   try {
     const { username, password, userType } = req.body;
@@ -83,7 +83,7 @@ router.post('/register', auth, async (req, res) => {
   }
 });
 
-// New route: Get all users
+// Get all users route
 router.get('/users', auth, async (req, res) => {
   try {
     const users = await User.find().select('-password');
@@ -94,7 +94,7 @@ router.get('/users', auth, async (req, res) => {
   }
 });
 
-// New route: Update a user
+// Update a user route
 router.put('/users/:id', auth, async (req, res) => {
   try {
     const { username, userType, password } = req.body;
@@ -120,7 +120,7 @@ router.put('/users/:id', auth, async (req, res) => {
   }
 });
 
-// New route: Delete a user
+// Delete a user route
 router.delete('/users/:id', auth, async (req, res) => {
   try {
     const userId = req.params.id;

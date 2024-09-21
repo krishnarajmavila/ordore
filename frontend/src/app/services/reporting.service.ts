@@ -34,7 +34,7 @@ interface Table {
 @Injectable({
   providedIn: 'root'
 })
-export class OrderService {
+export class ReportingService {
   private apiUrl = `${environment.apiUrl}/orders`;
   private tableApiUrl = `${environment.apiUrl}/tables`;
   private ordersSubject = new BehaviorSubject<Order[]>([]);
@@ -123,7 +123,10 @@ export class OrderService {
       clearInterval(this.refreshInterval);
     }
   }
-
+  getReportData(date: Date): Observable<any> {
+    const formattedDate = date.toISOString().split('T')[0];
+    return this.http.get(`${this.apiUrl}/${formattedDate}`);
+  }
   getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
     return this.http.get<Order[]>(`${this.apiUrl}?tableOtp=${tableOtp}`).pipe(
       catchError(this.handleError)

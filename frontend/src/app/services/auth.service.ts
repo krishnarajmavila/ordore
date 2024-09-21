@@ -1,12 +1,13 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { catchError, Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
 interface AuthResponse {
   token: string;
   userType: string;
+  username: string;
 }
 
 interface OtpSendResponse {
@@ -28,12 +29,14 @@ interface TableOtpValidationResponse {
 export class AuthService {
   private tokenKey = 'auth_token';
   private userTypeKey = 'user_type';
+  private usernameSubject = new BehaviorSubject<string | null>(null);
   private otpRequestedKey = 'otp_requested';
   private otpVerifiedKey = 'otp_verified';
   private isBrowser: boolean;
   private mobileNumber: string | null = null;
   private name: string | null = null;
   private tableOtp: string | null = null;
+  private userNameKey = 'user_name';
 
   constructor(
     private http: HttpClient,
@@ -50,7 +53,8 @@ export class AuthService {
         if (response && response.token) {
           this.setToken(response.token);
           this.setUserType(response.userType);
-          console.log('After setting - Token:', this.getToken(), 'UserType:', this.getUserType());
+          this.setUsername(response.username);
+          console.log('After setting - Token:', this.getToken(), 'UserType:', this.getUserType(), 'getUsername:', this.getUsername());
         }
       }),
       catchError(error => {
@@ -59,7 +63,21 @@ export class AuthService {
       })
     );
   }
+  setUsername(username: string) {
+    if (this.isBrowser) {
+      localStorage.setItem(this.userNameKey, username);
+      console.log('UserName set in localStorage:', username);
+    }
+  }
 
+  getUsername(): string | null {
+    if (this.isBrowser) {
+      const userNameKey = localStorage.getItem(this.userNameKey);
+      console.log('UserName retrieved from localStorage:', userNameKey);
+      return userNameKey;
+    }
+    return null;
+  }
   setToken(token: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.tokenKey, token);
