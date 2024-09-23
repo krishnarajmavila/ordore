@@ -23,7 +23,7 @@ export interface CustomerInfo {
     <h2 class="text-center" mat-dialog-title>Confirm Order</h2>
     <mat-dialog-content class="text-center">
       Are you sure you want to place this order?
-      <p>Total: {{ data.totalPrice | currency }}</p>
+      <p>Total: {{ data.totalPrice | currency: 'INR' }}</p>
     </mat-dialog-content>
     <mat-dialog-actions align="center" class="pb-4">
       <div class="d-flex">

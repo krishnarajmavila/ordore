@@ -7,17 +7,6 @@ function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-// Middleware to check and refresh OTP if needed
-async function checkAndRefreshOTP(table) {
-  const now = new Date();
-  const otpAge = (now - table.otpGeneratedAt) / (1000 * 60 * 60); // Age in hours
-
-  if (otpAge >= 8) {
-    table.otp = generateOTP();
-    table.otpGeneratedAt = now;
-    await table.save();
-  }
-}
 // Get a single table by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -25,19 +14,16 @@ router.get('/:id', async (req, res) => {
     if (!table) {
       return res.status(404).json({ message: 'Table not found' });
     }
-    await checkAndRefreshOTP(table);
     res.json(table);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 // Get all tables
 router.get('/', async (req, res) => {
   try {
     const tables = await Table.find();
-    for (let table of tables) {
-      await checkAndRefreshOTP(table);
-    }
     res.json(tables);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -77,14 +63,13 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Table not found' });
     }
 
-    await checkAndRefreshOTP(updatedTable);
     res.json(updatedTable);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-// Refresh OTP for a specific table
+// Manually refresh OTP for a specific table
 router.post('/:id/refresh-otp', async (req, res) => {
   try {
     const table = await Table.findById(req.params.id);
@@ -93,7 +78,8 @@ router.post('/:id/refresh-otp', async (req, res) => {
     }
 
     table.otp = generateOTP();
-    table.otpGeneratedAt = new Date();
+    // We're no longer tracking when the OTP was generated
+    // table.otpGeneratedAt = new Date();
     await table.save();
 
     res.json(table);

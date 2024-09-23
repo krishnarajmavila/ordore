@@ -10,11 +10,12 @@ import { Order, OrderService } from '../../services/order.service';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { WebSocketService } from '../../services/web-socket.service';
+import { Table } from '../../interfaces/shared-interfaces';
 
 @Component({
   selector: 'app-cook-dashboard',
@@ -34,6 +35,8 @@ import { WebSocketService } from '../../services/web-socket.service';
   styleUrls: ['./cook-dashboard.component.scss']
 })
 export class CookDashboardComponent implements OnInit, OnDestroy {
+  private tablesSubject = new BehaviorSubject<Table[]>([]);
+  tables$: Observable<Table[]> = this.tablesSubject.asObservable();
   menuItems: MenuItem[] = [];
   orders: Order[] = [];
   orderStatuses: string[] = ['pending', 'preparing', 'ready', 'completed'];

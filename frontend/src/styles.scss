@@ -70,3 +70,7 @@ html{
     background-color: #A00000 !important;
     border-color: #A00000 !important;
   }
+
+  .mat-mdc-tab .mdc-tab-indicator__content--underline{
+    display: none;
+  }

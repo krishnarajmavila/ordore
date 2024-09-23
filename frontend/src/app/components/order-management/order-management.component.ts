@@ -60,6 +60,7 @@ interface Order {
 export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() table!: Table;
   @Output() backToTableSelection = new EventEmitter<void>();
+  @Output() viewOrders = new EventEmitter<string>();  // Add this line
   @ViewChild('tabGroup') tabGroup!: MatTabGroup;
   @ViewChild('tabGroup', { read: ElementRef }) tabGroupElement!: ElementRef;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
@@ -349,5 +350,13 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       }
     }
     this.calculateTotalPrice();
+  }
+  lookOrders() {
+    if (this.table && this.table.otp) {
+      this.viewOrders.emit(this.table.otp);
+    } else {
+      console.error('Table OTP is missing');
+      this.showErrorSnackBar('Unable to view orders. Table information is missing.');
+    }
   }
 }

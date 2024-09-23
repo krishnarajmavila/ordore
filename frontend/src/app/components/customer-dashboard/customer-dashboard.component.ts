@@ -55,10 +55,17 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   isVegetarian: boolean = false;
   cartItems: CartItem[] = [];
   searchQuery: string = '';
+  isSidenavOpen: boolean = false;
 
   private menuItemsSubject = new BehaviorSubject<MenuItem[]>([]);
   menuItems$ = this.menuItemsSubject.asObservable();
   private menuUpdateSubscription!: Subscription;
+
+  private userDataSubject = new BehaviorSubject<any>(null);
+  userData$: Observable<any> = this.userDataSubject.asObservable();
+
+  private usersSubject = new BehaviorSubject<any[]>([]);
+  users$: Observable<any[]> = this.usersSubject.asObservable();
 
   constructor(
     private menuService: MenuService,
@@ -73,6 +80,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.loadCart();
     this.subscribeToMenuUpdates();
     this.menuService.startMenuRefresh(30000);
+    this.loadUserData();
   }
 
   ngAfterViewInit() {
@@ -132,7 +140,9 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
       quantity: 1
     });
   }
-
+  getTotalPrice(): number {
+    return this.cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  }
   decreaseQuantity(item: MenuItem) {
     this.cartService.removeFromCart(item._id);
   }
@@ -163,11 +173,11 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
       map(items => items.filter(item => 
         (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
         (!this.isVegetarian || item.isVegetarian === true) &&
-        item.isInStock
+        item.isInStock &&
+        (this.searchQuery === '' || item.name.toLowerCase().includes(this.searchQuery.toLowerCase()))
       ))
     );
   }
-
 
   onTabChange(index: number) {
     this.selectCategory(this.categories[index]);
@@ -237,5 +247,30 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
       this.menuItems[index] = updatedItem;
       this.menuItemsSubject.next([...this.menuItems]);
     }
+  }
+
+  loadUserData() {
+    const storedUserData = localStorage.getItem('otpUserData');
+    if (storedUserData) {
+      const userData = JSON.parse(storedUserData);
+      this.userDataSubject.next(userData);
+
+      this.authService.getUsersByTableOtp(userData.tableOtp).subscribe({
+        next: (response) => {
+          this.usersSubject.next(response.users);
+        },
+        error: (error) => {
+          console.error('Error fetching users by tableOtp:', error);
+        },
+      });
+    }
+  }
+
+  openSidenav() {
+    this.isSidenavOpen = true;
+  }
+
+  closeSidenav() {
+    this.isSidenavOpen = false;
   }
 }

@@ -4,19 +4,28 @@
     <div class="row px-1 align-items-center">
       <div class="col px-0">
         <div class="row">
-          <app-table-selection *ngIf="!selectedTable" [tables]="tables" (tableSelected)="onTableSelected($event)"
-            (otpRefreshRequested)="refreshOTP($event)">
-          </app-table-selection>
-          <ng-container *ngTemplateOutlet="orderManagementTemplate"></ng-container>
+          <app-table-selection 
+          *ngIf="!selectedTable && !showOrderCheck && !showOrderManagement" 
+          [tables]="tables" 
+          (tableSelected)="onTableSelected($event)"
+          (otpRefreshRequested)="refreshOTP($event)">
+        </app-table-selection>
+        <app-order-management 
+          *ngIf="selectedTable && showOrderManagement" 
+          [table]="selectedTable"
+          (backToTableSelection)="onBackToTableSelection()"
+          (viewOrders)="onViewOrders($event)">
+        </app-order-management>
+        <app-ds-order-check
+          *ngIf="showOrderCheck"
+          [tableOtp]="selectedTableOtp"
+          (backToOrderManagement)="onBackToOrderManagement()">
+        </app-ds-order-check>
         </div>
-        <ng-template #orderManagementTemplate>
-          <app-order-management *ngIf="selectedTable" [table]="selectedTable"
-            (backToTableSelection)="onBackToTableSelection()"></app-order-management>
-        </ng-template>
       </div>
     </div>
   </div>
-
+  
   <!-- Desktop view (message) -->
   <div class="d-none d-md-flex flex-column justify-content-center align-items-center vh-100">
     <div class="text-center">

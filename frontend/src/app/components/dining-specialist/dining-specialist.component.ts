@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -23,9 +23,26 @@ import { TableResetDialogComponent } from '../table-reset-dialog/table-reset-dia
 import { MatDialog } from '@angular/material/dialog';
 import { OrderManagementComponent } from '../order-management/order-management.component';
 import { TableSelectionComponent } from '../table-selection/table-selection.component';
-import { Table, MenuItem } from '../../interfaces/shared-interfaces';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
-import {MatButtonToggleModule} from '@angular/material/button-toggle';
+import { DsOrderCheckComponent } from '../ds-order-check/ds-order-check.component';
+
+interface MenuItem {
+  _id?: string;
+  name: string;
+  category: string;
+  price: number;
+  description?: string;
+  imageUrl?: string;
+  isVegetarian: boolean;
+}
+
+interface Table {
+  _id?: string;
+  number: string;
+  capacity: number;
+  isOccupied: boolean;
+  otp: string;
+  otpGeneratedAt: Date;
+}
 
 @Component({
   selector: 'app-dining-specialist',
@@ -49,8 +66,7 @@ import {MatButtonToggleModule} from '@angular/material/button-toggle';
     MatExpansionModule,
     TableSelectionComponent,
     OrderManagementComponent,
-    MatSlideToggle,
-    MatButtonToggleModule
+    DsOrderCheckComponent
   ],
   templateUrl: './dining-specialist.component.html',
   styleUrls: ['./dining-specialist.component.scss']
@@ -63,12 +79,13 @@ export class DiningSpecialistComponent implements OnInit {
   isLoading = false;
   displayedTableColumns: string[] = ['number', 'capacity', 'isOccupied', 'otp', 'actions'];
   categories = ['Appetizers', 'Mains', 'Desserts', 'Beverages'];
-  activeView = 'tables';
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
   
+  showOrderManagement = false;
+  showOrderCheck = false;
   selectedTable: Table | null = null;
-  @ViewChild('orderManagementTemplate', { static: true }) orderManagementTemplate!: TemplateRef<any>;
+  selectedTableOtp: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -83,27 +100,10 @@ export class DiningSpecialistComponent implements OnInit {
       capacity: ['', [Validators.required, Validators.min(1)]],
       isOccupied: [false]
     });
-    this.activeView = this.getStoredActiveView();
   }
 
   ngOnInit() {
-    this.loadMenuItems();
     this.loadTables();
-  }
-
-  loadMenuItems() {
-    this.isLoading = true;
-    this.http.get<MenuItem[]>(`${environment.apiUrl}/food`).subscribe({
-      next: (items) => {
-        this.menuItems = items;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading menu items:', error);
-        this.showSnackBar('Error loading menu items');
-        this.isLoading = false;
-      }
-    });
   }
 
   loadTables() {
@@ -121,92 +121,32 @@ export class DiningSpecialistComponent implements OnInit {
     });
   }
 
-  onTableSubmit() {
-    if (this.tableForm.valid) {
-      this.isLoading = true;
-      const tableData = this.tableForm.value;
-
-      if (this.editingTable) {
-        this.updateTable(tableData);
-      } else {
-        this.addTable(tableData);
-      }
-    } else {
-      this.tableForm.markAllAsTouched();
-    }
+  onTableSelected(table: Table) {
+    this.selectedTable = table;
+    this.selectedTableOtp = table.otp;
+    this.showOrderManagement = true;
+    this.showOrderCheck = false;
   }
 
-  addTable(tableData: Table) {
-    this.http.post<Table>(`${environment.apiUrl}/tables`, tableData).subscribe({
-      next: (newTable) => {
-        this.tables = [...this.tables, newTable];
-        this.resetTableForm();
-        this.showSnackBar('Table added successfully');
-      },
-      error: (error) => {
-        console.error('Error adding table:', error);
-        this.showSnackBar('Error adding table');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
-    });
+  onBackToTableSelection() {
+    this.showOrderManagement = false;
+    this.showOrderCheck = false;
+    this.selectedTable = null;
+    this.selectedTableOtp = null;
   }
-
-  updateTable(tableData: Table) {
-    if (!this.editingTable?._id) return;
-
-    this.http.put<Table>(`${environment.apiUrl}/tables/${this.editingTable._id}`, tableData).subscribe({
-      next: (updatedTable) => {
-        const index = this.tables.findIndex(table => table._id === updatedTable._id);
-        if (index !== -1) {
-          this.tables[index] = updatedTable;
-          this.tables = [...this.tables];
-        }
-        this.resetTableForm();
-        this.showSnackBar('Table updated successfully');
-      },
-      error: (error) => {
-        console.error('Error updating table:', error);
-        this.showSnackBar('Error updating table');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
-    });
+  onBackToOrderManagement() {
+    this.showOrderCheck = false;
+    this.showOrderManagement = true;
   }
-
-  editTable(table: Table) {
-    this.editingTable = table;
-    this.tableForm.patchValue({
-      number: table.number,
-      capacity: table.capacity,
-      isOccupied: table.isOccupied
-    });
-  }
-
-  deleteTable(table: Table) {
-    if (!table._id) return;
-
-    this.isLoading = true;
-    this.http.delete(`${environment.apiUrl}/tables/${table._id}`).subscribe({
-      next: () => {
-        this.tables = this.tables.filter(t => t._id !== table._id);
-        this.showSnackBar('Table deleted successfully');
-      },
-      error: (error) => {
-        console.error('Error deleting table:', error);
-        this.showSnackBar('Error deleting table');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
-    });
+  onViewOrders(tableOtp: string) {
+    this.showOrderManagement = false;
+    this.showOrderCheck = true;
+    this.selectedTableOtp = tableOtp;
   }
 
   refreshOTP(table: Table) {
     const dialogRef = this.dialog.open(TableResetDialogComponent, {
-      width: '90%',
+      width: 'auto',
       data: { tableNumber: table.number }
     });
 
@@ -234,34 +174,6 @@ export class DiningSpecialistComponent implements OnInit {
     });
   }
 
-  resetTableForm() {
-    this.tableForm.reset();
-    this.editingTable = null;
-  }
-
-  getImageUrl(imageUrl: string | undefined): string {
-    if (!imageUrl) {
-      return 'assets/default-food-image.jpg'; // Path to a default image
-    }
-    // Remove '/api' from the environment.apiUrl and append the imageUrl
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
-  }
-
-  getUniqueCategories(): string[] {
-    return Array.from(new Set(this.menuItems.map(item => item.category)));
-  }
-
-  onTableSelected(table: Table) {
-    if (table && table._id) {
-      this.selectedTable = table;
-      this.activeView = 'order-management';
-    } else {
-      console.error('Selected table is invalid:', table);
-      this.showSnackBar('Error: Invalid table selected');
-    }
-  }
-
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
@@ -273,21 +185,5 @@ export class DiningSpecialistComponent implements OnInit {
       horizontalPosition: this.horizontalPosition,
       verticalPosition: this.verticalPosition
     });
-  }
-  onBackToTableSelection() {
-    this.selectedTable = null;
-    this.activeView = 'order-management';
-  }
-  setActiveView(view: string) {
-    this.activeView = view;
-    this.storeActiveView(view);
-  }
-
-  private getStoredActiveView(): string {
-    return localStorage.getItem('activeView') || 'tables';
-  }
-
-  private storeActiveView(view: string): void {
-    localStorage.setItem('activeView', view);
   }
 }

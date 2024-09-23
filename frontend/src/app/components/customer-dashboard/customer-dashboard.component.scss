@@ -45,3 +45,41 @@
     border-bottom: 1px solid #e2e2e2;
   }
 }
+
+
+.sidenav {
+  position: fixed;
+  top: 0;
+  right: -250px;
+  width: 250px;
+  height: 100%;
+  background-color: #fff;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+  transition: right 0.3s ease;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.sidenav.open {
+  right: 0;
+}
+
+.sidenav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidenav-body {
+  margin-top: 1rem;
+}
+
+.sidenav-body ul {
+  padding: 0;
+  list-style-type: none;
+}
+
+.sidenav-body li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #ddd;
+}

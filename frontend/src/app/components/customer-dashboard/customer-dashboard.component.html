@@ -1,40 +1,79 @@
 <div class="container-fluid">
   <div class="row bg-red text-dark p-2 px-1 align-items-center">
-    <div class="col">
-      <img width="30%" src="assets/img/ordore.png">
+    <div class="col" style="line-height: 0.4;">
+      <h2 class="text-danger m-0">MENU</h2>
+      <ng-container *ngIf="userData$ | async as userData">
+        <small class="m-0">CODE: {{ userData?.tableOtp }}</small>
+      </ng-container>
     </div>
-    <div class="col-5 text-end d-flex align-items-center">
-      <button mat-stroked-button color="primary" (click)="lookOrders();" class="mx-2">ORDERS</button>
-      <button mat-icon-button (click)="logout()">
-        <mat-icon>exit_to_app</mat-icon>
+    <div class="col-auto text-end d-flex align-items-center">
+      <button mat-raised-button color="primary" (click)="lookOrders();" class="mx-2">BILL</button>
+      <button mat-icon-button (click)="openSidenav()">
+        <mat-icon class="animate__animated animate__rotateIn">settings_account_box</mat-icon>
       </button>
     </div>
   </div>
 
-  <div class="row mt-3 mb-3 px-1 align-items-center">
+  <div class="sidenav" [ngClass]="{ 'open': isSidenavOpen }">
+    <div class="sidenav-header">
+      <mat-icon (click)="closeSidenav()">close</mat-icon>
+      <!-- <h4>User Details</h4>
+      <ng-container *ngIf="userData$ | async as userData">
+        <p>{{ userData?.tableOtp }}</p>
+      </ng-container> -->
+    </div>
+
+    <hr />
+
+    <div class="sidenav-body">
+      <h4 class="text-danger">Home</h4>
+      <h4>Group Members</h4>
+      <h4 (click)="lookOrders();">Your Bill</h4>
+      <!-- <ul>
+        <ng-container *ngIf="users$ | async as users">
+          <li *ngFor="let user of users">
+            <p><strong>Name:</strong> {{ user.name }}</p>
+          </li>
+        </ng-container>
+      </ul> -->
+    </div>
+    <!-- <hr class="mb-3" /> -->
+    <button style="    position: absolute;
+    bottom: 28px;
+    left: 22px;
+    width: 82%;" mat-raised-button color="primary" class="d-flex mt-3" (click)="logout()">
+      Logout
+    </button>
+  </div>
+  <!-- <div class="row mt-3 mb-3 px-1 align-items-center">
     <div class="col">
-      <h2 class="text-danger m-0">MENU</h2>
+
     </div>
     <div class="col text-end">
+      <ng-container *ngIf="userData$ | async as userData">
+        <p>{{ userData?.tableOtp }}</p>
+      </ng-container>
+    </div>
+  </div> -->
+
+  <div class="row mt-3 mb-3 px-1 align-items-center animate__animated animate__fadeInLeft animate__faster">
+    <div class="col">
+      <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()"
+        class="form-control ds-input" id="search-input" placeholder="Search..." dir="auto">
+    </div>
+    <div class="col-auto">
       <mat-slide-toggle [checked]="isVegetarian" (change)="toggleVegetarian()">
-        PURE VEG
+        VEG
       </mat-slide-toggle>
     </div>
   </div>
 
-  <div class="row mt-3 mb-3 px-1 align-items-center">
-    <div class="col">
-      <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()" class="form-control ds-input" id="search-input" placeholder="Search..." 
-      dir="auto">
-    </div>
-  </div>
-
-  <mat-tab-group #tabGroup (selectedIndexChange)="onTabChange($event)">
+  <mat-tab-group class="animate__animated animate__fadeInRight animate__faster" #tabGroup (selectedIndexChange)="onTabChange($event)">
     <mat-tab *ngFor="let category of categories" [label]="category">
     </mat-tab>
   </mat-tab-group>
-  
-  <div class="menu-items mt-3">
+
+  <div class="menu-items mt-3 animate__animated animate__fadeInRight animate__faster">
     <ng-container *ngIf="getFilteredMenuItems() | async as filteredItems">
       <mat-card *ngFor="let item of filteredItems" class="p-0 mb-3">
         <mat-card-content>
@@ -43,9 +82,9 @@
               <h3 class="mb-1"><strong>{{ item.name }}</strong></h3>
               <p>{{ item.description }}</p>
               <h4>₹{{ item.price }}</h4>
-              <p [ngClass]="{'text-success': item.isInStock, 'text-danger': !item.isInStock}">
+              <!-- <p [ngClass]="{'text-success': item.isInStock, 'text-danger': !item.isInStock}">
                 {{ item.isInStock ? 'In Stock' : 'Out of Stock' }}
-              </p>
+              </p> -->
             </div>
             <div class="col-4">
               <img [src]="getImageUrl(item.imageUrl)" [alt]="item.name" class="img-fluid rounded">
@@ -71,10 +110,11 @@
     </ng-container>
   </div>
 
-  <div class="fixed-bottom bg-danger text-white p-3 animate__animated animate__slideInUp animate__faster" *ngIf="getCartItemCount() > 0">
+  <div class="fixed-bottom bg-danger text-white p-3 animate__animated animate__slideInUp animate__faster"
+    *ngIf="getCartItemCount() > 0">
     <div class="row align-items-center" (click)="viewCart()">
       <div class="col-6 cart-item-desc">
-        {{ getCartItemCount() }} Item{{ getCartItemCount() !== 1 ? 's' : '' }} Added
+        {{ getCartItemCount() }} Item{{ getCartItemCount() !== 1 ? 's' : '' }} | ₹{{ getTotalPrice() }}
       </div>
       <div class="col-6 text-end">
         <h3 class="m-0 text-white"><strong>VIEW CART</strong></h3>

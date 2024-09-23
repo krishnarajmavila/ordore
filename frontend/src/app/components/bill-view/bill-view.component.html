@@ -1,14 +1,17 @@
 <div class="container-fluid">
     <div class="row bg-red text-dark p-2 px-1 align-items-center">
-      <div class="col align-items-center d-flex">
-        <mat-icon (click)="goBack()">keyboard_backspace</mat-icon>
-        <h2 class="m-0 px-2 text-danger">BILL</h2> 
+      <div class="col">
+        <img width="30%" src="assets/img/ordore.png" alt="Ordore Logo">
       </div>
       <div class="col-auto text-end d-flex align-items-center">
         <button mat-icon-button (click)="logout()">
           <mat-icon>exit_to_app</mat-icon>
         </button>
       </div>
+    </div>
+    <div class="header mb-2 mt-2 d-flex align-items-center justify-content-between">
+      <mat-icon (click)="goBack()">keyboard_backspace</mat-icon>
+      <h2 class="m-0 px-2 text-danger">ORDERS</h2>
     </div>
     <div class="container p-0">
       <ng-container *ngIf="orders && orders.length > 0; else noOrders">

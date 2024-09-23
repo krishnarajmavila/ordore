@@ -1,11 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { OrderService, Order } from '../../services/order.service';
 import { CustomerService } from '../../services/customer-service.service';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -16,13 +16,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
+import { MatTabsModule } from '@angular/material/tabs';
 import { ReactiveFormsModule } from '@angular/forms';
 
 @Component({
-  selector: 'app-order-details',
+  selector: 'app-bill-view',
   standalone: true,
-  imports: [ CommonModule,
+  imports: [
+    CommonModule,
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
@@ -34,44 +35,76 @@ import { ReactiveFormsModule } from '@angular/forms';
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatSlideToggleModule,
-    MatTabsModule],
-  templateUrl: './order-details.component.html',
-  styleUrls: ['./order-details.component.scss']
+    MatTabsModule
+  ],
+  templateUrl: './bill-view.component.html',
+  styleUrls: ['./bill-view.component.scss']
 })
-export class OrderDetailsComponent implements OnInit {
+export class BillViewComponent implements OnInit {
+  @Output() backToOrderManagement = new EventEmitter<void>();
+  @Input() tableOtp: string | null = null;
+  
   orders: Order[] = [];
+  selectedTable: any = null;
+  tables: any[] = [];
+  showOrderManagement = false;
+  isLoading = false;
 
   constructor(
     private orderService: OrderService,
     private customerService: CustomerService,
     private router: Router,
     private authService: AuthService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
-    const customerInfo = this.customerService.getCustomerInfo();
-    console.log('hoy', customerInfo);
-    if (customerInfo && customerInfo.tableOtp) {
-      this.orderService.getOrdersByTableOtp(customerInfo.tableOtp).subscribe(
-        (orders) => {
-          this.orders = orders;
-        },
-        (error) => {
-          console.error('Error fetching orders:', error);
-        }
-      );
-    } else {
-      console.error('No table OTP found for the customer');
+    if (this.tableOtp) {
+      this.loadOrdersAndSelectTable(this.tableOtp);
     }
   }
-  lookDashboard(){
-    this.router.navigate(['/customer-dashboard']);
+
+  loadOrdersAndSelectTable(tableOtp: string) {
+    this.isLoading = true;
+    this.orderService.getOrdersByTableOtp(tableOtp).subscribe(
+      (orders) => {
+        this.orders = orders;
+        this.selectedTable = this.tables.find(table => table.otp === tableOtp);
+        if (!this.selectedTable) {
+          // If table is not found in the existing list, create a temporary one
+          this.selectedTable = { otp: tableOtp };
+        }
+        this.showOrderManagement = true;
+        this.isLoading = false;
+      },
+      (error) => {
+        console.error('Error fetching orders:', error);
+        this.isLoading = false;
+      }
+    );
   }
+
+  onTableSelected(table: any) {
+    this.selectedTable = table;
+    this.showOrderManagement = true;
+    this.loadOrdersAndSelectTable(table.otp);
+  }
+
+  onBackToTableSelection() {
+    this.selectedTable = null;
+    this.showOrderManagement = false;
+    this.backToOrderManagement.emit();
+  }
+
+  lookDashboard() {
+    this.backToOrderManagement.emit();
+  }
+
   logout() {
     this.authService.logout();
-    this.router.navigate(['/customer-login']);
+    this.router.navigate(['login']);
   }
-  // Calculate Subtotal
+
   subTotal() {
     let total = 0;
     this.orders.forEach(order => {
@@ -82,22 +115,19 @@ export class OrderDetailsComponent implements OnInit {
     return total;
   }
 
-  // Calculate Service Charge (5% of Subtotal)
   serviceCharge() {
     return this.subTotal() * 0.05;
   }
 
-  // Calculate GST (5% on Food)
   gst() {
     return this.subTotal() * 0.05;
   }
 
-  // Calculate Total
   total() {
     return this.subTotal() + this.serviceCharge() + this.gst();
   }
 
   goBack() {
-    this.router.navigate(['/customer-dashboard']);
+    this.backToOrderManagement.emit();
   }
 }

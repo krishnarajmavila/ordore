@@ -121,10 +121,13 @@ export class AuthService {
       localStorage.removeItem(this.tokenKey);
       localStorage.removeItem(this.userTypeKey);
       localStorage.removeItem(this.otpRequestedKey);
+      localStorage.removeItem('otpUserData');
       localStorage.removeItem(this.otpVerifiedKey);
     }
   }
-
+  getUsersByTableOtp(tableOtp: string): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/otp-users/users-by-table-otp/${tableOtp}`);
+  }
   setOtpRequested(requested: boolean): void {
     if (this.isBrowser) {
       localStorage.setItem(this.otpRequestedKey, requested ? 'true' : 'false');

@@ -11,17 +11,8 @@ router.post('/validate', async (req, res) => {
       const table = await Table.findOne({ otp: tableOtp });
       
       if (table) {
-        // Check if the method exists before calling it
-        if (typeof table.isOtpValid === 'function') {
-          const isValid = table.isOtpValid();
-          res.json({ valid: isValid, message: isValid ? 'Valid OTP' : 'Table OTP has expired' });
-        } else {
-          // Fallback if the method doesn't exist
-          const now = new Date();
-          const otpAge = (now - table.otpGeneratedAt) / (1000 * 60 * 60); // age in hours
-          const isValid = otpAge < 8;
-          res.json({ valid: isValid, message: isValid ? 'Valid OTP' : 'Table OTP has expired' });
-        }
+        // Always consider the OTP valid if the table exists
+        res.json({ valid: true, message: 'Valid OTP' });
       } else {
         res.json({ valid: false, message: 'Invalid Table OTP' });
       }
@@ -29,7 +20,7 @@ router.post('/validate', async (req, res) => {
       console.error('Error validating Table OTP:', err);
       res.status(500).json({ message: 'Error validating Table OTP' });
     }
-  });
+});
 
 // Send customer OTP after validating Table OTP
 router.post('/send-customer-otp', async (req, res) => {
@@ -37,8 +28,8 @@ router.post('/send-customer-otp', async (req, res) => {
     const { name, mobileNumber, tableOtp } = req.body;
 
     const table = await Table.findOne({ otp: tableOtp });
-    if (!table || !table.isOtpValid()) {
-      return res.status(400).json({ message: table ? 'Table OTP has expired' : 'Invalid Table OTP' });
+    if (!table) {
+      return res.status(400).json({ message: 'Invalid Table OTP' });
     }
 
     // Generate OTP

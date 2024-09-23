@@ -37,6 +37,7 @@ interface Table {
 export class ReportingService {
   private apiUrl = `${environment.apiUrl}/orders`;
   private tableApiUrl = `${environment.apiUrl}/tables`;
+  private repoapiUrl = `${environment.apiUrl}/reports`;
   private ordersSubject = new BehaviorSubject<Order[]>([]);
   private refreshInterval: any;
 
@@ -199,5 +200,10 @@ export class ReportingService {
     }
     console.error('Error in OrderService:', errorMessage);
     return throwError(() => new Error(errorMessage));
+  }
+
+  getReportbillData(date: Date): Observable<any> {
+    const formattedDate = date.toISOString().split('T')[0];
+    return this.http.get<any>(`${this.repoapiUrl}?date=${formattedDate}`);
   }
 }

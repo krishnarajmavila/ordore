@@ -1,1 +1,126 @@
-<p>billing-dashboard works!</p>
+<mat-sidenav-container class="sidenav-container w-100">
+    <mat-sidenav mode="side" opened>
+      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%" src="assets/img/ordore.png" alt="Ordore Logo" />
+      <mat-nav-list class="mx-2">
+        <mat-list-item class="mt-2" (click)="activeView = 'billing'" [class.active]="activeView === 'billing'">
+          <mat-icon>attach_money</mat-icon> Bill Dashboard
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="activeView = 'managebill'" [class.active]="activeView === 'managebill'">
+          <mat-icon>assignment</mat-icon> Manage Bill
+        </mat-list-item>
+      </mat-nav-list>
+    </mat-sidenav>
+    <mat-sidenav-content>
+      <div *ngIf="activeView === 'billing'">
+        <div class="headers d-flex align-items-center justify-content-between mb-4">
+          <h2 class="m-0">Manage Tables</h2>
+          <div class="d-flex align-items-center"> 
+            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          </div>
+        </div>
+        <div class="container-fluid px-4">
+          <div class="row">
+            <div class="col">
+              <h2 class="m-0">Billing Statistics</h2>
+            </div>
+            <div class="col-3 text-end">
+              <mat-form-field appearance="outline">
+                <mat-label>Choose a date</mat-label>
+                <input matInput [matDatepicker]="picker" [(ngModel)]="selectedDate" (dateChange)="onDateChange($event)">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker #picker></mat-datepicker>
+              </mat-form-field>
+            </div>
+          </div>
+  
+          <!-- KPIs -->
+          <div class="row mt-4">
+            <div class="col-md-3">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Daily Revenue</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <p>{{ reportData.dailyRevenue | currency }}</p>
+                </mat-card-content>
+              </mat-card>
+            </div>
+            <div class="col-md-3">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Monthly Revenue</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <p>{{ reportData.monthlyRevenue | currency }}</p>
+                </mat-card-content>
+              </mat-card>
+            </div>
+            <div class="col-md-3">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Order Count</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <p>{{ reportData.orderCount }}</p>
+                </mat-card-content>
+              </mat-card>
+            </div>
+            <div class="col-md-3">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Avg Order Value</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <p>{{ reportData.averageOrderValue | currency }}</p>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+          <hr>
+  
+          <!-- Charts -->
+          <div class="mt-4 mb-5">
+            <div class="row mt-5">
+              <div class="col-md-6">
+                <h2>Revenue Breakdown</h2>
+                <div style="height: 300px;">
+                  <canvas baseChart
+                    [data]="revenueChartData"
+                    [options]="barChartOptions"
+                    [type]="'bar'">
+                  </canvas>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <h2>Order Metrics Over Time</h2>
+                <div style="height: 300px;">
+                  <canvas baseChart
+                    [data]="orderChartData"
+                    [options]="lineChartOptions"
+                    [type]="'line'">
+                  </canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  <div *ngIf="activeView === 'managebill'">
+      <div *ngIf="!selectedTable">
+        <app-dining-area-overview 
+          [tables]="tables" 
+          (tableSelected)="onTableSelected($event)">
+        </app-dining-area-overview>
+      </div>
+      <div *ngIf="selectedTable && currentOrder">
+        <button mat-raised-button color="primary" (click)="backToOverview()">Back to Table Overview</button>
+        <app-bill-view
+        *ngIf="showOrderCheck"
+        [tableOtp]="selectedTableOtp"
+        (backToOrderManagement)="onBackToOrderManagement()">
+      </app-bill-view>
+      </div>
+    </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>

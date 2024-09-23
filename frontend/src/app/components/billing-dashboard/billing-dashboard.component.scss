@@ -1,0 +1,10 @@
+@import url(../cook-dashboard/cook-dashboard.component.scss);
+
+
+.sidebar { background-color: #f8f9fa; padding: 20px; height: 100vh; overflow-y: auto; }
+.main-content { padding: 20px; height: 100vh; overflow-y: auto; }
+mat-card { margin-bottom: 20px; }
+mat-list-item { cursor: pointer; }
+mat-list-item.active { background-color: #e0e0e0; }
+.mat-column-items { flex: 2; }
+.mat-column-price { flex: 1; }

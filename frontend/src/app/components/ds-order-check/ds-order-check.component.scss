@@ -1,0 +1,113 @@
+:root {
+    --primary-color: #4CAF50;
+    --secondary-color: #FFA500;
+    --background-color: #ffffff;
+    --separator-color: #ed9090;
+}
+
+
+.confirmation-card {
+    max-width: 400px;
+    margin: 2rem auto;
+    // min-height: 500px;
+    border-radius: 15px 15px 0 0;
+    // box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    border: none;
+    background-color: rgb(235, 241, 245) !important;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    line-height: 1.9;
+}
+.pay-button {
+    width: 100%;
+    height: 56px;
+    font-size: 18px;
+    font-weight: bold;
+  }
+.dashed-separator {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background-image: linear-gradient(to right, #a7a7a7 50%, transparent 50%);
+    background-size: 10px 1px;
+    background-repeat: repeat-x;
+}
+
+.dashed-separator::before,
+.dashed-separator::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-color: #ffffff;
+    border-radius: 50%;
+}
+
+.dashed-separator::before {
+    left: -27px;
+    top: -9px;
+}
+
+.dashed-separator::after {
+    right: -27px;
+    top: -9px;
+}
+
+.dashed-separator-top {
+    top: 10px;
+}
+
+.dashed-separator-bottom {
+    bottom: 10px;
+}
+
+.wavy-border {
+    position: absolute;
+    bottom: -7px;
+    left: 0;
+    width: 100%;
+    height: 26px;
+    background-image: radial-gradient(
+        circle at 15px 21px,
+        #ffffff 9px,
+        rgb(235, 241, 245) 11px);
+    background-size: 28px 27px;
+    background-repeat: repeat-x;
+}
+
+.wavy-border::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    background-color: #ffffff;
+}
+.card-body{
+    box-shadow: unset;
+}
+.success-icon {
+    width: 60px;
+    height: 60px;
+    background-color: var(--secondary-color);
+    border: 3px solid var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1rem auto;
+}
+
+.btn-custom {
+    background-color: var(--primary-color);
+    border: none;
+}
+
+.btn-custom:hover {
+    background-color: #45a049;
+}
+

@@ -12,6 +12,7 @@ import { CartComponent } from './components/cart/cart.component';
 import { OrderDetailsComponent } from './components/order-details/order-details.component';
 import { DiningSpecialistComponent } from './components/dining-specialist/dining-specialist.component';
 import { OrderManagementComponent } from './components/order-management/order-management.component';
+import { DsOrderCheckComponent } from './components/ds-order-check/ds-order-check.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -42,17 +43,18 @@ export const routes: Routes = [
     canActivate: [otpGuard]
   },
   { 
+    path: 'dsorder-check', 
+    component: DsOrderCheckComponent, 
+    canActivate: [authGuard]
+  },
+  { 
     path: 'billing-dashboard', 
-    component: BillingDashboardComponent
+    component: BillingDashboardComponent,
+    canActivate: [authGuard]
   },
   { 
     path: 'dining-specialist', 
     component: DiningSpecialistComponent, 
-    canActivate: [authGuard]
-  },
-  {
-    path: 'dining-specialist',
-    component: DiningSpecialistComponent,
     canActivate: [authGuard]
   },
   {

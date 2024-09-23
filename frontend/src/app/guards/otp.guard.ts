@@ -19,6 +19,6 @@ export const otpGuard = (route: any, state: any) => {
   }
 
   console.warn('otpGuard - OTP not requested or verified, redirecting to /customer-login');
-  router.navigate(['/customer-login']);
+  // router.navigate(['/customer-login']);
   return false;
 };
