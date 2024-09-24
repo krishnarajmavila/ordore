@@ -34,10 +34,13 @@ interface ReportData {
 }
 
 interface Table {
+  _id?: string;
   number: string;
   capacity: number;
   isOccupied: boolean;
   otp: string;
+  otpGeneratedAt: Date;
+  hasOrders?: boolean;
 }
 
 interface ExtendedOrder extends Order {
@@ -75,10 +78,13 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
   @ViewChild(BaseChartDirective) chart: BaseChartDirective | undefined;
 
   tables: Table[] = Array(10).fill(0).map((_, i) => ({
+    _id: Math.random().toString(36).substr(2, 9),
     number: (i + 1).toString(),
     capacity: Math.floor(Math.random() * 4) + 2,
     isOccupied: Math.random() > 0.5,
-    otp: Math.random().toString(36).substring(7).toUpperCase()
+    otp: Math.random().toString(36).substring(7).toUpperCase(),
+    otpGeneratedAt: new Date(),
+    hasOrders: Math.random() > 0.7
   }));
 
   selectedTable: Table | null = null;
@@ -86,18 +92,13 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
   billNumber = '34468';
   kotNumber = '123399,123412';
   cashier = 'SHIV RAUT';
-  activeView: 'billing' | 'managebill' = 'billing';
+  activeView: 'billing' | 'managebill' = 'managebill';
   selectedDate: Date = new Date();
-  reportData: ReportData = {
-    dailyRevenue: 0,
-    monthlyRevenue: 0,
-    orderCount: 0,
-    averageOrderValue: 0,
-    orderHistory: []
-  };
+  reportData: ReportData = this.getDefaultReportData();
 
-  showOrderCheck = false; // Add this property
-  selectedTableOtp: string | null = null; // Add this property
+  showOrderCheck = false;
+  selectedTableOtp: string | null = null;
+  selectedTableNumber: string | null = null;
 
   revenueChartData: ChartData<'bar'> = {
     labels: ['Daily Revenue', 'Monthly Revenue'],
@@ -110,18 +111,7 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
     ]
   };
 
-  orderChartData: ChartData<'line'> = {
-    labels: [],
-    datasets: [
-      {
-        data: [],
-        label: 'Order Count',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.1
-      }
-    ]
-  };
+  orderChartData: ChartData<'line'> = this.getDefaultOrderChartData();
 
   barChartOptions: ChartConfiguration['options'] = {
     responsive: true,
@@ -211,65 +201,90 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
     this.reportingService.getReportbillData(this.selectedDate).subscribe({
       next: (data) => {
         console.log('Received report data:', data);
-        this.reportData = data;
+        this.reportData = data || this.getDefaultReportData();
         this.updateCharts();
       },
       error: (error) => {
         console.error('Error loading report data:', error);
+        this.reportData = this.getDefaultReportData();
+        this.updateCharts();
       }
     });
   }
 
   onTableSelected(table: Table) {
     this.selectedTable = table;
-    this.selectedTableOtp = table.otp; // Set selected table OTP
-    this.currentOrder = {
-      _id: Math.random().toString(36).substr(2, 9),
-      items: [
-        { name: 'Pizza', price: 12.99, quantity: 1 },
-        { name: 'Soda', price: 2.50, quantity: 2 },
-      ],
-      totalPrice: 17.99,
-      customerName: 'John Doe',
-      phoneNumber: '123-456-7890',
-      tableOtp: table.otp,
-      status: 'Pending',
-      createdAt: new Date(),
-      tableNumber: table.number,
-      guestName: 'John Doe',
-      date: new Date(),
-      steward: 'Jane Smith'
-    };
-    this.showOrderCheck = true; // Show bill view
+    this.selectedTableOtp = table.otp;
+    this.selectedTableNumber = table.number;
+    this.showOrderCheck = true;
+    this.activeView = 'managebill';
+
+    this.orderService.getOrdersByTableOtp(table.otp).subscribe({
+      next: (orders) => {
+        if (orders.length > 0) {
+          const latestOrder = orders[orders.length - 1];
+          this.currentOrder = {
+            ...latestOrder,
+            tableNumber: table.number,
+            guestName: latestOrder.customerName,
+            date: new Date(latestOrder.createdAt),
+            steward: 'Jane Smith'
+          };
+        } else {
+          this.currentOrder = null;
+        }
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Error fetching orders for table:', error);
+        this.currentOrder = null;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   backToOverview() {
     this.selectedTable = null;
     this.currentOrder = null;
-    this.showOrderCheck = false; // Hide bill view
+    this.showOrderCheck = false;
+    this.selectedTableNumber = null;
+    this.activeView = 'managebill';
   }
 
   onBackToOrderManagement() {
-    this.backToOverview(); // Use existing method to navigate back
+    this.backToOverview();
   }
 
   updateCharts() {
+    if (!this.reportData) {
+      console.error('Report data is undefined');
+      return;
+    }
+
     this.revenueChartData = {
       ...this.revenueChartData,
       datasets: [{
         ...this.revenueChartData.datasets[0],
-        data: [this.reportData.dailyRevenue, this.reportData.monthlyRevenue]
+        data: [
+          this.reportData.dailyRevenue || 0,
+          this.reportData.monthlyRevenue || 0
+        ]
       }]
     };
 
-    this.orderChartData = {
-      ...this.orderChartData,
-      labels: this.reportData.orderHistory.map(item => item.date),
-      datasets: [{
-        ...this.orderChartData.datasets[0],
-        data: this.reportData.orderHistory.map(item => item.orderCount)
-      }]
-    };
+    if (this.reportData.orderHistory && Array.isArray(this.reportData.orderHistory)) {
+      this.orderChartData = {
+        ...this.orderChartData,
+        labels: this.reportData.orderHistory.map(item => item.date),
+        datasets: [{
+          ...this.orderChartData.datasets[0],
+          data: this.reportData.orderHistory.map(item => item.orderCount)
+        }]
+      };
+    } else {
+      console.warn('Order history is missing or not an array');
+      this.orderChartData = this.getDefaultOrderChartData();
+    }
 
     this.cdr.detectChanges();
 
@@ -302,9 +317,31 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
     this.loadReportData();
   }
 
-
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  private getDefaultReportData(): ReportData {
+    return {
+      dailyRevenue: 0,
+      monthlyRevenue: 0,
+      orderCount: 0,
+      averageOrderValue: 0,
+      orderHistory: []
+    };
+  }
+
+  private getDefaultOrderChartData(): ChartData<'line'> {
+    return {
+      labels: [],
+      datasets: [{
+        data: [],
+        label: 'Order Count',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.1
+      }]
+    };
   }
 }

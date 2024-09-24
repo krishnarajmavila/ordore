@@ -1,1 +1,31 @@
-<p>dining-area-overview works!</p>
+<div class="headers d-flex align-items-center justify-content-between mb-4">
+    <h2 class="m-0">Manage Bill</h2>
+    <div class="d-flex align-items-center">
+      <button (click)="onLogout()" class="logout-button" mat-raised-button color="warn">Logout</button>
+    </div>
+  </div>
+  <div class="container-fluid px-4">
+    <h2>Dining Area Overview</h2>
+    <div class="table-grid" *ngIf="!(isLoading$ | async); else loading">
+      <mat-card *ngFor="let table of tables$ | async"
+                (click)="onTableSelect(table)"
+                [class.occupied]="table.isOccupied"
+                [class.has-orders]="table.hasOrders"
+                [matTooltip]="getTableTooltip(table)" >
+        <mat-card-content>
+          <div class="table-info">
+            <mat-icon>restaurant</mat-icon>
+            <h2>Table {{table.number}}</h2>
+            <p>Capacity: {{table.capacity}}</p>
+            <p>OTP: {{table.otp}}</p>
+            <mat-icon [class.occupied-icon]="table.isOccupied">
+              {{table.isOccupied ? 'people' : 'person_outline'}}
+            </mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <ng-template #loading>
+      <p>Loading tables...</p>
+    </ng-template>
+  </div>

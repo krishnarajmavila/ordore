@@ -73,7 +73,7 @@ export class AuthService {
   getUsername(): string | null {
     if (this.isBrowser) {
       const userNameKey = localStorage.getItem(this.userNameKey);
-      console.log('UserName retrieved from localStorage:', userNameKey);
+      // console.log('UserName retrieved from localStorage:', userNameKey);
       return userNameKey;
     }
     return null;
@@ -81,14 +81,14 @@ export class AuthService {
   setToken(token: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.tokenKey, token);
-      console.log('Token set in localStorage:', token);
+      // console.log('Token set in localStorage:', token);
     }
   }
 
   getToken(): string | null {
     if (this.isBrowser) {
       const token = localStorage.getItem(this.tokenKey);
-      console.log('Token retrieved from localStorage:', token);
+      // console.log('Token retrieved from localStorage:', token);
       return token;
     }
     return null;
@@ -97,14 +97,14 @@ export class AuthService {
   setUserType(userType: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.userTypeKey, userType);
-      console.log('UserType set in localStorage:', userType);
+      // console.log('UserType set in localStorage:', userType);
     }
   }
 
   getUserType(): string | null {
     if (this.isBrowser) {
       const userType = localStorage.getItem(this.userTypeKey);
-      console.log('UserType retrieved from localStorage:', userType);
+      // console.log('UserType retrieved from localStorage:', userType);
       return userType;
     }
     return null;
@@ -112,7 +112,7 @@ export class AuthService {
 
   isLoggedIn(): boolean {
     const loggedIn = !!this.getToken();
-    console.log('isLoggedIn check result:', loggedIn);
+    // console.log('isLoggedIn check result:', loggedIn);
     return loggedIn;
   }
 

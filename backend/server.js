@@ -11,6 +11,7 @@ const tableRoutes = require('./routes/tableRoutes');
 const tableOtpRoutes = require('./routes/tableOtpRoutes');
 const otpUserRoutes = require('./routes/otpUserRoutes'); 
 const reportRoutes = require('./routes/reportRoutes');
+const billRoutes = require('./routes/billRoutes'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -42,6 +43,7 @@ app.use('/api/tables', tableRoutes);
 app.use('/api/table-otp', tableOtpRoutes);
 app.use('/api/otp-users', otpUserRoutes); 
 app.use('/api/reports', reportRoutes);
+app.use('/api/bills', billRoutes);
 
 const orderRoutes = require('./routes/orderRoutes')(io);
 app.use('/api/orders', orderRoutes);

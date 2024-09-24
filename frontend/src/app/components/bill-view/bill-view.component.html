@@ -1,71 +1,165 @@
-<div class="container-fluid">
-    <div class="row bg-red text-dark p-2 px-1 align-items-center">
-      <div class="col">
-        <img width="30%" src="assets/img/ordore.png" alt="Ordore Logo">
+<div class="headers d-flex align-items-center justify-content-between mb-4">  
+  <div class="d-flex align-items-center">   
+    <mat-icon (click)="goBack()">keyboard_backspace</mat-icon>   
+    <h2 class="m-0 mx-3">Bill View for Table {{tableNumber}}</h2>  
+  </div>   
+  <div class="d-flex align-items-center">     
+    <button (click)="logout()" class="logout-button" mat-raised-button color="warn">Logout</button>   
+  </div>
+</div> 
+
+<div class="container-fluid px-4">
+  <div class="row">
+    <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+      <h3>Update Bill</h3>
+      <form [formGroup]="billForm" (ngSubmit)="updateBill()">   
+        <mat-form-field appearance="outline">
+          <mat-label>Restaurant Name</mat-label>
+          <input matInput formControlName="restaurantName">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Company Name</mat-label>
+          <input matInput formControlName="companyName">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Address Line 1</mat-label>
+          <input matInput formControlName="addressLine1">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Address Line 2</mat-label>
+          <input matInput formControlName="addressLine2">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Address Line 3</mat-label>
+          <input matInput formControlName="addressLine3">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Pincode</mat-label>
+          <input matInput formControlName="pincode">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>GSTIN</mat-label>
+          <input matInput formControlName="gstin">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Cashier Name</mat-label>
+          <input matInput formControlName="cashierName">
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" type="submit" [disabled]="!isFormValid()">Update</button>
+      </form>
+    </div>
+    <div class="col-6 position-relative">
+      <img *ngIf="confirmBill" src="assets/img/paid.png" class="paid-seal animate__animated animate__bounceIn">
+      <div class="bill-container">
+        <div class="bill">
+          <div class="logo">≈≈≈</div>
+          <div class="header">
+            <div>{{ billForm.get('restaurantName')?.value }}</div>
+            <div>{{ billForm.get('companyName')?.value }}</div>
+            <div>{{ billForm.get('addressLine1')?.value }}</div>
+            <div>{{ billForm.get('addressLine2')?.value }}</div>
+            <div>{{ billForm.get('addressLine3')?.value }}</div>
+            <div>{{ billForm.get('pincode')?.value }}</div>
+            <div>GSTIN : {{ billForm.get('gstin')?.value }}</div>
+          </div>
+          <div class="divider"></div>
+          <div>
+            <div>Bill No: {{ billNumber }}</div>
+            <div>Date: {{ currentDate | date:'dd/MMM/yy HH:mm' }}</div>
+            <div>TableNo: {{ tableNumber || 'N/A' }} Pax: {{ selectedTable?.capacity || 'N/A' }}</div>
+            <div>Steward: {{ orders[0]?.customerName?.includes('(DS)') ? orders[0].customerName : 'N/A' }}</div>
+            <div>Guest: {{ !orders[0]?.customerName?.includes('(DS)') ? (orders[0]?.customerName || 'N/A') : 'N/A' }}</div>
+          </div>
+          <div class="divider"></div>
+          <div class="items">
+            <ng-container *ngIf="orders && orders.length > 0; else noOrders">
+              <ng-container *ngFor="let order of orders">
+                <ng-container *ngFor="let item of order.items">
+                  <div class="item">
+                    <div class="item-details">{{ item.quantity }} {{ item.name }}</div>
+                    <div class="amount">{{ item.price * item.quantity | currency:'INR':'symbol':'1.2-2' }}</div>
+                  </div>
+                  <div class="item">
+                    <div class="item-details">{{ item.quantity }} x {{ item.price | currency:'INR':'symbol':'1.2-2' }}</div>
+                    <div class="amount"></div>
+                  </div>
+                </ng-container>
+              </ng-container>
+            </ng-container>
+          </div>
+          <div class="divider"></div>
+          <div class="total">
+            <div class="item">
+              <div>Total Amount</div>
+              <div class="amount">{{ subTotal() | currency:'INR':'symbol':'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="taxes">
+            <div class="item">
+              <div>SC 5%</div>
+              <div class="amount">{{ serviceCharge() | currency:'INR':'symbol':'1.2-2' }}</div>
+            </div>
+            <div class="item">
+              <div>GST 5%</div>
+              <div class="amount">{{ gst() | currency:'INR':'symbol':'1.2-2' }}</div>
+            </div>
+            <div class="item">
+              <div>Round Off</div>
+              <div class="amount">{{ (total() - Math.floor(total())) | currency:'INR':'symbol':'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="total">
+            <div class="item">
+              <div>Gross Amount</div>
+              <div class="amount">{{ Math.floor(total()) | currency:'INR':'symbol':'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div>
+            <div>KOT NO: {{ kotNumber }}</div>
+            <div>Total Items: {{ getTotalItems() }}</div>
+            <div>UserID/Cashier: {{ billForm.get('cashierName')?.value }}</div>
+          </div>
+          <div class="signature">
+            <div>Guest Signature</div>
+          </div>
+          <div class="footer">
+            <div>Thank You visit again</div>
+            <div>Guest Copy</div>
+          </div>
+        </div>
       </div>
-      <div class="col-auto text-end d-flex align-items-center">
-        <button mat-icon-button (click)="logout()">
-          <mat-icon>exit_to_app</mat-icon>
+    </div>
+    <div class="col-3">
+      <button mat-raised-button color="warn" class="pay-button" (click)="printBill()">Print</button>
+      <div class="authorization-text mt-4">
+        <mat-checkbox [(ngModel)]="isAuthorized">I authorize the payment of this bill</mat-checkbox>
+        <button 
+          mat-raised-button 
+          color="warn" 
+          (click)="onPaymentCompleted();"
+          class="pay-button mt-2"  
+          [disabled]="!isAuthorized">
+          Payment Completed
         </button>
       </div>
-    </div>
-    <div class="header mb-2 mt-2 d-flex align-items-center justify-content-between">
-      <mat-icon (click)="goBack()">keyboard_backspace</mat-icon>
-      <h2 class="m-0 px-2 text-danger">ORDERS</h2>
-    </div>
-    <div class="container p-0">
-      <ng-container *ngIf="orders && orders.length > 0; else noOrders">
-        <div class="confirmation-card m-0">
-          <div class="card-body item-body p-3">
-            <h2 class="mb-1">Customer Details</h2>
-            <div class="order-container mb-3">
-              <div class="d-flex justify-content-between">
-                <h3 class="m-0">{{orders[0].customerName}}</h3>
-                <h3 class="m-0">{{orders[0].phoneNumber}}</h3>
-              </div>
-            </div>
-            <h2 class="mb-1">Orders</h2>
-            <div *ngFor="let order of orders" class="order-container">
-              <ng-container *ngFor="let item of order.items">
-                <div class="d-flex justify-content-between">
-                  <p class="m-0">{{ item.name }} x {{ item.quantity }}</p>
-                  <p class="m-0">{{ item.price * item.quantity | currency: 'INR' }}</p>
-                </div>
-              </ng-container>
-            </div>
-          </div>
-        </div>
-        <div class="confirmation-card mt-0 pt-4" style="border-radius: 0;">
-          <div class="card-body item-body p-3">
-            <h2 class="mb-1">Total Bill</h2>
-            <div class="dashed-separator dashed-separator-top"></div>
-            <div class="wavy-border"></div>
-            <div class="d-flex justify-content-between">
-              <p class="m-0">Sub Total:</p>
-              <p class="m-0">{{ subTotal() | currency: 'INR' }}</p>
-            </div>
-            <div class="d-flex justify-content-between">
-              <p class="m-0">Service Charge (5%):</p>
-              <p class="m-0">{{ serviceCharge() | currency: 'INR' }}</p>
-            </div>
-            <div class="d-flex justify-content-between">
-              <p class="m-0">GST (5% on Food):</p>
-              <p class="m-0">{{ gst() | currency: 'INR' }}</p>
-            </div>
-            <div class="d-flex justify-content-between">
-              <p class="m-0 font-weight-bold">Total:</p>
-              <p class="m-0 font-weight-bold">{{ total() | currency: 'INR' }}</p>
-            </div>
-          </div>
-        </div>
-        <button mat-raised-button color="warn" class="pay-button animate__animated animate__pulse animate__faster">PAY NOW</button>
-      </ng-container>
-      <ng-template #noOrders>
-        <div class="no-orders-message text-center p-5">
-          <mat-icon class="large-icon text-danger">restaurant_menu</mat-icon>
-          <h3>No Orders Yet</h3>
-          <p>Your order list is empty. Start by adding some delicious items to your order!</p>
-        </div>
-      </ng-template>
+      
     </div>
   </div>
+</div>
+<ng-template #noOrders>
+  <div class="no-orders-message">
+    <mat-icon>restaurant_menu</mat-icon>
+    <h3>No Orders Yet</h3>
+    <p>Order list is empty. Start by adding some delicious items to your order!</p>
+  </div>
+</ng-template>

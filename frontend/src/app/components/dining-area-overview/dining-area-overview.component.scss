@@ -1,0 +1,29 @@
+@import url(../cook-dashboard/cook-dashboard.component.scss);
+.table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  mat-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  mat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  .occupied {
+    background-color: #ffcccb;
+  }
+  .has-orders {
+    background-color: #90ee90;
+  }
+  .occupied-icon {
+    color: #ff4444;
+  }
+  .table-info {
+    text-align: center;
+  }
+  .has-orders {
+    background-color: rgb(255, 216, 216) !important;
+  }
