@@ -4,10 +4,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node backend/server.js",
-    "heroku-postbuild": "cd frontend && npm install && npm install @angular/cli --save && npm run build"
+    "heroku-postbuild": "cd frontend && npm install && npm run build"
   },
   "engines": {
-    "node": ">=18.13.0"
+    "node": ">=18.13.0",
+    "npm": "10.x"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
