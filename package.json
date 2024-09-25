@@ -4,7 +4,7 @@
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
-    "heroku-postbuild": "npm install -g @angular/cli && cd frontend && npm install && ng build --configuration production"
+    "heroku-postbuild": "npm install -g @angular/cli && npm install --save-dev @angular-devkit/build-angular && cd frontend && npm install && ng build --configuration production"
   },
   "engines": {
     "node": "20.x",
