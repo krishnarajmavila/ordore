@@ -4,10 +4,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node backend/server.js",
-  "heroku-postbuild": "npm install --prefix frontend && npm run build --prefix frontend"
+"heroku-postbuild": "npm install --prefix frontend && npm run build --prefix frontend"
+
   },
 "engines": {
   "node": ">=18.19.0",
+
   "npm": ">=9.5.0"
 },
   "dependencies": {
