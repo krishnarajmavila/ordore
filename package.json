@@ -6,10 +6,10 @@
     "start": "node backend/server.js",
   "heroku-postbuild": "npm install -g @angular/cli && cd frontend && npm install && npm run build"
   },
-  "engines": {
-    "node": "18.14.2",
-    "npm": "9.5.0"
-  },
+"engines": {
+  "node": ">=18.19.0",
+  "npm": ">=9.5.0"
+},
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
