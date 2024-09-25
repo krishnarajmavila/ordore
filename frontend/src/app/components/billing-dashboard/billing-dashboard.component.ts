@@ -44,7 +44,6 @@ interface Table {
 }
 
 interface ExtendedOrder extends Order {
-  tableNumber: string;
   guestName: string;
   date: Date;
   steward: string;
@@ -225,7 +224,6 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
           const latestOrder = orders[orders.length - 1];
           this.currentOrder = {
             ...latestOrder,
-            tableNumber: table.number,
             guestName: latestOrder.customerName,
             date: new Date(latestOrder.createdAt),
             steward: 'Jane Smith'

@@ -89,19 +89,18 @@ export class CustomerService {
   isOtpValidLocally(): boolean {
     if (!this.customerInfo || !this.customerInfo.otpTimestamp) return false;
     const isValid = (Date.now() - this.customerInfo.otpTimestamp) < this.OTP_VALIDITY_PERIOD;
-    console.log('Local OTP validity:', isValid);
+   
     return isValid;
   }
 
   validateOtpWithServer(): Observable<boolean> {
     if (!this.customerInfo || !this.customerInfo.tableOtp) {
-      console.log('No customer info or table OTP');
+     
       return of(false);
     }
 
     return this.authService.validateTableOtp(this.customerInfo.tableOtp).pipe(
       map(response => {
-        console.log('Server OTP validation response:', response);
         if (response.valid && response.tableNumber) {
           this.setTableNumber(response.tableNumber);
         }
@@ -116,7 +115,6 @@ export class CustomerService {
 
   sendCustomerOtp(name: string, mobileNumber: string): Observable<{ message: string }> {
     if (!this.customerInfo || !this.customerInfo.tableOtp) {
-      console.log('No customer info or table OTP');
       return of({ message: 'No table OTP available' });
     }
 

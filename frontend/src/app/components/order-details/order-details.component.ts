@@ -50,7 +50,6 @@ export class OrderDetailsComponent implements OnInit {
 
   ngOnInit() {
     const customerInfo = this.customerService.getCustomerInfo();
-    console.log('hoy', customerInfo);
     if (customerInfo && customerInfo.tableOtp) {
       this.orderService.getOrdersByTableOtp(customerInfo.tableOtp).subscribe(
         (orders) => {

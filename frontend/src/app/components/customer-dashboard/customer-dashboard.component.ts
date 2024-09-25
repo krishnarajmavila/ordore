@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule, MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +21,7 @@ import { CartService, CartItem } from '../../services/cart.service';
 import { Observable, BehaviorSubject, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { WebSocketService } from '../../services/web-socket.service';
+import { CustomerService } from '../../services/customer-service.service';
 
 @Component({
   selector: 'app-customer-dashboard',
@@ -56,7 +57,8 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   cartItems: CartItem[] = [];
   searchQuery: string = '';
   isSidenavOpen: boolean = false;
-
+  horizontalPosition: MatSnackBarHorizontalPosition = 'center';
+  verticalPosition: MatSnackBarVerticalPosition = 'top';
   private menuItemsSubject = new BehaviorSubject<MenuItem[]>([]);
   menuItems$ = this.menuItemsSubject.asObservable();
   private menuUpdateSubscription!: Subscription;
@@ -72,7 +74,9 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     private authService: AuthService,
     private router: Router,
     private cartService: CartService,
-    private webSocketService: WebSocketService
+    private webSocketService: WebSocketService,
+    private snackBar: MatSnackBar,
+    private customerService: CustomerService
   ) {}
 
   ngOnInit() {
@@ -140,9 +144,11 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
       quantity: 1
     });
   }
+
   getTotalPrice(): number {
     return this.cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
+
   decreaseQuantity(item: MenuItem) {
     this.cartService.removeFromCart(item._id);
   }
@@ -272,5 +278,19 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
 
   closeSidenav() {
     this.isSidenavOpen = false;
+  }
+
+  callWaiter() {
+    const customerInfo = this.customerService.getCustomerInfo();
+    if (customerInfo && customerInfo.tableOtp) {
+      this.webSocketService.emit('callWaiter', { tableOtp: customerInfo.tableOtp });
+      this.snackBar.open('Waiter has been called', 'Close', {       duration: 5000,
+        horizontalPosition: this.horizontalPosition,
+        verticalPosition: this.verticalPosition });
+    } else {
+      this.snackBar.open('Unable to call waiter. Please try again.', 'Close', {       duration: 5000,
+        horizontalPosition: this.horizontalPosition,
+        verticalPosition: this.verticalPosition });
+    }
   }
 }

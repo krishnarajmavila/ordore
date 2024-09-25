@@ -51,10 +51,6 @@ export class CustomerLoginComponent implements OnInit {
   ngOnInit() {
     // Add this to debug form state changes
     this.loginForm.statusChanges.subscribe(status => {
-      console.log('Form status:', status);
-      console.log('Form valid:', this.loginForm.valid);
-      console.log('Form values:', this.loginForm.value);
-      console.log('Form errors:', this.loginForm.errors);
     });
   }
 
@@ -66,7 +62,6 @@ export class CustomerLoginComponent implements OnInit {
       
       this.authService.sendOtp(name, fullMobileNumber, tableOtp).subscribe({
         next: (response) => {
-          console.log('OTP sent successfully', response);
           this.authService.setOtpData(fullMobileNumber, name, tableOtp);
           this.router.navigate(['/verify-otp']);
         },

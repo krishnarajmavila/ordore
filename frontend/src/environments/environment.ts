@@ -1,5 +1,5 @@
 export const environment = {
     production: false,
-    apiUrl: 'http://localhost:5001/api',
-    wsUrl: 'http://localhost:5001' 
+    apiUrl: 'https://ordore-2af9914fb46d.herokuapp.com/api',
+    wsUrl: 'https://ordore-2af9914fb46d.herokuapp.com/' 
   };

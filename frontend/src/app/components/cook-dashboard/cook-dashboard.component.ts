@@ -158,11 +158,9 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
       this.orderService.deleteOrder(orderId).subscribe({
         next: () => {
-          console.log('Order deleted successfully');
           this.loadOrders();
         },
         error: (error) => {
-          console.error('Error deleting order:', error);
           alert(`Failed to delete order. ${error.message}`);
         }
       });

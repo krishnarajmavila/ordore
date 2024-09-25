@@ -18,6 +18,7 @@ export interface Order {
   customerName: string;
   phoneNumber: string;
   tableOtp: string;
+  tableNumber: number;  // Added tableNumber
   status: string;
   createdAt: Date;
 }

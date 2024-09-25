@@ -60,11 +60,9 @@ export class OtpVerificationComponent implements OnInit {
   onVerifyOtp() {
     if (this.otpForm.valid) {
       const otp = this.otpForm.value.otp;
-      console.log('Verifying OTP:', otp);
       this.authService.verifyOtp(this.mobileNumber, otp, this.tableOtp).subscribe({
         next: (response) => {
           if (response.valid) {
-            console.log('OTP verified successfully', response);
             this.authService.clearOtpRequested();
             this.authService.setOtpVerified(true);
 
@@ -78,10 +76,8 @@ export class OtpVerificationComponent implements OnInit {
             // Save OTP user data
             this.saveOtpUser();
 
-            console.log('Navigating to customer dashboard');
             this.router.navigate(['/customer-dashboard']);
           } else {
-            console.log('Invalid OTP received');
             this.snackBar.open('Invalid OTP. Please try again.', 'Close', {
               duration: 5000,
               horizontalPosition: this.horizontalPosition,
@@ -90,7 +86,6 @@ export class OtpVerificationComponent implements OnInit {
           }
         },
         error: (error) => {
-          console.error('Error verifying OTP', error);
           this.snackBar.open('Error verifying OTP. Please try again.', 'Close', {
             duration: 5000,
             horizontalPosition: this.horizontalPosition,
@@ -110,7 +105,6 @@ export class OtpVerificationComponent implements OnInit {
 
     this.http.post(`${environment.apiUrl}/otp-users/save-otp-user`, userData).subscribe({
       next: (response) => {
-        console.log('OTP user data saved successfully', response);
         localStorage.setItem('otpUserData', JSON.stringify(userData));
       },
       error: (error) => {

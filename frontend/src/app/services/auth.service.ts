@@ -46,15 +46,14 @@ export class AuthService {
   }
 
   login(credentials: { username: string; password: string; userType: string }): Observable<AuthResponse> {
-    console.log('Login attempt with credentials:', JSON.stringify(credentials));
+  
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       tap(response => {
-        console.log('Received login response:', JSON.stringify(response));
         if (response && response.token) {
           this.setToken(response.token);
           this.setUserType(response.userType);
           this.setUsername(response.username);
-          console.log('After setting - Token:', this.getToken(), 'UserType:', this.getUserType(), 'getUsername:', this.getUsername());
+         
         }
       }),
       catchError(error => {
@@ -66,14 +65,13 @@ export class AuthService {
   setUsername(username: string) {
     if (this.isBrowser) {
       localStorage.setItem(this.userNameKey, username);
-      console.log('UserName set in localStorage:', username);
+    
     }
   }
 
   getUsername(): string | null {
     if (this.isBrowser) {
       const userNameKey = localStorage.getItem(this.userNameKey);
-      // console.log('UserName retrieved from localStorage:', userNameKey);
       return userNameKey;
     }
     return null;
@@ -81,14 +79,12 @@ export class AuthService {
   setToken(token: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.tokenKey, token);
-      // console.log('Token set in localStorage:', token);
     }
   }
 
   getToken(): string | null {
     if (this.isBrowser) {
       const token = localStorage.getItem(this.tokenKey);
-      // console.log('Token retrieved from localStorage:', token);
       return token;
     }
     return null;
@@ -97,14 +93,12 @@ export class AuthService {
   setUserType(userType: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.userTypeKey, userType);
-      // console.log('UserType set in localStorage:', userType);
     }
   }
 
   getUserType(): string | null {
     if (this.isBrowser) {
       const userType = localStorage.getItem(this.userTypeKey);
-      // console.log('UserType retrieved from localStorage:', userType);
       return userType;
     }
     return null;
@@ -112,7 +106,6 @@ export class AuthService {
 
   isLoggedIn(): boolean {
     const loggedIn = !!this.getToken();
-    // console.log('isLoggedIn check result:', loggedIn);
     return loggedIn;
   }
 

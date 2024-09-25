@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
+const Table = require('../models/Table');
 const ArchivedOrder = require('../models/archivedOrder.model');
 
 module.exports = function(io) {
@@ -9,18 +10,24 @@ module.exports = function(io) {
     try {
       const { items, totalPrice, customerName, phoneNumber, tableOtp } = req.body;
       
+      // Find the table with the given OTP
+      const table = await Table.findOne({ otp: tableOtp });
+      if (!table) {
+        return res.status(404).json({ message: 'Table not found' });
+      }
+
       const newOrder = new Order({
         items,
         totalPrice,
         customerName,
         phoneNumber,
         tableOtp,
+        tableNumber: table.number,
         status: 'pending'
       });
 
       const savedOrder = await newOrder.save();
       
-      // Emit the 'newOrder' event only if io is defined
       if (io && typeof io.emit === 'function') {
         io.emit('newOrder', savedOrder);
       }
@@ -60,7 +67,6 @@ module.exports = function(io) {
         return res.status(404).json({ message: 'Order not found' });
       }
 
-      // Emit the 'orderUpdated' event only if io is defined
       if (io && typeof io.emit === 'function') {
         io.emit('orderUpdated', updatedOrder);
       }
@@ -71,6 +77,7 @@ module.exports = function(io) {
     }
   });
 
+  // DELETE route to delete a completed order and archive it
   router.delete('/:id', async (req, res) => {
     try {
       const { id } = req.params;

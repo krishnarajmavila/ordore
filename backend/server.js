@@ -12,6 +12,7 @@ const tableOtpRoutes = require('./routes/tableOtpRoutes');
 const otpUserRoutes = require('./routes/otpUserRoutes'); 
 const reportRoutes = require('./routes/reportRoutes');
 const billRoutes = require('./routes/billRoutes'); 
+const waiterCallRoutes = require('./routes/waiterCallRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,7 @@ app.use('/api/table-otp', tableOtpRoutes);
 app.use('/api/otp-users', otpUserRoutes); 
 app.use('/api/reports', reportRoutes);
 app.use('/api/bills', billRoutes);
+app.use('/api/waiter-calls', waiterCallRoutes);
 
 const orderRoutes = require('./routes/orderRoutes')(io);
 app.use('/api/orders', orderRoutes);
@@ -60,6 +62,11 @@ io.on('connection', (socket) => {
     io.emit('menuUpdate', updatedItem);
   });
 
+  socket.on('callWaiter', (data) => {
+    console.log('Waiter call received:', data);
+    io.emit('waiterCalled', data);
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
@@ -72,46 +79,3 @@ console.log('Environment variables:');
 console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'Is set' : 'Is not set');
 console.log('TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? 'Is set' : 'Is not set');
 console.log('TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER);
-
-
-// const express = require('express');
-// const path = require('path');
-// const http = require('http');
-// const fs = require('fs');
-// const cors = require('cors');
-// const connectDB = require('./config/database');
-// const authRoutes = require('./routes/auth');
-// const foodRoutes = require('./routes/food');
-// const otpRoutes = require('./routes/otpRoutes');
-// const tableRoutes = require('./routes/tableRoutes');
-// const tableOtpRoutes = require('./routes/tableOtpRoutes');
-// const otpUserRoutes = require('./routes/otpUserRoutes');
-
-// const app = express();
-// const server = http.createServer(app);
-
-// // Connect to the database
-// connectDB();
-
-// app.use(cors());
-// app.use(express.json());
-
-// // Serve static files from the Angular build
-// const angularAppPath = path.join(__dirname, '../frontend/dist/frontend/browser');
-// app.use(express.static(angularAppPath));
-
-// // API routes
-// app.use('/api/auth', authRoutes);
-// app.use('/api/food', foodRoutes);
-// app.use('/api/auth', otpRoutes);
-// app.use('/api/tables', tableRoutes);
-// app.use('/api/table-otp', tableOtpRoutes);
-// app.use('/api/otp-users', otpUserRoutes);
-
-// // Serve the Angular app for all other routes
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(angularAppPath, 'index.html'));
-// });
-
-// const PORT = process.env.PORT || 5001;
-// server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

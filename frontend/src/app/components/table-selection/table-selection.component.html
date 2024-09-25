@@ -3,30 +3,40 @@
     <img width="30%" src="assets/img/ordore.png">
   </div>
   <div class="col-auto text-end d-flex align-items-center text-right">
-    <!-- <button mat-stroked-button color="primary"  class="mx-2">ORDERS</button> -->
     <button mat-icon-button (click)="logout()">
       <mat-icon>exit_to_app</mat-icon>
     </button>
   </div>
 </div>
+
 <div class="row mt-0 mb-3 mt-3 px-1 align-items-center">
   <div class="col px-3">
     <h2 class="text-danger m-0">DINE IN</h2>
   </div>
 </div>
+
 <div class="container-fluid">
   <div class="row row-cols-3 g-4">
     <div class="col-6" *ngFor="let table of tables$ | async">
-      <div class="card h-100" [ngClass]="{'has-orders': table.hasOrders}" (click)="selectTable(table)" (touchend)="selectTable(table)">
+      <div class="card h-100" 
+           [ngClass]="{'has-orders': table.hasOrders, 'waiter-called': table.waiterCalled}" 
+           (click)="selectTable(table);" >
         <div class="card-body text-center">
           <h3 class="card-title mb-0">Table {{table.number}}</h3>
           <p class="card-text">Capacity: {{table.capacity}}</p>
         </div>
         <div class="card-footer d-flex align-items-center justify-content-between">
           <h4 class="card-subtitle m-0 text-muted">{{table.otp}}</h4>
-          <button class="ord-btn" (click)="refreshOTP(table); $event.stopPropagation();" title="Refresh OTP">
+        <div class="d-flex align-items-center">
+          <button class="ord-btn" (click)="refreshOTP(table, $event)" title="Refresh OTP">
             <mat-icon>autorenew</mat-icon>
           </button>
+          <ng-container *ngIf="table.waiterCalled">
+          <button class="ord-btn wait-btn ms-2" (click)="acknowledgeWaiterCall(table, $event);" title="Refresh OTP">
+            <mat-icon class="animate__animated animate__flash animate__infinite" color="yellow">back_hand</mat-icon>
+          </button>
+          </ng-container>
+        </div>
         </div>
       </div>
     </div>
