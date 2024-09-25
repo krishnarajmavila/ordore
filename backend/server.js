@@ -17,6 +17,7 @@ const waiterCallRoutes = require('./routes/waiterCallRoutes');
 const app = express();
 const server = http.createServer(app);
 
+// Initialize Socket.IO
 const io = require('socket.io')(server, {
   cors: {
     origin: "*",
@@ -24,6 +25,7 @@ const io = require('socket.io')(server, {
   }
 });
 
+// Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
@@ -34,6 +36,7 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from the 'uploads' directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
@@ -47,13 +50,25 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/bills', billRoutes);
 app.use('/api/waiter-calls', waiterCallRoutes);
 
+// Pass io to orderRoutes
 const orderRoutes = require('./routes/orderRoutes')(io);
 app.use('/api/orders', orderRoutes);
 
+// Add this route to serve uploaded images
 app.get('/uploads/:filename', (req, res) => {
     res.sendFile(path.join(__dirname, 'uploads', req.params.filename));
 });
 
+// Serve static files from the Angular app
+app.use(express.static(path.join(__dirname, '../frontend/dist/frontend/browser')));
+
+// For all GET requests, send back index.html
+// so that PathLocationStrategy can be used
+app.get('/*', function(req, res) {
+  res.sendFile(path.join(__dirname, '../frontend/dist/frontend/browser/index.html'));
+});
+
+// Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('New client connected');
 
