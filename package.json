@@ -7,8 +7,8 @@
     "heroku-postbuild": "cd frontend && npm install && npm run build"
   },
   "engines": {
-    "node": "18.x",
-    "npm": "9.x"
+    "node": "20.x",
+    "npm": "10.x"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
