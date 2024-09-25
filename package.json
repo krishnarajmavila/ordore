@@ -4,8 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node backend/server.js",
-"heroku-postbuild": "npm install --prefix frontend && npm install -g @angular/cli && npm run build --prefix frontend",
-  "postinstall": "npm install --prefix frontend"
+"heroku-postbuild": "npm install --prefix frontend && npm run build --prefix frontend"
 
   },
 "engines": {
