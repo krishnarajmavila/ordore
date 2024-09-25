@@ -1,27 +1,23 @@
 {
-  "name": "ordore-full-stack",
-  "version": "1.0.0",
-  "main": "backend/server.js",
-  "scripts": {
-    "start": "node backend/server.js",
-    "heroku-postbuild": "npm update && npm install -g @angular/cli && cd frontend && npm install && ng build --configuration production"
-  },
-  "engines": {
-    "node": "20.x",
-    "npm": "10.x"
-  },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
-    "dotenv": "^10.0.0",
-    "express": "^4.17.1",
-    "jsonwebtoken": "^8.5.1",
-    "mongoose": "^6.0.12",
-    "multer": "^1.4.5-lts.1",
-    "socket.io": "^4.7.5",
-    "twilio": "^5.3.0"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.22"
+    "name": "ordore-full-stack",
+    "version": "1.0.0",
+    "main": "server.js",
+    "scripts": {
+      "start": "node backend/server.js",
+      "heroku-postbuild": "cd frontend && npm install && npm run build"
+    },
+    "engines": {
+      "node": "14.x"
+    },
+    "dependencies": {
+      "bcryptjs": "^2.4.3",
+      "cors": "^2.8.5",
+      "dotenv": "^10.0.0",
+      "express": "^4.17.1",
+      "jsonwebtoken": "^8.5.1",
+      "mongoose": "^6.0.12",
+      "multer": "^1.4.5-lts.1",
+      "socket.io": "^4.7.5",
+      "twilio": "^5.3.0"
+    }
   }
-}
