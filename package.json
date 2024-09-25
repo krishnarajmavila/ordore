@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node backend/server.js",
-  "heroku-postbuild": "npm install -g @angular/cli && cd frontend && npm install && npm run build"
+  "heroku-postbuild": "cd frontend && npm install && npm run build && npm cache clean --force && npm install && npm run build"
   },
 "engines": {
   "node": ">=18.19.0",
