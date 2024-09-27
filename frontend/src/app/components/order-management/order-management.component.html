@@ -1,9 +1,7 @@
 <div class="container-fluid">
   <div class="row mt-3 mb-1 px-1 align-items-center">
     <div class="col">
-      <button class="ord-btn d-flex align-items-center" (click)="showCart ? goBackToMenu() : goBackToTableSelection()">
-        <mat-icon class="mx-2">keyboard_backspace</mat-icon>
-      </button>
+      <mat-icon (click)="showCart ? goBackToMenu() : goBackToTableSelection()" class="mx-2">keyboard_backspace</mat-icon>
     </div>
     <div class="col-auto text-end" style="line-height: 0.3;">
       <button mat-stroked-button color="primary" (click)="lookOrders();" class="mx-2">ORDERS (T{{table.number}})</button>
