@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subscription, forkJoin, of, timer } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap, take, distinctUntilChanged, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { MatIconModule } from '@angular/material/icon';
@@ -65,10 +65,11 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
     console.log('Tables input received:', value);
     const tablesWithWaiterStatus = this.applyPersistedWaiterStatus(value);
     this.tablesSubject.next(tablesWithWaiterStatus);
+    this.checkTablesForOrders();
   }
 
   ngOnInit() {
-    this.startPeriodicCheck();
+    this.setupWebSocketListeners();
     this.listenForWaiterCalls();
   }
 
@@ -90,25 +91,23 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
     const cardElement = (event.currentTarget as HTMLElement).closest('.card.h-100');
     if (cardElement) {
       cardElement.classList.add('clicked');
-      setTimeout(() => cardElement.classList.remove('clicked'), 300); // Adjust timeout as needed
+      setTimeout(() => cardElement.classList.remove('clicked'), 300);
     }
     this.otpRefreshRequested.emit(table);
   }
 
   acknowledgeWaiterCall(table: Table, event: Event) {
-    event.stopPropagation(); // Prevent click event from propagating
+    event.stopPropagation();
     const key = `waiterCalled_${table.number}`;
     localStorage.removeItem(key);
   
-    // Prepare the payload with the necessary tableId
     const payload = {
-      tableId: table._id || table.number, // Assuming _id or number is used as the identifier
+      tableId: table._id || table.number,
     };
   
     this.http.post(`${environment.apiUrl}/waiter-calls/acknowledge`, payload)
       .subscribe(
         () => {
-          // Update the waiter call status locally
           this.updateWaiterCallStatus(table.number, false);
           const updatedTables = this.tablesSubject.value.map(t =>
             t.number === table.number ? { ...t, waiterCalled: false } : t
@@ -116,52 +115,88 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
           this.tablesSubject.next(updatedTables);
           this.cdr.detectChanges();
           
-          // Emit a WebSocket event to inform other clients
           this.webSocketService.emit('waiterCallAcknowledged', { tableNumber: table.number });
   
           console.log(`Waiter call acknowledged for table ${table.number}`);
         },
         error => {
           console.error('Error acknowledging waiter call:', error);
-          // Optionally show an error notification
         }
       );
   }
-  
 
-  private startPeriodicCheck() {
+  private setupWebSocketListeners() {
+    // Listen for table updates
     this.subscription.add(
-      timer(0, 30000).pipe( // Check every 30 seconds
-        switchMap(() => this.checkTablesForOrders())
-      ).subscribe()
+      this.webSocketService.listen('tableUpdate').subscribe(
+        (updatedTable: Table) => {
+          console.log('Received tableUpdate event:', updatedTable);
+          const updatedTables = this.tablesSubject.value.map(table =>
+            table._id === updatedTable._id ? { ...table, ...updatedTable } : table
+          );
+          this.tablesSubject.next(updatedTables);
+          this.cdr.detectChanges();
+        },
+        error => console.error('Error in tableUpdate listener:', error)
+      )
+    );
+
+    // Listen for new orders
+    this.subscription.add(
+      this.webSocketService.listen('newOrder').subscribe(
+        (newOrder: Order) => {
+          console.log('Received newOrder event:', newOrder);
+          this.updateTableStatus(newOrder.tableOtp, true);
+        },
+        error => console.error('Error in newOrder listener:', error)
+      )
+    );
+
+    // Listen for order status changes
+    this.subscription.add(
+      this.webSocketService.listen('orderStatusChange').subscribe(
+        (data: { tableOtp: string, hasOrders: boolean }) => {
+          console.log('Received orderStatusChange event:', data);
+          this.updateTableStatus(data.tableOtp, data.hasOrders);
+        },
+        error => console.error('Error in orderStatusChange listener:', error)
+      )
     );
   }
 
-  private checkTablesForOrders(): Observable<Table[]> {
-    return this.tables$.pipe(
-      take(1),
-      switchMap(tables => {
-        if (tables.length === 0) {
-          return of([]);
-        }
-        const orderChecks = tables.map(table => 
-          this.getOrdersByTableOtp(table.otp).pipe(
-            map(orders => ({ 
-              ...table, 
-              hasOrders: orders.length > 0,
-              isOccupied: orders.length > 0
-            })),
-            catchError(() => of({ ...table, hasOrders: false, isOccupied: false }))
-          )
-        );
-        return forkJoin(orderChecks);
-      }),
-      distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
-      tap((updatedTables: Table[]) => {
-        console.log('Tables updated:', updatedTables);
+  private updateTableStatus(tableOtp: string, hasOrders: boolean) {
+    const updatedTables = this.tablesSubject.value.map(table => {
+      if (table.otp === tableOtp) {
+        return { ...table, hasOrders, isOccupied: hasOrders };
+      }
+      return table;
+    });
+    this.tablesSubject.next(updatedTables);
+    this.cdr.detectChanges();
+  }
+
+  private checkTablesForOrders() {
+    const tables = this.tablesSubject.value;
+    if (tables.length === 0) return;
+
+    const orderChecks = tables.map(table => 
+      this.getOrdersByTableOtp(table.otp).pipe(
+        map(orders => ({ 
+          ...table, 
+          hasOrders: orders.length > 0,
+          isOccupied: orders.length > 0
+        })),
+        catchError(() => of({ ...table, hasOrders: false, isOccupied: false }))
+      )
+    );
+
+    forkJoin(orderChecks).subscribe(
+      (updatedTables: Table[]) => {
+        console.log('Initial table status check:', updatedTables);
         this.tablesSubject.next(updatedTables);
         this.cdr.detectChanges();
-      })
+      },
+      error => console.error('Error checking initial table status:', error)
     );
   }
 

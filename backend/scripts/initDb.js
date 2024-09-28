@@ -12,7 +12,7 @@ const users = [
   { username: 'diningspecialist1', password: 'password123', userType: 'diningspecialist' },
 ];
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ordore', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://krishnarajmavila:oTxhfAchO2rErhS3@ordorecone.equ25.mongodb.net/', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
