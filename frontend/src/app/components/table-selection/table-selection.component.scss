@@ -28,3 +28,8 @@
   .card.h-100.clicked {
     pointer-events: none;
   }
+  ::ng-deep{
+    .mat-mdc-tab-header{
+     background-color: #F5F8FA;
+    }
+  }

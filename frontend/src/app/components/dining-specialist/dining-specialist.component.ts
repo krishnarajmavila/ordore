@@ -39,6 +39,7 @@ interface Table {
   _id?: string;
   number: string;
   capacity: number;
+  location?: string;
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;

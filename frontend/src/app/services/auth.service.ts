@@ -20,7 +20,7 @@ interface OtpVerifyResponse extends AuthResponse {
 interface TableOtpValidationResponse {
   valid: boolean;
   message?: string;
-  tableNumber?: number;
+  tableNumber?: String;
 }
 
 @Injectable({

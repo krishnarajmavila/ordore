@@ -4,11 +4,17 @@ import { BehaviorSubject, Observable, interval } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { switchMap, tap } from 'rxjs/operators';
 import { WebSocketService } from './web-socket.service';
-
+interface FoodType {
+  _id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
 export interface MenuItem {
   _id: string;
   name: string;
-  category: string;
+  category: FoodType;
   price: number;
   description?: string;
   isVegetarian?: boolean;

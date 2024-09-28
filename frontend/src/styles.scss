@@ -131,4 +131,7 @@ html{
   
     // Other adjustments as necessary
   }
-  
+  .menu-items{
+    display: flex !important;
+flex-wrap: wrap !important;
+}

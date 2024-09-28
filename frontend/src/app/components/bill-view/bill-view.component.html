@@ -8,7 +8,7 @@
   </div>
 </div> 
 
-<div class="container-fluid px-4">
+<div class="container px-4">
   <div class="row">
     <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
       <h3>Update Bill</h3>
@@ -139,15 +139,15 @@
         </div>
       </div>
     </div>
-    <div class="col-3">
-      <button mat-raised-button color="warn" class="pay-button" (click)="printBill()">Print</button>
+    <div class="col">
+      <button mat-raised-button color="warn" class="pay-button w-100" (click)="printBill()">Print</button>
       <div class="authorization-text mt-4">
         <mat-checkbox [(ngModel)]="isAuthorized">I authorize the payment of this bill</mat-checkbox>
         <button 
           mat-raised-button 
           color="warn" 
           (click)="onPaymentCompleted();"
-          class="pay-button mt-2"  
+          class="pay-button mt-2 w-100"  
           [disabled]="!isAuthorized">
           Payment Completed
         </button>

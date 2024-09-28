@@ -32,11 +32,17 @@ router.get('/', async (req, res) => {
 
 // Add a new table
 router.post('/', async (req, res) => {
-  const table = new Table({
+  const tableData = {
     number: req.body.number,
     capacity: req.body.capacity,
     otp: generateOTP()
-  });
+  };
+
+  if (req.body.location) {
+    tableData.location = req.body.location;
+  }
+
+  const table = new Table(tableData);
 
   try {
     const newTable = await table.save();
@@ -49,14 +55,20 @@ router.post('/', async (req, res) => {
 // Update a table
 router.put('/:id', async (req, res) => {
   try {
+    const updateData = {
+      number: req.body.number,
+      capacity: req.body.capacity,
+      isOccupied: req.body.isOccupied
+    };
+
+    if (req.body.location !== undefined) {
+      updateData.location = req.body.location;
+    }
+
     const updatedTable = await Table.findByIdAndUpdate(
       req.params.id,
-      {
-        number: req.body.number,
-        capacity: req.body.capacity,
-        isOccupied: req.body.isOccupied
-      },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!updatedTable) {
@@ -72,18 +84,25 @@ router.put('/:id', async (req, res) => {
 // Manually refresh OTP for a specific table
 router.post('/:id/refresh-otp', async (req, res) => {
   try {
-    const table = await Table.findById(req.params.id);
-    if (!table) {
+    const newOtp = generateOTP();
+    const updatedTable = await Table.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          otp: newOtp,
+          otpGeneratedAt: new Date()
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTable) {
       return res.status(404).json({ message: 'Table not found' });
     }
 
-    table.otp = generateOTP();
-    // We're no longer tracking when the OTP was generated
-    // table.otpGeneratedAt = new Date();
-    await table.save();
-
-    res.json(table);
+    res.json(updatedTable);
   } catch (err) {
+    console.error('Error refreshing OTP:', err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -91,7 +110,10 @@ router.post('/:id/refresh-otp', async (req, res) => {
 // Delete a table
 router.delete('/:id', async (req, res) => {
   try {
-    await Table.findByIdAndDelete(req.params.id);
+    const deletedTable = await Table.findByIdAndDelete(req.params.id);
+    if (!deletedTable) {
+      return res.status(404).json({ message: 'Table not found' });
+    }
     res.json({ message: 'Table deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });

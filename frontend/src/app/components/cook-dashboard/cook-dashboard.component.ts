@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -37,70 +37,75 @@ import { Table } from '../../interfaces/shared-interfaces';
 export class CookDashboardComponent implements OnInit, OnDestroy {
   private tablesSubject = new BehaviorSubject<Table[]>([]);
   tables$: Observable<Table[]> = this.tablesSubject.asObservable();
-  menuItems: MenuItem[] = [];
-  orders: Order[] = [];
+  menuItems$ = new BehaviorSubject<MenuItem[]>([]);
+  orders$ = new BehaviorSubject<Order[]>([]);
   orderStatuses: string[] = ['pending', 'preparing', 'ready', 'completed'];
   ordersByStatus: { [key: string]: Order[] } = {};
   activeView = 'orders';
-  private ordersSubscription?: Subscription;
-  private menuSubscription?: Subscription;
+  private subscriptions: Subscription[] = [];
+  private ordersMap = new Map<string, Order>();
 
   constructor(
     private menuService: MenuService,
     private orderService: OrderService,
     private authService: AuthService,
     private router: Router,
-    private webSocketService: WebSocketService
+    private webSocketService: WebSocketService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.loadMenuItems();
-    this.loadOrders();
-    this.orderService.startOrderRefresh(3000);
-    this.menuService.startMenuRefresh(3000);
+    console.log('CookDashboardComponent initialized');
+    this.loadInitialData();
     this.setupWebSocketListeners();
   }
 
   ngOnDestroy() {
-    if (this.ordersSubscription) {
-      this.ordersSubscription.unsubscribe();
-    }
-    if (this.menuSubscription) {
-      this.menuSubscription.unsubscribe();
-    }
-    this.orderService.stopOrderRefresh();
-    this.menuService.stopMenuRefresh();
+    console.log('CookDashboardComponent destroyed');
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.webSocketService.disconnect();
   }
 
-  loadMenuItems() {
-    this.menuSubscription = this.menuService.menuItems$.subscribe({
-      next: (items) => {
-        this.menuItems = items;
-      },
-      error: (error) => {
-        console.error('Error loading menu items:', error);
-      }
-    });
-  }
+  loadInitialData() {
+    console.log('Loading initial data');
+    
+    // Fetch menu items
+    this.menuService.fetchMenuItems();
+    this.subscriptions.push(
+      this.menuService.getMenuItems().subscribe(items => {
+        console.log('Received menu items:', items);
+        this.menuItems$.next(items);
+        this.cdr.detectChanges();
+      })
+    );
 
-  loadOrders() {
+    // Fetch orders
     this.orderService.fetchOrders();
-    this.ordersSubscription = this.orderService.getOrders().subscribe({
-      next: (orders) => {
-        this.orders = orders;
-        this.updateOrdersByStatus();
-      },
-      error: (error) => {
-        console.error('Error loading orders:', error);
-      }
-    });
+    this.subscriptions.push(
+      this.orderService.getOrders().subscribe(orders => {
+        console.log('Received orders:', orders);
+        this.updateOrdersList(orders);
+        this.cdr.detectChanges();
+      })
+    );
+  }
+
+  updateOrdersList(orders: Order[]) {
+    this.ordersMap.clear();
+    orders.forEach(order => this.ordersMap.set(order._id, order));
+    this.orders$.next(Array.from(this.ordersMap.values()));
+    this.updateOrdersByStatus();
   }
 
   updateOrdersByStatus() {
+    const orders = Array.from(this.ordersMap.values());
+    console.log('Updating orders by status. Total orders:', orders.length);
     this.ordersByStatus = {};
     this.orderStatuses.forEach(status => {
-      this.ordersByStatus[status] = this.orders.filter(order => order.status === status);
+      this.ordersByStatus[status] = orders.filter(order => order.status === status);
+      console.log(`Status ${status}:`, this.ordersByStatus[status].length);
     });
+    this.cdr.detectChanges();
   }
 
   drop(event: CdkDragDrop<Order[]>) {
@@ -122,18 +127,14 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
   }
 
   getStatusFromContainerId(containerId: string): string {
-    return containerId.split('-')[1]; // Assuming container IDs are in the format 'orders-status'
+    return containerId.split('-')[1];
   }
 
   updateOrderStatus(orderId: string, newStatus: string) {
     this.orderService.updateOrderStatus(orderId, newStatus).subscribe({
-      next: (updatedOrder) => {
-        console.log('Order status updated:', updatedOrder);
-        this.loadOrders(); // Reload all orders to ensure consistency
-      },
       error: (error) => {
         console.error('Error updating order status:', error);
-        this.loadOrders(); // Reload orders to revert any local changes
+        this.loadInitialData(); // Reload all data if update fails
       }
     });
   }
@@ -143,13 +144,11 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     this.menuService.updateStockStatus(item._id, newStockStatus).subscribe({
       next: (updatedItem) => {
         console.log('Stock status updated:', updatedItem);
-        // The menuItems array will be automatically updated via the BehaviorSubject in MenuService
         this.webSocketService.emit('stockUpdate', updatedItem);
       },
       error: (error) => {
         console.error('Error updating stock status:', error);
-        // Revert the local change if the API call fails
-        item.isInStock = !newStockStatus;
+        item.isInStock = !newStockStatus; // Revert the local change if the API call fails
       }
     });
   }
@@ -157,10 +156,8 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
   deleteOrder(orderId: string) {
     if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
       this.orderService.deleteOrder(orderId).subscribe({
-        next: () => {
-          this.loadOrders();
-        },
         error: (error) => {
+          console.error('Failed to delete order:', error);
           alert(`Failed to delete order. ${error.message}`);
         }
       });
@@ -176,7 +173,9 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
   }
 
   getUniqueCategories(): string[] {
-    return Array.from(new Set(this.menuItems.map(item => item.category)));
+    const categories = Array.from(new Set(this.menuItems$.value.map(item => item.category.name)));
+    console.log('Unique categories:', categories);
+    return categories;
   }
 
   logout() {
@@ -185,15 +184,44 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
   }
 
   private setupWebSocketListeners() {
-    this.webSocketService.listen('menuUpdate').subscribe((updatedItem: MenuItem) => {
-      const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
-      if (index !== -1) {
-        this.menuItems[index] = updatedItem;
-      }
-    });
+    console.log('Setting up WebSocket listeners');
+    this.subscriptions.push(
+      this.webSocketService.listen('menuUpdate').subscribe((updatedItem: MenuItem) => {
+        console.log('Received menuUpdate:', updatedItem);
+        const currentItems = this.menuItems$.value;
+        const index = currentItems.findIndex(item => item._id === updatedItem._id);
+        if (index !== -1) {
+          currentItems[index] = updatedItem;
+        } else {
+          currentItems.push(updatedItem);
+        }
+        this.menuItems$.next([...currentItems]);
+        this.cdr.detectChanges();
+      }),
 
-    this.webSocketService.listen('orderUpdate').subscribe((updatedOrder: Order) => {
-      this.loadOrders(); // Reload all orders when an update is received
-    });
+      this.webSocketService.listen('orderUpdate').subscribe((updatedOrder: Order) => {
+        console.log('Received orderUpdate:', updatedOrder);
+        this.ordersMap.set(updatedOrder._id, updatedOrder);
+        this.orders$.next(Array.from(this.ordersMap.values()));
+        this.updateOrdersByStatus();
+        this.cdr.detectChanges();
+      }),
+
+      this.webSocketService.listen('newOrder').subscribe((newOrder: Order) => {
+        console.log('Received newOrder:', newOrder);
+        this.ordersMap.set(newOrder._id, newOrder);
+        this.orders$.next(Array.from(this.ordersMap.values()));
+        this.updateOrdersByStatus();
+        this.cdr.detectChanges();
+      }),
+
+      this.webSocketService.listen('orderDeleted').subscribe((deletedOrderId: string) => {
+        console.log('Received orderDeleted:', deletedOrderId);
+        this.ordersMap.delete(deletedOrderId);
+        this.orders$.next(Array.from(this.ordersMap.values()));
+        this.updateOrdersByStatus();
+        this.cdr.detectChanges();
+      })
+    );
   }
 }

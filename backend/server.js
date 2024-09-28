@@ -13,6 +13,7 @@ const otpUserRoutes = require('./routes/otpUserRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const billRoutes = require('./routes/billRoutes'); 
 const waiterCallRoutes = require('./routes/waiterCallRoutes');
+const foodTypeRoutes = require('./routes/foodTypeRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -49,6 +50,7 @@ app.use('/api/otp-users', otpUserRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/bills', billRoutes);
 app.use('/api/waiter-calls', waiterCallRoutes);
+app.use('/api/food-types', foodTypeRoutes);
 
 // Pass io to orderRoutes
 const orderRoutes = require('./routes/orderRoutes')(io);

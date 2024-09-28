@@ -7,6 +7,7 @@ export interface Table {
   _id: string;
   number: string;
   capacity: number;
+  location?: string;  // Add the location property
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
@@ -28,8 +29,22 @@ export class TableService {
     return this.http.get<Table>(`${this.apiUrl}/${otp}`);
   }
 
-  // New method to update a table
   updateTable(tableId: string, updateData: Partial<Table>): Observable<Table> {
     return this.http.put<Table>(`${this.apiUrl}/${tableId}`, updateData);
+  }
+
+  // New method to add a table
+  addTable(tableData: Omit<Table, '_id' | 'otp' | 'otpGeneratedAt'>): Observable<Table> {
+    return this.http.post<Table>(this.apiUrl, tableData);
+  }
+
+  // New method to delete a table
+  deleteTable(tableId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${tableId}`);
+  }
+
+  // New method to refresh OTP
+  refreshOTP(tableId: string): Observable<Table> {
+    return this.http.post<Table>(`${this.apiUrl}/${tableId}/refresh-otp`, {});
   }
 }

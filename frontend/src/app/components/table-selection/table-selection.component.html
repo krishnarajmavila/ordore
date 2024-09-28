@@ -1,6 +1,6 @@
 <div class="row bg-red text-dark p-2 mb-4 px-1 align-items-center">
   <div class="col">
-    <h2 class="text-danger m-0">DINE IN</h2>
+    <h2 class="text-danger ps-2 m-0">TABLES</h2>
   </div>
   <div class="col-auto text-end d-flex align-items-center text-right">
     <button mat-icon-button (click)="logout()">
@@ -10,29 +10,70 @@
 </div>
 
 <div class="container-fluid">
-  <div class="row row-cols-3 g-4">
-    <div class="col-6" *ngFor="let table of tables$ | async">
-      <div class="card h-100" 
-           [ngClass]="{'has-orders': table.hasOrders, 'waiter-called': table.waiterCalled}" 
-           (click)="selectTable(table);" >
-        <div class="card-body text-center">
-          <h3 class="card-title mb-0">Table {{table.number}}</h3>
-          <p class="card-text">Capacity: {{table.capacity}}</p>
+  <!-- Mat Tabs for Dine In and Parcel -->
+  <mat-tab-group animationDuration="0ms" class="pt-3 pb-4" style="background-color: #fff !important;">
+    <!-- Dine In Tab -->
+    <mat-tab label="Dine In">
+      <div class="m-0 row row-cols-3 g-4">
+        <div class="col-6" *ngFor="let table of dineInTables$ | async">
+          <div class="card h-100" 
+               [ngClass]="{'has-orders': table.hasOrders, 'waiter-called': table.waiterCalled}" 
+               (click)="selectTable(table);" >
+            <div class="card-body text-center">
+              <h3 class="card-title mb-0">Table {{table.number}}</h3>
+              <p class="card-text">Capacity: {{table.capacity}}</p>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+              <h4 class="card-subtitle m-0 text-muted">{{table.otp}}</h4>
+              <div class="d-flex align-items-center">
+                <button class="ord-btn" (click)="refreshOTP(table, $event)" title="Refresh OTP">
+                  <mat-icon>autorenew</mat-icon>
+                </button>
+                <ng-container *ngIf="table.waiterCalled">
+                  <button class="ord-btn wait-btn ms-2" (click)="acknowledgeWaiterCall(table, $event);" title="Waiter Called">
+                    <mat-icon class="animate__animated animate__flash animate__infinite" color="yellow">back_hand</mat-icon>
+                  </button>
+                </ng-container>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card-footer d-flex align-items-center justify-content-between">
-          <h4 class="card-subtitle m-0 text-muted">{{table.otp}}</h4>
-        <div class="d-flex align-items-center">
-          <button class="ord-btn" (click)="refreshOTP(table, $event)" title="Refresh OTP">
-            <mat-icon>autorenew</mat-icon>
-          </button>
-          <ng-container *ngIf="table.waiterCalled">
-          <button class="ord-btn wait-btn ms-2" (click)="acknowledgeWaiterCall(table, $event);" title="Refresh OTP">
-            <mat-icon class="animate__animated animate__flash animate__infinite" color="yellow">back_hand</mat-icon>
-          </button>
-          </ng-container>
+      </div>
+    </mat-tab>
+
+    <!-- Parcel Tab -->
+    <mat-tab label="Take Away">
+      <div class="m-0 row row-cols-3 g-4">
+        <div class="col-6" *ngFor="let table of parcelTables$ | async">
+          <div class="card h-100" 
+               [ngClass]="{'has-orders': table.hasOrders, 'waiter-called': table.waiterCalled}" 
+               (click)="selectTable(table);" >
+            <div class="card-body text-center">
+              <h3 class="card-title mb-0">{{table.number}}</h3>
+              <!-- <p class="card-text">Capacity: {{table.capacity}}</p> -->
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between text-center">
+              <h4 class="card-subtitle m-0 text-muted">{{table.otp}}</h4>
+              <div class="d-flex align-items-center">
+                <button class="ord-btn" (click)="refreshOTP(table, $event)" title="Refresh OTP">
+                  <mat-icon>autorenew</mat-icon>
+                </button>
+                <ng-container *ngIf="table.waiterCalled">
+                  <button class="ord-btn wait-btn ms-2" (click)="acknowledgeWaiterCall(table, $event);" title="Waiter Called">
+                    <mat-icon class="animate__animated animate__flash animate__infinite" color="yellow">back_hand</mat-icon>
+                  </button>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div (click)="openAddTableDialog()" class="card pt-3 pb-3 h-100 justify-content-center text-center d-flex align-items-center" >
+            <mat-icon class="text-danger">add</mat-icon>
+          <button mat-button>Add Table</button>
         </div>
         </div>
       </div>
-    </div>
-  </div>
+    </mat-tab>
+  </mat-tab-group>
 </div>

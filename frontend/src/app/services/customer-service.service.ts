@@ -9,7 +9,7 @@ interface CustomerInfo {
   name: string;
   phoneNumber: string;
   tableOtp: string;
-  tableNumber?: number;
+  tableNumber?: String;
   otpTimestamp?: number;
 }
 
@@ -62,11 +62,11 @@ export class CustomerService {
     return this.customerInfo?.tableOtp || '';
   }
 
-  getTableNumber(): number | undefined {
+  getTableNumber(): String | undefined {
     return this.customerInfo?.tableNumber;
   }
 
-  setTableNumber(tableNumber: number): void {
+  setTableNumber(tableNumber: String): void {
     if (this.customerInfo) {
       this.customerInfo.tableNumber = tableNumber;
       this.saveCustomerInfo();

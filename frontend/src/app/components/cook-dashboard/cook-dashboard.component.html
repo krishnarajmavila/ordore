@@ -1,8 +1,7 @@
 <div class="kanban-layout">
   <mat-sidenav-container class="sidenav-container w-100">
     <mat-sidenav mode="side" opened>
-      <!-- <h2 class="mb-0 mx-3 pt-4">Menu</h2> -->
-      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%"  src="assets/img/ordore.png" />
+      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%" src="assets/img/ordore.png" />
       <mat-nav-list class="mx-2">
         <mat-list-item class="mt-2" (click)="activeView = 'orders'" [class.active]="activeView === 'orders'">
           <mat-icon>assignment</mat-icon> Manage Orders
@@ -16,8 +15,9 @@
       <div *ngIf="activeView === 'orders'">
         <div class="headers d-flex align-items-center justify-content-between">
           <h2 class="m-0">Hello Chef</h2>
-         <div class="d-flex align-items-center"> 
-          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button></div>
+          <div class="d-flex align-items-center"> 
+            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          </div>
         </div>
         <div class="kanban-board">
           <div cdkDropListGroup class="board-columns">
@@ -35,28 +35,11 @@
                   <p class="m-0">Orders from Person: {{ order.customerName }}</p>
                   <p class="m-0">Ordered On: {{ order.createdAt | date:'short' }}</p>
                   
-                  <!-- Add delete button for completed orders -->
                   <button *ngIf="status === 'completed'" 
                           (click)="deleteOrder(order._id)" 
                           class="btn btn-danger btn-sm mt-2">
                     Remove
                   </button>
-                </div>
-                <div class="col-6" *ngFor="let table of tables$ | async">
-                  <div class="card h-100" >
-                    <div class="card-body text-center">
-                      {{table | json}}
-                      <h3 class="card-title mb-0">Table {{table.number}}</h3>
-                      <p class="card-text">Capacity: {{table.capacity}}</p>
-                      <!-- <p class="card-text">{{table.isOccupied ? 'Occupied' : 'Available'}}</p> -->
-                    </div>
-                    <div class="card-footer d-flex align-items-center justify-content-between">
-                      <h4 class="card-subtitle m-0 text-muted">{{table.otp}}</h4>
-                      <button class="ord-btn" title="Refresh OTP">
-                        <mat-icon>autorenew</mat-icon>
-                         </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -76,8 +59,8 @@
               </mat-panel-title>
             </mat-expansion-panel-header>
             <div class="menu-items row">
-              <ng-container *ngFor="let item of menuItems">
-                <mat-card class="col-2" *ngIf="item.category === category">
+              <ng-container *ngFor="let item of (menuItems$ | async)">
+                <mat-card class="col-2" *ngIf="item.category.name === category">
                   <img *ngIf="item.imageUrl" class="img-fluid" [src]="getImageUrl(item.imageUrl)" [alt]="item.name">
                   <mat-card-header class="px-0">
                     <mat-card-title>{{ item.name }}</mat-card-title>
@@ -88,8 +71,7 @@
                     <p><strong>Price: {{ item.price | currency }}</strong></p>
                     <mat-slide-toggle
                       [checked]="item.isInStock"
-                      (change)="toggleStockStatus(item)"
-                    >
+                      (change)="toggleStockStatus(item)">
                       {{ item.isInStock ? 'In Stock' : 'Out of Stock' }}
                     </mat-slide-toggle>
                   </mat-card-content>

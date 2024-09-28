@@ -20,7 +20,7 @@ const ArchivedOrderSchema = new mongoose.Schema({
     customerName: String,
     phoneNumber: String,
     tableOtp: String,
-    tableNumber: Number,
+    tableNumber: String,
     status: String,
     createdAt: Date
   }

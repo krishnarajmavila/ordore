@@ -10,15 +10,18 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subscription, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { MatTabsModule } from '@angular/material/tabs';
 
 interface Table {
   _id?: string;
   number: string;
   capacity: number;
+  location?: string;  // Dine In or Parcel
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
   hasOrders?: boolean;
+  waiterCalled?: boolean;
 }
 
 interface Order {
@@ -34,7 +37,8 @@ interface Order {
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatTabsModule
   ],
   templateUrl: './dining-area-overview.component.html',
   styleUrls: ['./dining-area-overview.component.scss']
@@ -42,7 +46,8 @@ interface Order {
 export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   private tablesSubject = new BehaviorSubject<Table[]>([]);
   tables$: Observable<Table[]> = this.tablesSubject.asObservable();
-  
+  dineInTables$: Observable<Table[]>;
+  parcelTables$: Observable<Table[]>;
   private isLoadingSubject = new BehaviorSubject<boolean>(true);
   isLoading$ = this.isLoadingSubject.asObservable();
 
@@ -64,7 +69,14 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private authService: AuthService,
     private router: Router
-  ) {}
+  ) {
+    this.dineInTables$ = this.tables$.pipe(
+      map(tables => tables.filter(table => table.location !== 'Parcel - Take Away'))
+    );
+    this.parcelTables$ = this.tables$.pipe(
+      map(tables => tables.filter(table => table.location === 'Parcel - Take Away'))
+    );
+  }
 
   ngOnInit() {
     this.loadTablesFromDb();

@@ -2,13 +2,16 @@ const mongoose = require('mongoose');
 
 const TableSchema = new mongoose.Schema({
   number: {
-    type: Number,
-    required: true,
-    unique: true
+    type: String,
+    required: true
   },
   capacity: {
     type: Number,
     required: true
+  },
+  location: {
+    type: String,
+    required: false
   },
   isOccupied: {
     type: Boolean,

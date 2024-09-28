@@ -6,24 +6,30 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectionStrategy,
-  ChangeDetectorRef
+  ChangeDetectorRef,
+  ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTabsModule } from '@angular/material/tabs'; // Added for MatTabs
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subscription, forkJoin, of } from 'rxjs';
-import { catchError, map, switchMap, take, distinctUntilChanged, tap } from 'rxjs/operators';
+import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { WebSocketService } from '../../services/web-socket.service';
+import { FormGroup } from '@angular/forms';
+import { AddTableDialogComponent } from '../add-table-dialog/add-table-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
 
 interface Table {
   _id?: string;
   number: string;
   capacity: number;
+  location?: string;  // Dine In or Parcel
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
@@ -39,15 +45,19 @@ interface Order {
 @Component({
   selector: 'app-table-selection',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatTabsModule], // Added MatTabsModule
   templateUrl: './table-selection.component.html',
   styleUrls: ['./table-selection.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TableSelectionComponent implements OnInit, OnDestroy {
+  @ViewChild('addTableModal') addTableModal: any;
   private tablesSubject = new BehaviorSubject<Table[]>([]);
   tables$: Observable<Table[]> = this.tablesSubject.asObservable();
-  
+  // Separate observables for dine-in and parcel tables
+  dineInTables$: Observable<Table[]>;
+  parcelTables$: Observable<Table[]>;
+
   private subscription: Subscription = new Subscription();
 
   @Output() tableSelected = new EventEmitter<Table>();
@@ -58,8 +68,17 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private webSocketService: WebSocketService,
-    private cdr: ChangeDetectorRef
-  ) {}
+    private cdr: ChangeDetectorRef,
+    private dialog: MatDialog,
+  ) {
+    // Filter tables into Dine In and Parcel
+    this.dineInTables$ = this.tables$.pipe(
+      map(tables => tables.filter(table => table.location !== 'Parcel - Take Away'))
+    );
+    this.parcelTables$ = this.tables$.pipe(
+      map(tables => tables.filter(table => table.location === 'Parcel - Take Away'))
+    );
+  }
 
   @Input() set tables(value: Table[]) {
     console.log('Tables input received:', value);
@@ -85,6 +104,7 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
   selectTable(table: Table) {
     this.tableSelected.emit(table);
   }
+
 
   refreshOTP(table: Table, event: Event) {
     event.stopPropagation();
@@ -260,4 +280,19 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
       waiterCalled: localStorage.getItem(`waiterCalled_${table.number}`) === 'true'
     }));
   }
+
+  openAddTableDialog() {
+    const dialogRef = this.dialog.open(AddTableDialogComponent, {
+      width: '80%',
+      height: 'auto'
+    });
+
+    dialogRef.componentInstance.tableAdded.subscribe((newTable: Table) => {
+      // Logic to add the new table to the Parcel tab
+      const updatedTables = [...this.tablesSubject.value, newTable];
+      this.tablesSubject.next(updatedTables);
+      this.cdr.detectChanges();
+    });
+  }
+  
 }

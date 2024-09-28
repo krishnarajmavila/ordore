@@ -10,7 +10,10 @@ const OrderSchema = new mongoose.Schema({
   customerName: String,
   phoneNumber: String,
   tableOtp: String,
-  tableNumber: Number,
+  tableNumber: {
+    type: String,  // Change this from Number to String
+    required: true
+  },
   status: {
     type: String,
     enum: ['pending', 'preparing', 'ready', 'completed'],
@@ -21,5 +24,6 @@ const OrderSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
 
 module.exports = mongoose.model('Order', OrderSchema);

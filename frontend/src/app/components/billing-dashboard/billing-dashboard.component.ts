@@ -21,6 +21,7 @@ import { Chart, ChartConfiguration, ChartData } from 'chart.js';
 import { BaseChartDirective, NgChartsModule } from 'ng2-charts';
 import { DiningAreaOverviewComponent } from '../dining-area-overview/dining-area-overview.component';
 import { BillViewComponent } from '../bill-view/bill-view.component';
+import { OrderManagementComponent } from '../order-management/order-management.component';
 
 interface ReportData {
   dailyRevenue: number;
@@ -68,7 +69,8 @@ interface ExtendedOrder extends Order {
     MatTableModule,
     NgChartsModule,
     DiningAreaOverviewComponent,
-    BillViewComponent
+    BillViewComponent,
+    OrderManagementComponent
   ],
   templateUrl: './billing-dashboard.component.html',
   styleUrls: ['./billing-dashboard.component.scss']
@@ -91,7 +93,7 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
   billNumber = '34468';
   kotNumber = '123399,123412';
   cashier = 'SHIV RAUT';
-  activeView: 'billing' | 'managebill' = 'managebill';
+  activeView: 'billing' | 'managebill' | 'orders' = 'billing';
   selectedDate: Date = new Date();
   reportData: ReportData = this.getDefaultReportData();
 
@@ -174,6 +176,15 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
 
   private ordersSubscription: Subscription | undefined;
 
+  parcelTable: Table = {
+    _id: 'parcel',
+    number: 'Parcel',
+    capacity: 0,
+    isOccupied: false,
+    otp: 'PARCEL',
+    otpGeneratedAt: new Date()
+  };
+
   constructor(
     private reportingService: ReportingService,
     private orderService: OrderService,
@@ -197,7 +208,7 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
 
   loadReportData() {
     console.log('Loading report data for date:', this.selectedDate);
-    this.reportingService.getReportbillData(this.selectedDate).subscribe({
+    this.reportingService.getReportData(this.selectedDate).subscribe({
       next: (data) => {
         console.log('Received report data:', data);
         this.reportData = data || this.getDefaultReportData();
@@ -239,6 +250,20 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  onParcelOrderSelected() {
+    this.selectedTable = this.parcelTable;
+    this.selectedTableOtp = this.parcelTable.otp;
+    this.selectedTableNumber = this.parcelTable.number;
+    this.showOrderCheck = true;
+    this.activeView = 'orders';
+  }
+
+  onViewOrders(tableOtp: string) {
+    // Implement the logic to view orders for the given tableOtp
+    console.log('Viewing orders for table OTP:', tableOtp);
+    // You might want to navigate to a different component or update the current view
   }
 
   backToOverview() {

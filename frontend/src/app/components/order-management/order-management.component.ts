@@ -11,13 +11,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
-import { Table, MenuItem } from '../../interfaces/shared-interfaces';
+import { Table } from '../../interfaces/shared-interfaces';
 import { environment } from '../../../environments/environment';
 import { OrderService } from '../../services/order.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { CartFilterPipe } from '../../pipe/cart-filter.pipe';
 import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { InhouseConfirmationComponent } from '../inhouse-confirmation/inhouse-confirmation.component';
 
 interface OrderItem {
   name: string;
@@ -36,6 +38,24 @@ interface Order {
   createdAt: Date;
 }
 
+interface FoodType {
+  _id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface MenuItem {
+  _id?: string;
+  name: string;
+  category: FoodType;
+  price: number;
+  description?: string;
+  imageUrl?: string;
+  isVegetarian: boolean;
+}
+
 @Component({
   selector: 'app-order-management',
   standalone: true,
@@ -52,7 +72,8 @@ interface Order {
     MatTableModule,
     MatSlideToggleModule,
     MatTabsModule,
-    CartFilterPipe
+    CartFilterPipe,
+    InhouseConfirmationComponent
   ],
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
@@ -60,14 +81,15 @@ interface Order {
 export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() table!: Table;
   @Output() backToTableSelection = new EventEmitter<void>();
-  @Output() viewOrders = new EventEmitter<string>();  // Add this line
+  @Output() viewOrders = new EventEmitter<string>();
   @ViewChild('tabGroup') tabGroup!: MatTabGroup;
   @ViewChild('tabGroup', { read: ElementRef }) tabGroupElement!: ElementRef;
+  private dialogRef: MatDialogRef<InhouseConfirmationComponent> | null = null;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
   menuItems: MenuItem[] = [];
   orders: Order[] = [];
-  categories: string[] = [];
+  categories: FoodType[] = [];
   selectedCategory: string = 'All';
   isVegetarian: boolean = false;
   searchQuery: string = '';
@@ -87,11 +109,12 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     private orderService: OrderService,
     private router: Router,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit() {
-    this.loadMenuItems();
+    this.loadCategories();
     if (this.table && this.table.otp) {
       this.loadExistingOrders();
     }
@@ -108,11 +131,22 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.enableSwipeGesture();
   }
 
+  loadCategories() {
+    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types`).subscribe({
+      next: (types) => {
+        this.categories = [{ _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, ...types];
+        this.loadMenuItems();
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+      }
+    });
+  }
+
   loadMenuItems() {
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food`).subscribe({
       next: (items) => {
         this.menuItems = items;
-        this.categories = ['All', ...new Set(items.map(item => item.category))];
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
@@ -171,13 +205,34 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.currentOrder.totalPrice = this.currentOrder.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
 
+  openConfirmationDialog() {
+    this.dialogRef = this.dialog.open(InhouseConfirmationComponent, {
+      width: '300px',
+      data: {
+        title: 'Confirm Order',
+        message: 'Are you sure you want to place this order?',
+        totalPrice: this.currentOrder.totalPrice,
+        confirmAction: () => this.submitOrder()
+      }
+    });
+
+    this.dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        console.log('Order confirmed');
+      } else {
+        console.log('Order cancelled');
+      }
+      this.dialogRef = null;
+    });
+  }
+
   submitOrder() {
     if (!this.table.otp) {
       console.error('Table OTP is missing');
-      this.snackBar.open('Table OTP is missing. Unable to submit order.', 'Close', {
-        duration: 3000,
-        panelClass: ['error-snackbar']
-      });
+      this.showErrorSnackBar('Table OTP is missing. Unable to submit order.');
+      if (this.dialogRef) {
+        this.dialogRef.close();
+      }
       return;
     }
   
@@ -195,10 +250,16 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
         this.showCart = false;
   
         this.showSuccessSnackBar('Order submitted successfully!');
+        if (this.dialogRef) {
+          this.dialogRef.close(true);
+        }
       },
       error: (error) => {
         console.error('Error submitting order:', error);
         this.showErrorSnackBar('Error submitting order. Please try again.');
+        if (this.dialogRef) {
+          this.dialogRef.close(false);
+        }
       }
     });
   }
@@ -252,8 +313,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.router.navigate(['/login']);
   }
 
-  selectCategory(category: string) {
-    this.selectedCategory = category;
+  selectCategory(category: FoodType) {
+    this.selectedCategory = category.name;
   }
 
   toggleVegetarian() {
@@ -312,7 +373,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
 
   getFilteredMenuItems(): MenuItem[] {
     return this.menuItems.filter(item => 
-      (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
+      (this.selectedCategory === 'All' || item.category.name === this.selectedCategory) &&
       (!this.isVegetarian || item.isVegetarian === true) &&
       item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
     );
@@ -351,6 +412,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     }
     this.calculateTotalPrice();
   }
+
   lookOrders() {
     if (this.table && this.table.otp) {
       this.viewOrders.emit(this.table.otp);

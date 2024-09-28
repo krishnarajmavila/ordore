@@ -22,7 +22,14 @@ import { Observable, BehaviorSubject, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { WebSocketService } from '../../services/web-socket.service';
 import { CustomerService } from '../../services/customer-service.service';
-
+import { HttpClient } from '@angular/common/http';
+interface FoodType {
+  _id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
 @Component({
   selector: 'app-customer-dashboard',
   standalone: true,
@@ -51,7 +58,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   @ViewChild('tabGroup', { read: ElementRef }) tabGroupElement!: ElementRef;
 
   menuItems: MenuItem[] = [];
-  categories: string[] = [];
+  categories: FoodType[] = [];
   selectedCategory: string = 'All';
   isVegetarian: boolean = false;
   cartItems: CartItem[] = [];
@@ -76,7 +83,8 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     private cartService: CartService,
     private webSocketService: WebSocketService,
     private snackBar: MatSnackBar,
-    private customerService: CustomerService
+    private customerService: CustomerService,
+    private http: HttpClient,
   ) {}
 
   ngOnInit() {
@@ -85,6 +93,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.subscribeToMenuUpdates();
     this.menuService.startMenuRefresh(30000);
     this.loadUserData();
+    this.loadCategories();
   }
 
   ngAfterViewInit() {
@@ -98,11 +107,22 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.menuService.stopMenuRefresh();
   }
 
+  loadCategories() {
+    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types`).subscribe({
+      next: (types) => {
+        this.categories = [{ _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, ...types];
+        this.loadMenuItems();
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+      }
+    });
+  }
+
   loadMenuItems() {
     this.menuService.fetchMenuItems();
     this.menuService.menuItems$.subscribe(items => {
       this.menuItems = items;
-      this.categories = ['All', ...new Set(items.map(item => item.category))];
     });
   }
 
@@ -137,7 +157,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.cartService.addToCart({
       _id: item._id,
       name: item.name,
-      category: item.category,
+      category: item.category.name,
       price: item.price,
       description: item.description,
       imageUrl: item.imageUrl,
@@ -177,7 +197,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   getFilteredMenuItems(): Observable<MenuItem[]> {
     return this.menuService.menuItems$.pipe(
       map(items => items.filter(item => 
-        (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
+        (this.selectedCategory === 'All' || item.category.name === this.selectedCategory) &&
         (!this.isVegetarian || item.isVegetarian === true) &&
         item.isInStock &&
         (this.searchQuery === '' || item.name.toLowerCase().includes(this.searchQuery.toLowerCase()))
@@ -186,8 +206,10 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   onTabChange(index: number) {
-    this.selectCategory(this.categories[index]);
+    const category = this.categories[index];
+    this.selectCategory(category.name); // Change this to the appropriate string property
   }
+  
 
   onSwipe(event: TouchEvent, direction: string) {
     const currentIndex = this.tabGroup?.selectedIndex;
