@@ -75,6 +75,11 @@ const BillSchema = new mongoose.Schema({
   date: { 
     type: Date, 
     default: Date.now 
+  },
+  restaurant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant',
+    required: true
   }
 }, { 
   timestamps: true 

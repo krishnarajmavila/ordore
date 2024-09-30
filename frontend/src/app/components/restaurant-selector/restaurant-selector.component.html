@@ -1,0 +1,9 @@
+<div class="rest-selector">
+    <mat-form-field appearance="outline" class="m-0">
+        <mat-select [(value)]="selectedRestaurant" (selectionChange)="onSelectionChange()">
+          <mat-option *ngFor="let restaurant of restaurants" [value]="restaurant">
+            {{restaurant.name}}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+</div>

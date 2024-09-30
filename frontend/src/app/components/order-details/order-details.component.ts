@@ -99,4 +99,7 @@ export class OrderDetailsComponent implements OnInit {
   goBack() {
     this.router.navigate(['/customer-dashboard']);
   }
+  selectMethod() {
+    this.router.navigate(['/payment-type', { orders: JSON.stringify(this.orders) }]);
+  }
 }

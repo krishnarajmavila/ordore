@@ -26,6 +26,7 @@ interface OrderItem {
   quantity: number;
   price: number;
   imageUrl?: string;
+  category: string;
 }
 
 interface Order {
@@ -103,6 +104,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   };
   displayedColumns: string[] = ['name', 'quantity', 'price', 'actions'];
   showCart: boolean = false;
+  restaurantId: string | null = this.getSelectedRestaurantId();
 
   constructor(
     private http: HttpClient,
@@ -132,28 +134,50 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   }
 
   loadCategories() {
-    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types`).subscribe({
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing. Unable to load categories.');
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+  
+    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types?restaurantId=${restaurantId}`).subscribe({
       next: (types) => {
-        this.categories = [{ _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, ...types];
+        this.categories = [
+          { _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, 
+          ...types
+        ];
         this.loadMenuItems();
       },
       error: (error) => {
         console.error('Error loading categories:', error);
+        this.showErrorSnackBar('Error loading categories. Please try again.');
       }
     });
   }
+  
+
+  
 
   loadMenuItems() {
-    this.http.get<MenuItem[]>(`${environment.apiUrl}/food`).subscribe({
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing. Unable to load menu items.');
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+  
+    this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
       next: (items) => {
         this.menuItems = items;
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
+        this.showErrorSnackBar('Error loading menu items. Please try again.');
       }
     });
   }
-
+  
   loadExistingOrders() {
     if (!this.table.otp) {
       console.error('Table OTP is missing, cannot load orders');
@@ -180,7 +204,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
         name: item.name,
         quantity: 1,
         price: item.price,
-        imageUrl: item.imageUrl
+        imageUrl: item.imageUrl,
+        category: item.category._id
       });
     }
     
@@ -236,10 +261,21 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       return;
     }
   
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing');
+      this.showErrorSnackBar('Restaurant ID is missing. Unable to submit order.');
+      if (this.dialogRef) {
+        this.dialogRef.close();
+      }
+      return;
+    }
+  
     const orderData = {
       ...this.currentOrder,
       tableOtp: this.table.otp,
-      customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`
+      customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`,
+      restaurant: restaurantId  // Include the restaurantId in the order data
     };
   
     this.http.post<Order>(`${environment.apiUrl}/orders`, orderData).subscribe({
@@ -291,6 +327,9 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     });
   }
 
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
   refreshTableData() {
     if (!this.table._id) return;
 

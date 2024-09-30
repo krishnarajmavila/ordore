@@ -27,24 +27,17 @@ const FoodSchema = new mongoose.Schema({
     type: Boolean, 
     required: true 
   },
+  restaurant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant',
+    required: true
+  },
   isInStock: { 
     type: Boolean, 
     default: true 
   }
 }, {
   timestamps: true
-});
-
-// Add a pre-save hook to ensure the category exists
-FoodSchema.pre('save', async function(next) {
-  if (this.isModified('category')) {
-    const FoodType = mongoose.model('FoodType');
-    const categoryExists = await FoodType.exists({ _id: this.category });
-    if (!categoryExists) {
-      next(new Error('Invalid category'));
-    }
-  }
-  next();
 });
 
 module.exports = mongoose.model('Food', FoodSchema);

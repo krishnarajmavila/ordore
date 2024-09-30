@@ -4,14 +4,19 @@ const OrderSchema = new mongoose.Schema({
   items: [{
     name: String,
     price: Number,
-    quantity: Number
+    quantity: Number,
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FoodType',
+      required: true
+    }
   }],
   totalPrice: Number,
   customerName: String,
   phoneNumber: String,
   tableOtp: String,
   tableNumber: {
-    type: String,  // Change this from Number to String
+    type: String,
     required: true
   },
   status: {
@@ -22,8 +27,12 @@ const OrderSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  restaurant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant',
+    required: true
   }
 });
-
 
 module.exports = mongoose.model('Order', OrderSchema);

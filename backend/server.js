@@ -14,6 +14,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const billRoutes = require('./routes/billRoutes'); 
 const waiterCallRoutes = require('./routes/waiterCallRoutes');
 const foodTypeRoutes = require('./routes/foodTypeRoutes');
+const restaurantRoutes = require('./routes/restaurantRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -51,6 +52,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/bills', billRoutes);
 app.use('/api/waiter-calls', waiterCallRoutes);
 app.use('/api/food-types', foodTypeRoutes);
+app.use('/api/restaurants', restaurantRoutes);
 
 // Pass io to orderRoutes
 const orderRoutes = require('./routes/orderRoutes')(io);
@@ -66,7 +68,8 @@ app.use(express.static(path.join(__dirname, '../frontend/dist/frontend/browser')
 
 // For all GET requests, send back index.html
 // so that PathLocationStrategy can be used
-app.get('/*', function(req, res) {
+// This should be the last route
+app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, '../frontend/dist/frontend/browser/index.html'));
 });
 
@@ -83,7 +86,10 @@ io.on('connection', (socket) => {
     console.log('Waiter call received:', data);
     io.emit('waiterCalled', data);
   });
-
+  socket.on('payOrder', (data) => {
+    console.log('Payment order received:', data);
+    io.emit('payOrder', data);  
+  });
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });

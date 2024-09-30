@@ -9,6 +9,8 @@ import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarModule, MatSnack
 import { AuthService } from '../../services/auth.service';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
+import { RestaurantService } from '../../services/restaurant.service';
+import { Restaurant } from '../../models/restaurant.model';
 
 @Component({
   selector: 'app-customer-login',
@@ -30,12 +32,15 @@ export class CustomerLoginComponent implements OnInit {
   loginForm: FormGroup;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
-
+  restaurants: Restaurant[] = [];
+  selectedRestaurant: Restaurant | null = null;
+  
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private restaurantService: RestaurantService
   ) {
     this.loginForm = this.formBuilder.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
@@ -53,7 +58,17 @@ export class CustomerLoginComponent implements OnInit {
     this.loginForm.statusChanges.subscribe(status => {
     });
   }
-
+  loadRestaurants() {
+    this.restaurantService.getAllRestaurants().subscribe({
+      next: (restaurants) => {
+        this.restaurants = restaurants;
+        if (restaurants.length > 0) {
+          this.selectedRestaurant = restaurants[0];
+        }
+      },
+      error: (error) => console.error('Error loading restaurants:', error)
+    });
+  }
 
   onSubmit() {
     if (this.loginForm.valid) {
@@ -62,6 +77,9 @@ export class CustomerLoginComponent implements OnInit {
       
       this.authService.sendOtp(name, fullMobileNumber, tableOtp).subscribe({
         next: (response) => {
+          if (this.selectedRestaurant) {
+            localStorage.setItem('selectedRestaurantId', this.selectedRestaurant._id);
+          }
           this.authService.setOtpData(fullMobileNumber, name, tableOtp);
           this.router.navigate(['/verify-otp']);
         },

@@ -33,3 +33,13 @@
      background-color: #F5F8FA;
     }
   }
+  .card{
+    &.is-paid {
+      background-color: #d4edda; // Light green for paid tables
+    }
+  
+    // If you want to prioritize certain statuses, you can use the following:
+    &.is-paid {
+      background-color: #d4edda !important; // This ensures 'paid' status overrides other statuses
+    }
+  }

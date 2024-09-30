@@ -27,12 +27,12 @@
       <h4>Group Members</h4>
       <h4 (click)="lookOrders();">Your Bill</h4>
     </div>
-    <button style="position: absolute; bottom: 28px; left: 22px; width: 82%;" mat-raised-button color="primary" class="d-flex mt-3" (click)="logout()">
+    <button mat-raised-button color="primary" class="d-flex mt-3" (click)="logout()">
       Logout
     </button>
   </div>
 
-  <div class="row mt-3 mb-3 px-1 align-items-center animate__animated animate__fadeInLeft animate__faster">
+  <div class="row mt-3 mb-3 px-1 align-items-center animate__animated animate__fadeInUp animate__faster">
     <div class="col">
       <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()"
         class="form-control ds-input" id="search-input" placeholder="Search..." dir="auto">
@@ -44,12 +44,12 @@
     </div>
   </div>
 
-  <mat-tab-group class="animate__animated animate__fadeInRight animate__faster" #tabGroup (selectedIndexChange)="onTabChange($event)">
+  <mat-tab-group class="animate__animated animate__fadeInUp animate__faster" #tabGroup (selectedIndexChange)="onTabChange($event)">
     <mat-tab  *ngFor="let category of categories"  [label]="category.name">
     </mat-tab>
   </mat-tab-group>
 
-  <div class="menu-items mt-3 animate__animated animate__fadeInRight animate__faster">
+  <div class="menu-items mt-3 animate__animated animate__fadeIn">
     <ng-container *ngIf="getFilteredMenuItems() | async as filteredItems">
       <mat-card *ngFor="let item of filteredItems" class="p-0 mb-3">
         <mat-card-content>

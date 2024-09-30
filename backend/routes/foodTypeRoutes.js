@@ -1,15 +1,19 @@
-// routes/foodTypeRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const FoodType = require('../models/FoodType');
+const auth = require('../middleware/auth');
 
-// Get all food types
+// Get all food types for a specific restaurant
 router.get('/', async (req, res) => {
   try {
-    const foodTypes = await FoodType.find();
+    const { restaurantId } = req.query;
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
+    }
+    const foodTypes = await FoodType.find({ restaurant: restaurantId });
     res.json(foodTypes);
   } catch (error) {
+    console.error('Error fetching food types:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -17,11 +21,21 @@ router.get('/', async (req, res) => {
 // Add a new food type
 router.post('/', async (req, res) => {
   try {
-    const { name } = req.body;
-    const newFoodType = new FoodType({ name });
+    const { name, restaurantId } = req.body;
+    
+    if (!name || !restaurantId) {
+      return res.status(400).json({ message: 'Name and Restaurant ID are required' });
+    }
+
+    const newFoodType = new FoodType({
+      name,
+      restaurant: restaurantId
+    });
+
     const savedFoodType = await newFoodType.save();
     res.status(201).json(savedFoodType);
   } catch (error) {
+    console.error('Error adding food type:', error);
     res.status(400).json({ message: 'Error adding food type', error: error.message });
   }
 });
@@ -29,9 +43,13 @@ router.post('/', async (req, res) => {
 // Update a food type
 router.put('/:id', async (req, res) => {
   try {
-    const { name } = req.body;
-    const updatedFoodType = await FoodType.findByIdAndUpdate(
-      req.params.id,
+    const { id } = req.params;
+    const { name, restaurantId } = req.body;
+    if (!name || !restaurantId) {
+      return res.status(400).json({ message: 'Name and Restaurant ID are required' });
+    }
+    const updatedFoodType = await FoodType.findOneAndUpdate(
+      { _id: id, restaurant: restaurantId },
       { name },
       { new: true }
     );
@@ -40,6 +58,7 @@ router.put('/:id', async (req, res) => {
     }
     res.json(updatedFoodType);
   } catch (error) {
+    console.error('Error updating food type:', error);
     res.status(400).json({ message: 'Error updating food type', error: error.message });
   }
 });
@@ -47,12 +66,18 @@ router.put('/:id', async (req, res) => {
 // Delete a food type
 router.delete('/:id', async (req, res) => {
   try {
-    const deletedFoodType = await FoodType.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    const { restaurantId } = req.query;
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
+    }
+    const deletedFoodType = await FoodType.findOneAndDelete({ _id: id, restaurant: restaurantId });
     if (!deletedFoodType) {
       return res.status(404).json({ message: 'Food type not found' });
     }
     res.json({ message: 'Food type deleted successfully' });
   } catch (error) {
+    console.error('Error deleting food type:', error);
     res.status(400).json({ message: 'Error deleting food type', error: error.message });
   }
 });

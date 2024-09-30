@@ -1,39 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarModule, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
-import { MatListModule } from '@angular/material/list';
-import { DragDropModule } from '@angular/cdk/drag-drop';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { TableResetDialogComponent } from '../table-reset-dialog/table-reset-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
-import { OrderManagementComponent } from '../order-management/order-management.component';
 import { TableSelectionComponent } from '../table-selection/table-selection.component';
+import { OrderManagementComponent } from '../order-management/order-management.component';
 import { DsOrderCheckComponent } from '../ds-order-check/ds-order-check.component';
-
-interface MenuItem {
-  _id?: string;
-  name: string;
-  category: string;
-  price: number;
-  description?: string;
-  imageUrl?: string;
-  isVegetarian: boolean;
-}
+import { TableResetDialogComponent } from '../table-reset-dialog/table-reset-dialog.component';
+import { catchError, throwError } from 'rxjs';
 
 interface Table {
   _id?: string;
@@ -43,6 +20,7 @@ interface Table {
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
+  restaurant: string;
 }
 
 @Component({
@@ -50,21 +28,6 @@ interface Table {
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatIconModule,
-    MatTableModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule,
-    MatListModule,
-    DragDropModule,
-    MatSidenavModule,
-    MatCheckboxModule,
-    MatExpansionModule,
     TableSelectionComponent,
     OrderManagementComponent,
     DsOrderCheckComponent
@@ -73,53 +36,61 @@ interface Table {
   styleUrls: ['./dining-specialist.component.scss']
 })
 export class DiningSpecialistComponent implements OnInit {
-  tableForm: FormGroup;
-  menuItems: MenuItem[] = [];
   tables: Table[] = [];
-  editingTable: Table | null = null;
-  isLoading = false;
-  displayedTableColumns: string[] = ['number', 'capacity', 'isOccupied', 'otp', 'actions'];
-  categories = ['Appetizers', 'Mains', 'Desserts', 'Beverages'];
-  horizontalPosition: MatSnackBarHorizontalPosition = 'center';
-  verticalPosition: MatSnackBarVerticalPosition = 'top';
-  
+  selectedTable: Table | null = null;
   showOrderManagement = false;
   showOrderCheck = false;
-  selectedTable: Table | null = null;
   selectedTableOtp: string | null = null;
+  isLoading = false;
+  restaurantId: string | null = null;
+
+  horizontalPosition: MatSnackBarHorizontalPosition = 'center';
+  verticalPosition: MatSnackBarVerticalPosition = 'top';
 
   constructor(
-    private fb: FormBuilder,
     private http: HttpClient,
     private snackBar: MatSnackBar,
     private authService: AuthService,
     private router: Router,
     private dialog: MatDialog
-  ) {
-    this.tableForm = this.fb.group({
-      number: ['', [Validators.required, Validators.min(1)]],
-      capacity: ['', [Validators.required, Validators.min(1)]],
-      isOccupied: [false]
-    });
-  }
+  ) {}
 
   ngOnInit() {
-    this.loadTables();
+    // Get restaurant ID from local storage
+    this.restaurantId = this.getSelectedRestaurantId();
+    if (this.restaurantId) {
+      this.loadTables();  // Load tables only if the restaurant ID is available
+    } else {
+      this.handleError('Restaurant ID is not available');
+    }
+  }
+
+  // Method to retrieve the selected restaurant ID from local storage
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
   }
 
   loadTables() {
+    if (!this.restaurantId) {
+      this.handleError('Restaurant ID is not available');
+      return;
+    }
+
     this.isLoading = true;
-    this.http.get<Table[]>(`${environment.apiUrl}/tables`).subscribe({
-      next: (tables) => {
-        this.tables = tables;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading tables:', error);
-        this.showSnackBar('Error loading tables');
-        this.isLoading = false;
-      }
-    });
+    this.http.get<Table[]>(`${environment.apiUrl}/tables?restaurantId=${this.restaurantId}`)
+      .pipe(
+        catchError(this.handleHttpError.bind(this))
+      )
+      .subscribe({
+        next: (tables) => {
+          this.tables = tables;
+          this.isLoading = false;
+        },
+        error: (error) => {
+          this.handleError('Error loading tables', error);
+          this.isLoading = false;
+        }
+      });
   }
 
   onTableSelected(table: Table) {
@@ -135,10 +106,12 @@ export class DiningSpecialistComponent implements OnInit {
     this.selectedTable = null;
     this.selectedTableOtp = null;
   }
+
   onBackToOrderManagement() {
     this.showOrderCheck = false;
     this.showOrderManagement = true;
   }
+
   onViewOrders(tableOtp: string) {
     this.showOrderManagement = false;
     this.showOrderCheck = true;
@@ -173,18 +146,52 @@ export class DiningSpecialistComponent implements OnInit {
         });
       }
     });
-  }
+  } 
+  
 
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
 
-  showSnackBar(message: string) {
+  private showSnackBar(message: string) {
     this.snackBar.open(message, 'Close', {
       duration: 5000,
       horizontalPosition: this.horizontalPosition,
       verticalPosition: this.verticalPosition
     });
+  }
+
+  private handleError(message: string, error?: any) {
+    console.error(message, error);
+    this.showSnackBar(message);
+    if (error) {
+      // Additional error logging for better diagnostics
+      if (error.error) {
+        console.error('Server error:', error.error);
+      } else {
+        console.error('HTTP Error:', error);
+      }
+    }
+    if (!this.restaurantId) {
+      this.router.navigate(['/login']);
+    }
+  }
+
+  private handleHttpError(error: HttpErrorResponse) {
+    let errorMessage = 'An error occurred';
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = `Error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+      // Log more details for debugging
+      if (error.error) {
+        console.error('Server error response:', error.error);
+      }
+    }
+    console.error(errorMessage);
+    return throwError(() => new Error(errorMessage));
   }
 }

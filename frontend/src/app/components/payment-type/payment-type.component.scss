@@ -1,0 +1,58 @@
+.payment-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  mat-card {
+    cursor: pointer;
+  }
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+
+  .payment-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  mat-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+  }
+  
+  .selected-card {
+    background-color: #e0f7fa; /* Light blue background */
+    border: 2px solid #00bcd4; /* Blue border */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  mat-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  button[mat-raised-button] {
+    width: 100%;
+    margin-top: 1rem;
+  }
+  button{
+    height: 50px;
+  }

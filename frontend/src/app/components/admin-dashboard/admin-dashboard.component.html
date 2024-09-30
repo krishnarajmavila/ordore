@@ -12,22 +12,27 @@
         <mat-list-item class="mt-2" (click)="navigateTo('User Management')" [class.active]="activeView === 'User Management'">
           <mat-icon>group</mat-icon> Manage Users
         </mat-list-item>
-        <mat-list-item class="mt-2" (click)="navigateTo('Reporting')" [class.active]="activeView === 'Reporting'">
-          <mat-icon>bar_chart</mat-icon> Reporting
-        </mat-list-item>
         <mat-list-item class="mt-2" (click)="navigateTo('Configuration')" [class.active]="activeView === 'Configuration'">
           <mat-icon>settings</mat-icon> Configuration
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="setActiveView('Create Branch')" [class.active]="activeView === 'Create Branch'">
+          <mat-icon>storefront</mat-icon> Create Branch
+        </mat-list-item>
+        <mat-list-item class="mt-2" (click)="navigateTo('Reporting')" [class.active]="activeView === 'Reporting'">
+          <mat-icon>bar_chart</mat-icon> Reporting
         </mat-list-item>
       </mat-nav-list>
     </mat-sidenav>
     <mat-sidenav-content>
-      <div *ngIf="activeView === 'Add Menu'">
-        <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Hello Admin</h2>
-          <div class="d-flex align-items-center"> 
-            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
-          </div>
+      <div class="headers d-flex align-items-center justify-content-between">
+        <h2 class="m-0">Hello Admin</h2>
+        <div class="d-flex align-items-center">
+          <app-restaurant-selector (restaurantChange)="onRestaurantChange($event)"></app-restaurant-selector>
+          <button (click)="logout()" class="lgout-button ms-3" mat-raised-button color="warn">Logout</button>
         </div>
+      </div>
+
+      <div *ngIf="activeView === 'Add Menu'">
         <div class="row m-0 p-2">
           <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
             <h3>Add Menu</h3>
@@ -112,19 +117,19 @@
                   <th mat-header-cell *matHeaderCellDef> Description </th>
                   <td mat-cell *matCellDef="let item"> {{item.description}} </td>
                 </ng-container>
-
+          
                 <ng-container matColumnDef="isVegetarian">
                   <th mat-header-cell *matHeaderCellDef> Vegetarian </th>
                   <td mat-cell *matCellDef="let item"> {{item.isVegetarian ? 'Yes' : 'No'}} </td>
                 </ng-container>
-
+          
                 <ng-container matColumnDef="image">
                   <th mat-header-cell *matHeaderCellDef> Image </th>
                   <td mat-cell *matCellDef="let item">
                     <img [src]="getImageUrl(item?.imageUrl)" alt="{{item?.name}}" style="max-width: 100px; max-height: 100px;">
                   </td>
                 </ng-container>
-
+          
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef> Actions </th>
                   <td mat-cell *matCellDef="let item">
@@ -142,177 +147,246 @@
               </table>
             </div>
           </div>
-        </div>
-      </div>
-      <div *ngIf="activeView === 'tables'">
-        <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Manage Tables</h2>
-          <div class="d-flex align-items-center"> 
-            <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
           </div>
-        </div>
-        <div class="row m-0 p-2">
-          <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
-            <h3>{{editingTable ? 'Edit' : 'Add'}} Table</h3>
-            <form [formGroup]="tableForm" (ngSubmit)="onTableSubmit()">
-              <mat-form-field appearance="outline">
-                <mat-label>Table Location</mat-label>
-                <mat-select formControlName="location" required>
-                  <mat-option *ngFor="let location of tableLocations" [value]="location">
-                    {{location}}
-                  </mat-option>
-                </mat-select>
-                <mat-error *ngIf="tableForm.get('location')?.hasError('required')">Table location is required</mat-error>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Table Number</mat-label>
-                <input matInput formControlName="number" required>
-                <mat-error *ngIf="tableForm.get('number')?.hasError('required')">Table number is required</mat-error>
-                <mat-error *ngIf="tableForm.get('number')?.hasError('min')">Table number must be positive</mat-error>
-              </mat-form-field>
-            
-              <mat-form-field appearance="outline">
-                <mat-label>Capacity</mat-label>
-                <input matInput type="number" formControlName="capacity" required>
-                <mat-error *ngIf="tableForm.get('capacity')?.hasError('required')">Capacity is required</mat-error>
-                <mat-error *ngIf="tableForm.get('capacity')?.hasError('min')">Capacity must be positive</mat-error>
-              </mat-form-field>
-            
-              <mat-checkbox formControlName="isOccupied">Is Occupied</mat-checkbox>
-            
-              <div class="form-actions">
-                <button mat-raised-button color="primary" type="submit" [disabled]="tableForm.invalid || isLoading">
-                  <mat-icon>{{editingTable ? 'update' : 'add'}}</mat-icon>
-                  {{editingTable ? 'Update' : 'Add'}} Table
-                </button>
-                <button mat-raised-button class="mt-2" type="button" (click)="resetTableForm()" *ngIf="editingTable">
-                  <mat-icon>cancel</mat-icon> Cancel
-                </button>
-              </div>
-            </form>
           </div>
-          <div class="col-9 p-3">
-            <div class="table-container">
-              <h3>View Tables</h3>
-              <hr class="mb-0">
-              <table mat-table [dataSource]="tables">
-                <ng-container matColumnDef="number">
-                  <th mat-header-cell *matHeaderCellDef>Table Number </th>
-                  <td mat-cell *matCellDef="let table"> <span *ngIf="table.location !== 'Parcel - Take Away'">{{table.number}}</span> <span *ngIf="table.location == 'Parcel - Take Away'">TAKE AWAY</span></td>
-                </ng-container>
-
-                <ng-container matColumnDef="capacity">
-                  <th mat-header-cell *matHeaderCellDef> Capacity </th>
-                  <td mat-cell *matCellDef="let table"> {{table.capacity}} </td>
-                </ng-container>
-
-                <ng-container matColumnDef="location">
-                  <th mat-header-cell *matHeaderCellDef>Location</th>
-                  <td mat-cell *matCellDef="let table">{{table.location || 'N/A'}}</td>
-                </ng-container>
-                
-                <ng-container matColumnDef="isOccupied">
-                  <th mat-header-cell *matHeaderCellDef> Occupied </th>
-                  <td mat-cell *matCellDef="let table"> {{table.isOccupied ? 'Yes' : 'No'}} </td>
-                </ng-container>
-
-                <ng-container matColumnDef="otp">
-                  <th mat-header-cell *matHeaderCellDef> Table OTP </th>
-                  <td mat-cell *matCellDef="let table"> {{table.otp}} </td>
-                </ng-container>
-
-                <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef> Actions </th>
-                  <td mat-cell *matCellDef="let table">
-                    <button mat-icon-button color="primary" (click)="editTable(table)" matTooltip="Edit">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                    <button mat-icon-button color="primary" (click)="refreshOTP(table)" matTooltip="Refresh OTP">
-                      <mat-icon>refresh</mat-icon>
-                    </button>
-                    <button mat-icon-button color="warn" (click)="deleteTable(table)" matTooltip="Delete">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="displayedTableColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedTableColumns;" [ngClass]="{'parcel-row': row.location === 'Parcel - Take Away'}"></tr>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div *ngIf="isUserManagementActive()">
-        <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Manage Users</h2>
-          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
-        </div>
-        <app-user-management></app-user-management>
-      </div>
-      <div *ngIf="activeView === 'Reporting'">
-        <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Reporting</h2>
-          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
-        </div>
-        <app-reporting></app-reporting>
-      </div>
-      <div *ngIf="activeView === 'Configuration'">
-        <div class="headers d-flex align-items-center justify-content-between">
-          <h2 class="m-0">Configuration</h2>
-          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
-        </div>
-        <div class="row m-0 p-2">
-          <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
-            <h3>{{editingFoodType ? 'Edit' : 'Add'}} Food Type</h3>
-            <form [formGroup]="foodTypeForm" (ngSubmit)="onFoodTypeSubmit()">
-              <mat-form-field appearance="outline">
-                <mat-label>Food Type Name</mat-label>
-                <input matInput formControlName="name" required>
-                <mat-error *ngIf="foodTypeForm.get('name')?.hasError('required')">Food type name is required</mat-error>
-              </mat-form-field>
+          
+          <div *ngIf="activeView === 'tables'">
+          <div class="row m-0 p-2">
+            <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+              <h3>{{editingTable ? 'Edit' : 'Add'}} Table</h3>
+              <form [formGroup]="tableForm" (ngSubmit)="onTableSubmit()">
+                <mat-form-field appearance="outline">
+                  <mat-label>Table Location</mat-label>
+                  <mat-select formControlName="location" required>
+                    <mat-option *ngFor="let location of tableLocations" [value]="location">
+                      {{location}}
+                    </mat-option>
+                  </mat-select>
+                  <mat-error *ngIf="tableForm.get('location')?.hasError('required')">Table location is required</mat-error>
+                </mat-form-field>
+          
+                <mat-form-field appearance="outline">
+                  <mat-label>Table Number</mat-label>
+                  <input matInput formControlName="number" required>
+                  <mat-error *ngIf="tableForm.get('number')?.hasError('required')">Table number is required</mat-error>
+                  <mat-error *ngIf="tableForm.get('number')?.hasError('min')">Table number must be positive</mat-error>
+                </mat-form-field>
               
-              <div class="form-actions">
-                <button mat-raised-button color="primary" type="submit" [disabled]="foodTypeForm.invalid || isLoading">
-                  <mat-icon>{{editingFoodType ? 'update' : 'add'}}</mat-icon>
-                  {{editingFoodType ? 'Update' : 'Add'}} Food Type
-                </button>
-                <button mat-raised-button class="mt-2" type="button" (click)="resetFoodTypeForm()" *ngIf="editingFoodType">
-                  <mat-icon>cancel</mat-icon> Cancel
-                </button>
+                <mat-form-field appearance="outline">
+                  <mat-label>Capacity</mat-label>
+                  <input matInput type="number" formControlName="capacity" required>
+                  <mat-error *ngIf="tableForm.get('capacity')?.hasError('required')">Capacity is required</mat-error>
+                  <mat-error *ngIf="tableForm.get('capacity')?.hasError('min')">Capacity must be positive</mat-error>
+                </mat-form-field>
+              
+                <mat-checkbox formControlName="isOccupied">Is Occupied</mat-checkbox>
+              
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit" [disabled]="tableForm.invalid || isLoading">
+                    <mat-icon>{{editingTable ? 'update' : 'add'}}</mat-icon>
+                    {{editingTable ? 'Update' : 'Add'}} Table
+                  </button>
+                  <button mat-raised-button class="mt-2" type="button" (click)="resetTableForm()" *ngIf="editingTable">
+                    <mat-icon>cancel</mat-icon> Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div class="col-9 p-3">
+              <div class="table-container">
+                <h3>View Tables</h3>
+                <hr class="mb-0">
+                <table mat-table [dataSource]="tables">
+                  <ng-container matColumnDef="number">
+                    <th mat-header-cell *matHeaderCellDef>Table Number </th>
+                    <td mat-cell *matCellDef="let table"> <span *ngIf="table.location !== 'Parcel - Take Away'">{{table.number}}</span> <span *ngIf="table.location == 'Parcel - Take Away'">TAKE AWAY</span></td>
+                  </ng-container>
+          
+                  <ng-container matColumnDef="capacity">
+                    <th mat-header-cell *matHeaderCellDef> Capacity </th>
+                    <td mat-cell *matCellDef="let table"> {{table.capacity}} </td>
+                  </ng-container>
+          
+                  <ng-container matColumnDef="location">
+                    <th mat-header-cell *matHeaderCellDef>Location</th>
+                    <td mat-cell *matCellDef="let table">{{table.location || 'N/A'}}</td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="isOccupied">
+                    <th mat-header-cell *matHeaderCellDef> Occupied </th>
+                    <td mat-cell *matCellDef="let table"> {{table.isOccupied ? 'Yes' : 'No'}} </td>
+                  </ng-container>
+          
+                  <ng-container matColumnDef="otp">
+                    <th mat-header-cell *matHeaderCellDef> Table OTP </th>
+                    <td mat-cell *matCellDef="let table"> {{table.otp}} </td>
+                  </ng-container>
+          
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef> Actions </th>
+                    <td mat-cell *matCellDef="let table">
+                      <button mat-icon-button color="primary" (click)="editTable(table)" matTooltip="Edit">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button color="primary" (click)="refreshOTP(table)" matTooltip="Refresh OTP">
+                        <mat-icon>refresh</mat-icon>
+                      </button>
+                      <button mat-icon-button color="warn" (click)="deleteTable(table)" matTooltip="Delete">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+          
+                  <tr mat-header-row *matHeaderRowDef="displayedTableColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: displayedTableColumns;" [ngClass]="{'parcel-row': row.location === 'Parcel - Take Away'}"></tr>
+                </table>
               </div>
-            </form>
-          </div>
-          <div class="col-9 p-3">
-            <div class="table-container">
-              <h3>Food Types</h3>
-              <hr class="mb-0">
-              <table mat-table [dataSource]="foodTypes">
-                <ng-container matColumnDef="name">
-                  <th mat-header-cell *matHeaderCellDef>Name</th>
-                  <td mat-cell *matCellDef="let foodType">{{foodType.name}}</td>
-                </ng-container>
-                
-                <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef>Actions</th>
-                  <td mat-cell *matCellDef="let foodType">
-                    <button mat-icon-button color="primary" (click)="editFoodType(foodType)" matTooltip="Edit">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                    <button mat-icon-button color="warn" (click)="deleteFoodType(foodType)" matTooltip="Delete">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </td>
-                </ng-container>
-                
-                <tr mat-header-row *matHeaderRowDef="displayedFoodTypeColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedFoodTypeColumns;"></tr>
-              </table>
             </div>
           </div>
-        </div>
-      </div>
-      </mat-sidenav-content>
-      </mat-sidenav-container>
-      </div>
+          </div>
+          
+          <div *ngIf="isUserManagementActive()">
+          <app-user-management></app-user-management>
+          </div>
+          
+          <div *ngIf="activeView === 'Reporting'">
+          <app-reporting></app-reporting>
+          </div>
+          
+          <div *ngIf="activeView === 'Configuration'">
+          <div class="row m-0 p-2">
+            <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+              <h3>{{editingFoodType ? 'Edit' : 'Add'}} Food Type</h3>
+              <form [formGroup]="foodTypeForm" (ngSubmit)="onFoodTypeSubmit()">
+                <mat-form-field appearance="outline">
+                  <mat-label>Food Type Name</mat-label>
+                  <input matInput formControlName="name" required>
+                  <mat-error *ngIf="foodTypeForm.get('name')?.hasError('required')">Food type name is required</mat-error>
+                </mat-form-field>
+                
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit" [disabled]="foodTypeForm.invalid || isLoading">
+                    <mat-icon>{{editingFoodType ? 'update' : 'add'}}</mat-icon>
+                    {{editingFoodType ? 'Update' : 'Add'}} Food Type
+                  </button>
+                  <button mat-raised-button class="mt-2" type="button" (click)="resetFoodTypeForm()" *ngIf="editingFoodType">
+                    <mat-icon>cancel</mat-icon> Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div class="col-9 p-3">
+              <div class="table-container">
+                <h3>Food Types</h3>
+                <hr class="mb-0">
+                <table mat-table [dataSource]="foodTypes">
+                  <ng-container matColumnDef="name">
+                    <th mat-header-cell *matHeaderCellDef>Name</th>
+                    <td mat-cell *matCellDef="let foodType">{{foodType.name}}</td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef>Actions</th>
+                    <td mat-cell *matCellDef="let foodType">
+                      <button mat-icon-button color="primary" (click)="editFoodType(foodType)" matTooltip="Edit">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button color="warn" (click)="deleteFoodType(foodType)" matTooltip="Delete">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+                  
+                  <tr mat-header-row *matHeaderRowDef="displayedFoodTypeColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: displayedFoodTypeColumns;"></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          </div>
+          <div *ngIf="activeView === 'Create Branch'">
+            <div class="row m-0 p-2">
+              <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+                <h3>Add New Branch</h3>
+                <form [formGroup]="restaurantForm" (ngSubmit)="onRestaurantSubmit()">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Name</mat-label>
+                    <input matInput formControlName="name" required>
+                    <mat-error *ngIf="restaurantForm.get('name')?.hasError('required')">Name is required</mat-error>
+                  </mat-form-field>
+          
+                  <mat-form-field appearance="outline">
+                    <mat-label>Parent Organization</mat-label>
+                    <input matInput formControlName="parentOrganization" required>
+                    <mat-error *ngIf="restaurantForm.get('parentOrganization')?.hasError('required')">Parent Organization is required</mat-error>
+                  </mat-form-field>
+          
+                  <mat-form-field appearance="outline">
+                    <mat-label>Type</mat-label>
+                    <mat-select formControlName="type" required>
+                      <mat-option value="branch">Branch</mat-option>
+                      <mat-option value="franchisee">Franchisee</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="restaurantForm.get('type')?.hasError('required')">Type is required</mat-error>
+                  </mat-form-field>
+          
+                  <mat-form-field appearance="outline">
+                    <mat-label>City</mat-label>
+                    <input matInput formControlName="city" required>
+                    <mat-error *ngIf="restaurantForm.get('city')?.hasError('required')">City is required</mat-error>
+                  </mat-form-field>
+          
+                  <div class="form-actions">
+                    <button mat-raised-button color="primary" type="submit" [disabled]="restaurantForm.invalid || isLoading">
+                      <mat-icon>add</mat-icon> Add Branch
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div class="col-9 p-3">
+                <div class="table-container">
+                  <h3>Existing Branches</h3>
+                  <hr class="mb-0">
+                  <table mat-table [dataSource]="restaurants">
+                    <ng-container matColumnDef="name">
+                      <th mat-header-cell *matHeaderCellDef>Name</th>
+                      <td mat-cell *matCellDef="let restaurant">{{restaurant.name}}</td>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="parentOrganization">
+                      <th mat-header-cell *matHeaderCellDef>Parent Organization</th>
+                      <td mat-cell *matCellDef="let restaurant">{{restaurant.parentOrganization}}</td>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>Type</th>
+                      <td mat-cell *matCellDef="let restaurant">{{restaurant.type}}</td>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="city">
+                      <th mat-header-cell *matHeaderCellDef>City</th>
+                      <td mat-cell *matCellDef="let restaurant">{{restaurant.city}}</td>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="actions">
+                      <th mat-header-cell *matHeaderCellDef>Actions</th>
+                      <td mat-cell *matCellDef="let restaurant">
+                        <button mat-icon-button color="primary" (click)="editRestaurant(restaurant)" matTooltip="Edit">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        <button mat-icon-button color="warn" (click)="deleteRestaurant(restaurant)" matTooltip="Delete">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </td>
+                    </ng-container>
+                    
+                    <tr mat-header-row *matHeaderRowDef="displayedRestaurantColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: displayedRestaurantColumns;"></tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          </mat-sidenav-content>
+          </mat-sidenav-container>
+          </div>

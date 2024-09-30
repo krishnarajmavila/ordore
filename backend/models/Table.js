@@ -24,6 +24,19 @@ const TableSchema = new mongoose.Schema({
   otpGeneratedAt: {
     type: Date,
     default: Date.now
+  },
+  restaurant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant',
+    required: true
+  },
+  isPayInitiated: {
+    type: Boolean,
+    default: false
+  },
+  paymentType: {
+    type: String,
+    default: null
   }
 });
 
