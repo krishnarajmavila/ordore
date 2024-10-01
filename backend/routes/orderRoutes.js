@@ -6,6 +6,11 @@ const Table = require('../models/Table');
 const ArchivedOrder = require('../models/archivedOrder.model');
 const auth = require('../middleware/auth');
 
+// Helper function to safely create ObjectId
+const createSafeObjectId = (id) => {
+  return id instanceof mongoose.Types.ObjectId ? id : mongoose.Types.ObjectId(id);
+};
+
 // Middleware to check for restaurantId
 const checkRestaurantId = (req, res, next) => {
   const restaurantId = req.body.restaurant || req.query.restaurantId || req.params.restaurantId;
@@ -20,7 +25,7 @@ const checkRestaurantId = (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
     return res.status(400).json({ message: 'Invalid restaurant ID format' });
   }
-  req.restaurantId = restaurantId;
+  req.restaurantId = createSafeObjectId(restaurantId);
   next();
 };
 
@@ -39,7 +44,7 @@ module.exports = function(io) {
       // Ensure each item has a category
       const itemsWithCategory = items.map(item => ({
         ...item,
-        category: mongoose.Types.ObjectId(item.category) // Convert category to ObjectId
+        category: createSafeObjectId(item.category)
       }));
 
       const newOrder = new Order({
@@ -90,7 +95,7 @@ module.exports = function(io) {
       const { status } = req.body;
 
       const updatedOrder = await Order.findOneAndUpdate(
-        { _id: id, restaurant: req.restaurantId },
+        { _id: createSafeObjectId(id), restaurant: req.restaurantId },
         { status },
         { new: true }
       );
@@ -112,7 +117,7 @@ module.exports = function(io) {
   router.delete('/:id', checkRestaurantId, async (req, res) => {
     try {
       const { id } = req.params;
-      const orderToDelete = await Order.findOne({ _id: id, restaurant: req.restaurantId });
+      const orderToDelete = await Order.findOne({ _id: createSafeObjectId(id), restaurant: req.restaurantId });
 
       if (!orderToDelete) {
         return res.status(404).json({ message: 'Order not found for this restaurant' });
@@ -132,7 +137,7 @@ module.exports = function(io) {
       await archivedOrder.save();
 
       // Delete the original order
-      await Order.findOneAndDelete({ _id: id, restaurant: req.restaurantId });
+      await Order.findOneAndDelete({ _id: createSafeObjectId(id), restaurant: req.restaurantId });
 
       if (io && typeof io.emit === 'function') {
         io.emit('orderDeleted', id);
@@ -149,7 +154,7 @@ module.exports = function(io) {
   router.get('/:id', checkRestaurantId, async (req, res) => {
     try {
       const { id } = req.params;
-      const order = await Order.findOne({ _id: id, restaurant: req.restaurantId });
+      const order = await Order.findOne({ _id: createSafeObjectId(id), restaurant: req.restaurantId });
 
       if (!order) {
         return res.status(404).json({ message: 'Order not found for this restaurant' });
@@ -179,8 +184,9 @@ module.exports = function(io) {
       const { item } = req.body;
 
       const updatedOrder = await Order.findOneAndUpdate(
-        { _id: id, restaurant: req.restaurantId },
-        { $push: { items: item }, $inc: { totalPrice: item.price * item.quantity } },
+        { _id: createSafeObjectId(id), restaurant: req.restaurantId },
+        { $push: { items: { ...item, category: createSafeObjectId(item.category) } }, 
+          $inc: { totalPrice: item.price * item.quantity } },
         { new: true }
       );
 
@@ -203,7 +209,7 @@ module.exports = function(io) {
     try {
       const { orderId, itemId } = req.params;
 
-      const order = await Order.findOne({ _id: orderId, restaurant: req.restaurantId });
+      const order = await Order.findOne({ _id: createSafeObjectId(orderId), restaurant: req.restaurantId });
       if (!order) {
         return res.status(404).json({ message: 'Order not found for this restaurant' });
       }
