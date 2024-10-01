@@ -21,15 +21,15 @@ router.get('/', async (req, res) => {
 // Add a new food type
 router.post('/', async (req, res) => {
   try {
-    const { name, restaurantId } = req.body;
+    const { name, restaurant } = req.body;
     
-    if (!name || !restaurantId) {
+    if (!name || !restaurant) {
       return res.status(400).json({ message: 'Name and Restaurant ID are required' });
     }
 
     const newFoodType = new FoodType({
       name,
-      restaurant: restaurantId
+      restaurant
     });
 
     const savedFoodType = await newFoodType.save();
@@ -44,18 +44,22 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, restaurantId } = req.body;
-    if (!name || !restaurantId) {
+    const { name, restaurant } = req.body;
+    
+    if (!name || !restaurant) {
       return res.status(400).json({ message: 'Name and Restaurant ID are required' });
     }
+    
     const updatedFoodType = await FoodType.findOneAndUpdate(
-      { _id: id, restaurant: restaurantId },
+      { _id: id, restaurant: restaurant },
       { name },
       { new: true }
     );
+    
     if (!updatedFoodType) {
       return res.status(404).json({ message: 'Food type not found' });
     }
+    
     res.json(updatedFoodType);
   } catch (error) {
     console.error('Error updating food type:', error);
@@ -67,14 +71,18 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { restaurantId } = req.query;
-    if (!restaurantId) {
+    const { restaurant } = req.body;
+    
+    if (!restaurant) {
       return res.status(400).json({ message: 'Restaurant ID is required' });
     }
-    const deletedFoodType = await FoodType.findOneAndDelete({ _id: id, restaurant: restaurantId });
+    
+    const deletedFoodType = await FoodType.findOneAndDelete({ _id: id, restaurant: restaurant });
+    
     if (!deletedFoodType) {
       return res.status(404).json({ message: 'Food type not found' });
     }
+    
     res.json({ message: 'Food type deleted successfully' });
   } catch (error) {
     console.error('Error deleting food type:', error);
