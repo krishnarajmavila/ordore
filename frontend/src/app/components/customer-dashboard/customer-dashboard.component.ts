@@ -188,7 +188,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.cartService.addToCart({
       _id: item._id,
       name: item.name,
-      category: item.category.name,
+      category: item.category._id,
       price: item.price,
       description: item.description,
       imageUrl: item.imageUrl,
