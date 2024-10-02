@@ -54,7 +54,7 @@ export class CustomerLoginComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Add this to debug form state changes
+    this.loadRestaurants();
     this.loginForm.statusChanges.subscribe(status => {
     });
   }
