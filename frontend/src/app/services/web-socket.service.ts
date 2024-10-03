@@ -7,15 +7,21 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class WebSocketService {
-  private socket: Socket;
+  private socket!: Socket;
   private connectionStatus = new BehaviorSubject<boolean>(false);
 
   constructor() {
-    console.log('Initializing WebSocket connection to:', environment.wsUrl);
+    console.log('WebSocketService: Initializing');
+    this.initializeSocket();
+  }
+
+  private initializeSocket() {
+    console.log('WebSocketService: Attempting to connect to', environment.wsUrl);
     this.socket = io(environment.wsUrl, {
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionDelay: 1000,
+      transports: ['websocket']
     });
 
     this.setupConnectionListeners();
@@ -23,53 +29,69 @@ export class WebSocketService {
 
   private setupConnectionListeners() {
     this.socket.on('connect', () => {
-      console.log('WebSocket connected successfully');
+      console.log('WebSocketService: Connected successfully');
       this.connectionStatus.next(true);
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason);
+      console.log('WebSocketService: Disconnected:', reason);
       this.connectionStatus.next(false);
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+      console.error('WebSocketService: Connection error:', error);
       this.connectionStatus.next(false);
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
-      console.log('WebSocket reconnected after', attemptNumber, 'attempts');
+      console.log('WebSocketService: Reconnected after', attemptNumber, 'attempts');
       this.connectionStatus.next(true);
     });
 
     this.socket.on('reconnect_error', (error) => {
-      console.error('WebSocket reconnection error:', error);
+      console.error('WebSocketService: Reconnection error:', error);
     });
   }
 
   listen(eventName: string): Observable<any> {
-    console.log(`Setting up listener for event: ${eventName}`);
+    console.log(`WebSocketService: Setting up listener for event: ${eventName}`);
     return new Observable((subscriber) => {
       this.socket.on(eventName, (data) => {
-        console.log(`Received ${eventName} event:`, data);
+        console.log(`WebSocketService: Received ${eventName} event:`, data);
         subscriber.next(data);
       });
     });
   }
 
   emit(eventName: string, data: any): void {
-    console.log(`Emitting ${eventName} event:`, data);
-    this.socket.emit(eventName, data);
+    console.log(`WebSocketService: Attempting to emit ${eventName} event:`, data);
+    if (this.socket.connected) {
+      this.socket.emit(eventName, data);
+      console.log(`WebSocketService: ${eventName} event emitted successfully`);
+    } else {
+      console.error(`WebSocketService: Failed to emit ${eventName} event: Socket not connected`);
+      // Optionally, you could try to reconnect here
+      this.reconnect();
+    }
   }
 
   getConnectionStatus(): Observable<boolean> {
     return this.connectionStatus.asObservable();
   }
 
-  disconnect(): void {
+  reconnect(): void {
+    console.log('WebSocketService: Attempting to reconnect');
     if (this.socket) {
-      console.log('Disconnecting WebSocket');
       this.socket.disconnect();
     }
+    this.initializeSocket();
+  }
+
+  disconnect(): void {
+    console.log('WebSocketService: Disconnecting');
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+    this.connectionStatus.next(false);
   }
 }

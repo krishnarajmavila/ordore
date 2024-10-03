@@ -85,7 +85,9 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.subscription.unsubscribe();
   }
-
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
   onLogout() {
     this.authService.logout();
     this.router.navigate(['/login']);
@@ -104,9 +106,10 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   }
 
   private loadTablesFromDb() {
+    const restaurantId = this.getSelectedRestaurantId();
     this.isLoadingSubject.next(true);
     this.subscription.add(
-      this.http.get<Table[]>(`${environment.apiUrl}/tables`).pipe(
+      this.http.get<Table[]>(`${environment.apiUrl}/tables?restaurantId=${restaurantId}`).pipe(
         tap(tables => {
           this.tablesSubject.next(tables);
           this.isLoadingSubject.next(false);
@@ -127,26 +130,34 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   }
 
   private checkTablesForOrders(tables: Table[]): Observable<Table[]> {
-    if (tables.length === 0) {
-      return of([]);
-    }
-    const orderChecks = tables.map(table => 
+    const orderRequests = tables.map(table => 
       this.getOrdersByTableOtp(table.otp).pipe(
-        map(orders => ({
-          ...table,
-          hasOrders: orders.length > 0,
-          isOccupied: orders.length > 0 || table.isOccupied
-        })),
-        catchError(() => of({ ...table, hasOrders: false }))
+        map(orders => ({ ...table, hasOrders: orders.length > 0 })),
+        catchError(error => {
+          console.error(`Error fetching orders for table ${table.number}:`, error);
+          return of({ ...table, hasOrders: false });
+        })
       )
     );
-    return forkJoin(orderChecks);
+  
+    return forkJoin(orderRequests);
   }
 
   private getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
-    const url = `${environment.apiUrl}/orders?tableOtp=${tableOtp}`;
-    return this.http.get<Order[]>(url).pipe(
-      catchError(() => of([]))
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing. Unable to fetch orders.');
+      return of([]);
+    }
+  
+    const url = `${environment.apiUrl}/orders`;
+    const params = { tableOtp, restaurantId };
+  
+    return this.http.get<Order[]>(url, { params }).pipe(
+      catchError((error) => {
+        console.error('Error fetching orders:', error);
+        return of([]);
+      })
     );
   }
 }

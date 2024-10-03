@@ -17,11 +17,16 @@
       <div class="m-0 row row-cols-3 g-4">
         <div class="col-6" *ngFor="let table of dineInTables$ | async">
           <div class="card h-100" 
-               [ngClass]="{'has-orders': table.hasOrders, 'waiter-called': table.waiterCalled}" 
+          [ngClass]="{
+            'has-orders': table.hasOrders, 
+            'waiter-called': table.waiterCalled,
+            'is-paid': table.isPayInitiated
+          }"
                (click)="selectTable(table);" >
             <div class="card-body text-center">
               <h3 class="card-title mb-0">Table {{table.number}}</h3>
-              <p class="card-text">Capacity: {{table.capacity}}</p>
+              <p class="card-text mb-1">Capacity: {{table.capacity}}</p>
+           <p class="mb-0" *ngIf="table.isPayInitiated">₹: {{table.paymentType}}</p>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
               <h4 class="card-subtitle m-0 text-muted">{{table.otp}}</h4>

@@ -29,19 +29,29 @@ export class AddTableDialogComponent {
     });
   }
 
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
+
   createTable() {
     if (this.addTableForm.valid) {
       const formValue = this.addTableForm.value;
-      const newTable: Omit<Table, '_id'> = {
+      
+      const currentRestaurantId = this.getSelectedRestaurantId();
+      if (!currentRestaurantId) {
+        console.error('No restaurant selected');
+        return;
+      }
+      
+      const newTable: Omit<Table, '_id' | 'otp' | 'otpGeneratedAt'> = {
         number: `${formValue.name}`,
         capacity: 1,
         isOccupied: false,
         location: 'Parcel - Take Away',
-        otp: '',
-        otpGeneratedAt: new Date()
+        restaurant: currentRestaurantId
       };
-
-      this.tableService.addTable(newTable).subscribe({
+      
+      this.tableService.addTable(newTable, currentRestaurantId).subscribe({
         next: (table) => {
           this.tableAdded.emit(table);
           this.dialogRef.close(table);

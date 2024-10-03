@@ -19,10 +19,11 @@ import { Router } from '@angular/router';
 import { CartFilterPipe } from '../../pipe/cart-filter.pipe';
 import { CartService, CartItem } from '../../services/cart.service';
 import { Observable, BehaviorSubject, Subscription } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
 import { WebSocketService } from '../../services/web-socket.service';
 import { CustomerService } from '../../services/customer-service.service';
 import { HttpClient } from '@angular/common/http';
+
 interface FoodType {
   _id: string;
   name: string;
@@ -30,6 +31,7 @@ interface FoodType {
   updatedAt: string;
   __v: number;
 }
+
 @Component({
   selector: 'app-customer-dashboard',
   standalone: true,
@@ -76,6 +78,8 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   private usersSubject = new BehaviorSubject<any[]>([]);
   users$: Observable<any[]> = this.usersSubject.asObservable();
 
+  restaurantId: string | null = null;
+
   constructor(
     private menuService: MenuService,
     private authService: AuthService,
@@ -88,12 +92,16 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   ) {}
 
   ngOnInit() {
-    this.loadMenuItems();
+    this.restaurantId = this.getSelectedRestaurantId();
+    if (!this.restaurantId) {
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+    this.loadCategories();
     this.loadCart();
     this.subscribeToMenuUpdates();
     this.menuService.startMenuRefresh(30000);
     this.loadUserData();
-    this.loadCategories();
   }
 
   ngAfterViewInit() {
@@ -107,22 +115,45 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.menuService.stopMenuRefresh();
   }
 
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
+
   loadCategories() {
-    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types`).subscribe({
+    if (!this.restaurantId) {
+      console.error('Restaurant ID is missing. Unable to load categories.');
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+
+    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types?restaurantId=${this.restaurantId}`).subscribe({
       next: (types) => {
         this.categories = [{ _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, ...types];
         this.loadMenuItems();
       },
       error: (error) => {
         console.error('Error loading categories:', error);
+        this.showErrorSnackBar('Error loading categories. Please try again.');
       }
     });
   }
 
   loadMenuItems() {
-    this.menuService.fetchMenuItems();
-    this.menuService.menuItems$.subscribe(items => {
-      this.menuItems = items;
+    if (!this.restaurantId) {
+      console.error('Restaurant ID is missing. Unable to load menu items.');
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+
+    this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${this.restaurantId}`).subscribe({
+      next: (items) => {
+        this.menuItems = items;
+        this.menuItemsSubject.next(items);
+      },
+      error: (error) => {
+        console.error('Error loading menu items:', error);
+        this.showErrorSnackBar('Error loading menu items. Please try again.');
+      }
     });
   }
 
@@ -157,7 +188,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.cartService.addToCart({
       _id: item._id,
       name: item.name,
-      category: item.category.name,
+      category: item.category._id,
       price: item.price,
       description: item.description,
       imageUrl: item.imageUrl,
@@ -195,7 +226,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   getFilteredMenuItems(): Observable<MenuItem[]> {
-    return this.menuService.menuItems$.pipe(
+    return this.menuItems$.pipe(
       map(items => items.filter(item => 
         (this.selectedCategory === 'All' || item.category.name === this.selectedCategory) &&
         (!this.isVegetarian || item.isVegetarian === true) &&
@@ -207,9 +238,8 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
 
   onTabChange(index: number) {
     const category = this.categories[index];
-    this.selectCategory(category.name); // Change this to the appropriate string property
+    this.selectCategory(category.name);
   }
-  
 
   onSwipe(event: TouchEvent, direction: string) {
     const currentIndex = this.tabGroup?.selectedIndex;
@@ -250,14 +280,21 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   onSearch() {
-    this.menuService.searchMenuItems(this.searchQuery).subscribe({
-      next: (items) => {
-        this.menuItems = items;
-        this.menuItemsSubject.next(items);
-      },
-      error: (error) => {
-        console.error('Error searching menu items:', error);
-      }
+    if (!this.restaurantId) {
+      console.error('Restaurant ID is missing. Unable to search menu items.');
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+
+    this.http.get<MenuItem[]>(`${environment.apiUrl}/food/search?query=${this.searchQuery}&restaurantId=${this.restaurantId}`).pipe(
+      catchError(error => {
+        // console.error('Error searching menu items:', error);
+        // this.showErrorSnackBar('Error searching menu items. Please try again.');
+        return [];
+      })
+    ).subscribe(items => {
+      this.menuItems = items;
+      this.menuItemsSubject.next(items);
     });
   }
 
@@ -305,14 +342,26 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   callWaiter() {
     const customerInfo = this.customerService.getCustomerInfo();
     if (customerInfo && customerInfo.tableOtp) {
-      this.webSocketService.emit('callWaiter', { tableOtp: customerInfo.tableOtp });
-      this.snackBar.open('Waiter has been called', 'Close', {       duration: 5000,
-        horizontalPosition: this.horizontalPosition,
-        verticalPosition: this.verticalPosition });
+      this.webSocketService.emit('callWaiter', { tableOtp: customerInfo.tableOtp, restaurantId: this.restaurantId });
+      this.showSuccessSnackBar('Waiter has been called');
     } else {
-      this.snackBar.open('Unable to call waiter. Please try again.', 'Close', {       duration: 5000,
-        horizontalPosition: this.horizontalPosition,
-        verticalPosition: this.verticalPosition });
+      this.showErrorSnackBar('Unable to call waiter. Please try again.');
     }
+  }
+
+  private showSuccessSnackBar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
+  }
+
+  private showErrorSnackBar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: this.horizontalPosition,
+      verticalPosition: this.verticalPosition
+    });
   }
 }

@@ -13,6 +13,7 @@ import { OrderDetailsComponent } from './components/order-details/order-details.
 import { DiningSpecialistComponent } from './components/dining-specialist/dining-specialist.component';
 import { OrderManagementComponent } from './components/order-management/order-management.component';
 import { DsOrderCheckComponent } from './components/ds-order-check/ds-order-check.component';
+import { PaymentTypeComponent } from './components/payment-type/payment-type.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -63,6 +64,7 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   { path: 'cart', component: CartComponent, canActivate: [otpGuard] },
+  { path: 'payment-type', component: PaymentTypeComponent, canActivate: [otpGuard] },
   { path: '', redirectTo: '/customer-login', pathMatch: 'full' },
   { path: '**', redirectTo: '/customer-login' },
 ];
