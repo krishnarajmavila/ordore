@@ -44,8 +44,24 @@
     </div>
   </div>
 
-  <mat-tab-group class="animate__animated animate__fadeInUp animate__faster" #tabGroup (selectedIndexChange)="onTabChange($event)">
-    <mat-tab  *ngFor="let category of categories"  [label]="category.name">
+  <div class="tab-scroll-container animate__animated animate__fadeInUp animate__faster">
+    <div class="tab-scroll" #tabScroll>
+      <button 
+        *ngFor="let category of categories; let i = index" 
+        class="tab-button" 
+        [class.active]="isCategorySelected(category)"
+        (click)="selectCategory(category.name)">
+        {{ category.name }}
+      </button>
+    </div>
+  </div>
+  
+  <mat-tab-group 
+    #tabGroup 
+    [selectedIndex]="selectedTabIndex"
+    (selectedIndexChange)="onTabChange($event)"
+    style="display: none;">
+    <mat-tab *ngFor="let category of categories" [label]="category.name">
     </mat-tab>
   </mat-tab-group>
 

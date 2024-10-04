@@ -58,6 +58,7 @@ interface FoodType {
 export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('tabGroup') tabGroup!: MatTabGroup;
   @ViewChild('tabGroup', { read: ElementRef }) tabGroupElement!: ElementRef;
+  @ViewChild('tabScroll', { static: false }) tabScroll!: ElementRef;
 
   menuItems: MenuItem[] = [];
   categories: FoodType[] = [];
@@ -71,7 +72,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   private menuItemsSubject = new BehaviorSubject<MenuItem[]>([]);
   menuItems$ = this.menuItemsSubject.asObservable();
   private menuUpdateSubscription!: Subscription;
-
+  selectedTabIndex: number = 0;
   private userDataSubject = new BehaviorSubject<any>(null);
   userData$: Observable<any> = this.userDataSubject.asObservable();
 
@@ -92,6 +93,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   ) {}
 
   ngOnInit() {
+    this.updateSelectedTabIndex();
     this.restaurantId = this.getSelectedRestaurantId();
     if (!this.restaurantId) {
       this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
@@ -180,7 +182,13 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
 
   selectCategory(category: string) {
     this.selectedCategory = category;
+    this.updateSelectedTabIndex();
   }
+  updateSelectedTabIndex() {
+    const index = this.categories.findIndex(cat => cat.name === this.selectedCategory);
+    this.selectedTabIndex = index !== -1 ? index : 0;
+  }
+
 
   toggleVegetarian() {
     this.isVegetarian = !this.isVegetarian;
@@ -243,6 +251,9 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.selectCategory(category.name);
   }
 
+  isCategorySelected(category: FoodType): boolean {
+    return this.selectedCategory === category.name;
+  }
   onSwipe(event: TouchEvent, direction: string) {
     const currentIndex = this.tabGroup?.selectedIndex;
   

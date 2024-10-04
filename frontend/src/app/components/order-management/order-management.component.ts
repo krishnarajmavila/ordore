@@ -89,6 +89,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
   menuItems: MenuItem[] = [];
+  selectedTabIndex: number = 0;
   orders: Order[] = [];
   categories: FoodType[] = [];
   selectedCategory: string = 'All';
@@ -116,6 +117,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   ) {}
 
   ngOnInit() {
+    this.updateSelectedTabIndex();
     this.loadCategories();
     if (this.table && this.table.otp) {
       this.loadExistingOrders();
@@ -354,12 +356,19 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
 
   selectCategory(category: FoodType) {
     this.selectedCategory = category.name;
+    this.updateSelectedTabIndex();
+  }
+  updateSelectedTabIndex() {
+    const index = this.categories.findIndex(cat => cat.name === this.selectedCategory);
+    this.selectedTabIndex = index !== -1 ? index : 0;
   }
 
   toggleVegetarian() {
     this.isVegetarian = !this.isVegetarian;
   }
-
+  isCategorySelected(category: FoodType): boolean {
+    return this.selectedCategory === category.name;
+  }
   getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) {
       return 'assets/default-food-image.jpg';
@@ -371,7 +380,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   }
 
   onTabChange(index: number) {
-    this.selectCategory(this.categories[index]);
+    const category = this.categories[index];
+    this.selectCategory(category);
   }
 
   onSwipe(event: TouchEvent, direction: string) {
