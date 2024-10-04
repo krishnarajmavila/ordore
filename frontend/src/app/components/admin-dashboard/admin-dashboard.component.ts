@@ -348,28 +348,28 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  updateMenuItem(formData: FormData) {
-    if (!this.editingItem?._id) return;
+updateMenuItem(formData: FormData) {
+  if (!this.editingItem?._id) return;
 
-    this.http.put<MenuItem>(`${environment.apiUrl}/food/${this.editingItem._id}`, formData).subscribe({
-      next: (updatedItem) => {
-        const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
-        if (index !== -1) {
-          this.menuItems[index] = updatedItem;
-          this.menuItems = [...this.menuItems];
-        }
-        this.resetForm();
-        this.showSnackBar('Menu item updated successfully');
-      },
-      error: (error) => {
-        console.error('Error updating menu item:', error);
-        this.showSnackBar('Error updating menu item');
-      },
-      complete: () => {
-        this.isLoading = false;
+  this.http.put<MenuItem>(`${environment.apiUrl}/food/${this.editingItem._id}`, formData).subscribe({
+    next: (updatedItem) => {
+      const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
+      if (index !== -1) {
+        this.menuItems[index] = updatedItem;
+        this.menuItems = [...this.menuItems];
       }
-    });
-  }
+      this.resetForm();
+      this.showSnackBar('Menu item updated successfully');
+    },
+    error: (error) => {
+      console.error('Error updating menu item:', error);
+      this.showSnackBar('Error updating menu item');
+    },
+    complete: () => {
+      this.isLoading = false;
+    }
+  });
+}
 
   addTable(tableData: Table) {
     this.http.post<Table>(`${environment.apiUrl}/tables`, tableData).subscribe({
@@ -660,11 +660,12 @@ export class AdminDashboardComponent implements OnInit {
 
   getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) {
-      return 'assets/default-food-image.jpg'; // Path to a default image
+      return 'assets/default-food-image.jpg';
     }
-    // Remove '/api' from the environment.apiUrl and append the imageUrl
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
+    if (imageUrl.includes('cloudinary.com')) {
+      return imageUrl;
+    }
+    return `${environment.cloudinaryUrl}/image/upload/${imageUrl}`;
   }
 
   onFileSelected(event: Event) {

@@ -320,8 +320,10 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     if (!imageUrl) {
       return 'assets/default-food-image.jpg';
     }
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
+    if (imageUrl.includes('cloudinary.com')) {
+      return imageUrl;
+    }
+    return `${environment.cloudinaryUrl}/image/upload/${imageUrl}`;
   }
 
   toggleStockStatus(item: MenuItem) {
