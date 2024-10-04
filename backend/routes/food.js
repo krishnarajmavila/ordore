@@ -4,8 +4,19 @@ const mongoose = require('mongoose');
 const Food = require('../models/Food');
 const FoodType = require('../models/FoodType');
 const auth = require('../middleware/auth');
-const upload = require('../middleware/upload');
 const cloudinary = require('../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'food-images',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif']
+  },
+});
+
+const upload = multer({ storage: storage });
 
 // Get all food items for a restaurant
 router.get('/', async (req, res) => {
@@ -96,8 +107,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 
     let imageUrl = null;
     if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path);
-      imageUrl = result.secure_url;
+      imageUrl = req.file.path; // Cloudinary URL
     }
     
     const newFood = new Food({
@@ -156,8 +166,7 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     };
     
     if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path);
-      updateData.imageUrl = result.secure_url;
+      updateData.imageUrl = req.file.path; // Cloudinary URL
     }
     
     const updatedFood = await Food.findOneAndUpdate(
