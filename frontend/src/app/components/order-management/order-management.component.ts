@@ -11,19 +11,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
-import { Table, MenuItem } from '../../interfaces/shared-interfaces';
+import { Table } from '../../interfaces/shared-interfaces';
 import { environment } from '../../../environments/environment';
 import { OrderService } from '../../services/order.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { CartFilterPipe } from '../../pipe/cart-filter.pipe';
 import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { InhouseConfirmationComponent } from '../inhouse-confirmation/inhouse-confirmation.component';
 
 interface OrderItem {
   name: string;
   quantity: number;
   price: number;
   imageUrl?: string;
+  category: string;
 }
 
 interface Order {
@@ -34,6 +37,24 @@ interface Order {
   status: string;
   totalPrice: number;
   createdAt: Date;
+}
+
+interface FoodType {
+  _id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface MenuItem {
+  _id?: string;
+  name: string;
+  category: FoodType;
+  price: number;
+  description?: string;
+  imageUrl?: string;
+  isVegetarian: boolean;
 }
 
 @Component({
@@ -52,7 +73,8 @@ interface Order {
     MatTableModule,
     MatSlideToggleModule,
     MatTabsModule,
-    CartFilterPipe
+    CartFilterPipe,
+    InhouseConfirmationComponent
   ],
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
@@ -60,14 +82,16 @@ interface Order {
 export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() table!: Table;
   @Output() backToTableSelection = new EventEmitter<void>();
-  @Output() viewOrders = new EventEmitter<string>();  // Add this line
+  @Output() viewOrders = new EventEmitter<string>();
   @ViewChild('tabGroup') tabGroup!: MatTabGroup;
   @ViewChild('tabGroup', { read: ElementRef }) tabGroupElement!: ElementRef;
+  private dialogRef: MatDialogRef<InhouseConfirmationComponent> | null = null;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
   menuItems: MenuItem[] = [];
+  selectedTabIndex: number = 0;
   orders: Order[] = [];
-  categories: string[] = [];
+  categories: FoodType[] = [];
   selectedCategory: string = 'All';
   isVegetarian: boolean = false;
   searchQuery: string = '';
@@ -81,17 +105,20 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   };
   displayedColumns: string[] = ['name', 'quantity', 'price', 'actions'];
   showCart: boolean = false;
+  restaurantId: string | null = this.getSelectedRestaurantId();
 
   constructor(
     private http: HttpClient,
     private orderService: OrderService,
     private router: Router,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit() {
-    this.loadMenuItems();
+    this.updateSelectedTabIndex();
+    this.loadCategories();
     if (this.table && this.table.otp) {
       this.loadExistingOrders();
     }
@@ -108,18 +135,51 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.enableSwipeGesture();
   }
 
-  loadMenuItems() {
-    this.http.get<MenuItem[]>(`${environment.apiUrl}/food`).subscribe({
-      next: (items) => {
-        this.menuItems = items;
-        this.categories = ['All', ...new Set(items.map(item => item.category))];
+  loadCategories() {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing. Unable to load categories.');
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+  
+    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types?restaurantId=${restaurantId}`).subscribe({
+      next: (types) => {
+        this.categories = [
+          { _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, 
+          ...types
+        ];
+        this.loadMenuItems();
       },
       error: (error) => {
-        console.error('Error loading menu items:', error);
+        console.error('Error loading categories:', error);
+        this.showErrorSnackBar('Error loading categories. Please try again.');
       }
     });
   }
+  
 
+  
+
+  loadMenuItems() {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing. Unable to load menu items.');
+      this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      return;
+    }
+  
+    this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
+      next: (items) => {
+        this.menuItems = items;
+      },
+      error: (error) => {
+        console.error('Error loading menu items:', error);
+        this.showErrorSnackBar('Error loading menu items. Please try again.');
+      }
+    });
+  }
+  
   loadExistingOrders() {
     if (!this.table.otp) {
       console.error('Table OTP is missing, cannot load orders');
@@ -146,7 +206,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
         name: item.name,
         quantity: 1,
         price: item.price,
-        imageUrl: item.imageUrl
+        imageUrl: item.imageUrl,
+        category: item.category._id
       });
     }
     
@@ -171,20 +232,52 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.currentOrder.totalPrice = this.currentOrder.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
 
+  openConfirmationDialog() {
+    this.dialogRef = this.dialog.open(InhouseConfirmationComponent, {
+      width: '300px',
+      data: {
+        title: 'Confirm Order',
+        message: 'Are you sure you want to place this order?',
+        totalPrice: this.currentOrder.totalPrice,
+        confirmAction: () => this.submitOrder()
+      }
+    });
+
+    this.dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        console.log('Order confirmed');
+      } else {
+        console.log('Order cancelled');
+      }
+      this.dialogRef = null;
+    });
+  }
+
   submitOrder() {
     if (!this.table.otp) {
       console.error('Table OTP is missing');
-      this.snackBar.open('Table OTP is missing. Unable to submit order.', 'Close', {
-        duration: 3000,
-        panelClass: ['error-snackbar']
-      });
+      this.showErrorSnackBar('Table OTP is missing. Unable to submit order.');
+      if (this.dialogRef) {
+        this.dialogRef.close();
+      }
+      return;
+    }
+  
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing');
+      this.showErrorSnackBar('Restaurant ID is missing. Unable to submit order.');
+      if (this.dialogRef) {
+        this.dialogRef.close();
+      }
       return;
     }
   
     const orderData = {
       ...this.currentOrder,
       tableOtp: this.table.otp,
-      customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`
+      customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`,
+      restaurant: restaurantId  // Include the restaurantId in the order data
     };
   
     this.http.post<Order>(`${environment.apiUrl}/orders`, orderData).subscribe({
@@ -195,10 +288,16 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
         this.showCart = false;
   
         this.showSuccessSnackBar('Order submitted successfully!');
+        if (this.dialogRef) {
+          this.dialogRef.close(true);
+        }
       },
       error: (error) => {
         console.error('Error submitting order:', error);
         this.showErrorSnackBar('Error submitting order. Please try again.');
+        if (this.dialogRef) {
+          this.dialogRef.close(false);
+        }
       }
     });
   }
@@ -230,6 +329,9 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     });
   }
 
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
   refreshTableData() {
     if (!this.table._id) return;
 
@@ -252,24 +354,34 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.router.navigate(['/login']);
   }
 
-  selectCategory(category: string) {
-    this.selectedCategory = category;
+  selectCategory(category: FoodType) {
+    this.selectedCategory = category.name;
+    this.updateSelectedTabIndex();
+  }
+  updateSelectedTabIndex() {
+    const index = this.categories.findIndex(cat => cat.name === this.selectedCategory);
+    this.selectedTabIndex = index !== -1 ? index : 0;
   }
 
   toggleVegetarian() {
     this.isVegetarian = !this.isVegetarian;
   }
-
+  isCategorySelected(category: FoodType): boolean {
+    return this.selectedCategory === category.name;
+  }
   getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) {
       return 'assets/default-food-image.jpg';
     }
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
+    if (imageUrl.includes('cloudinary.com')) {
+      return imageUrl;
+    }
+    return `${environment.cloudinaryUrl}/image/upload/${imageUrl}`;
   }
 
   onTabChange(index: number) {
-    this.selectCategory(this.categories[index]);
+    const category = this.categories[index];
+    this.selectCategory(category);
   }
 
   onSwipe(event: TouchEvent, direction: string) {
@@ -312,7 +424,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
 
   getFilteredMenuItems(): MenuItem[] {
     return this.menuItems.filter(item => 
-      (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
+      (this.selectedCategory === 'All' || item.category.name === this.selectedCategory) &&
       (!this.isVegetarian || item.isVegetarian === true) &&
       item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
     );
@@ -351,6 +463,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     }
     this.calculateTotalPrice();
   }
+
   lookOrders() {
     if (this.table && this.table.otp) {
       this.viewOrders.emit(this.table.otp);

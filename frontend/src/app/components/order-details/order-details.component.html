@@ -55,7 +55,7 @@
             </div>
           </div>
         </div>
-        <button mat-raised-button color="warn" class="pay-button animate__animated animate__pulse animate__faster">PAY NOW</button>
+        <button mat-raised-button (click)="selectMethod();" color="warn" class="pay-button animate__animated animate__pulse animate__faster">PAY NOW</button>
       </ng-container>
       <ng-template #noOrders>
         <div class="no-orders-message text-center p-5">

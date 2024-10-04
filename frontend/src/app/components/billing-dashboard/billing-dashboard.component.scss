@@ -8,3 +8,9 @@ mat-list-item { cursor: pointer; }
 mat-list-item.active { background-color: #e0e0e0; }
 .mat-column-items { flex: 2; }
 .mat-column-price { flex: 1; }
+
+::ng-deep{
+    .ordersforbiller .headvals{
+        display: none !important;
+    }
+}

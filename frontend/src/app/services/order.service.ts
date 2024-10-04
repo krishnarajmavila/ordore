@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
 import { tap, catchError, map, switchMap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -9,6 +9,7 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  category: string; 
 }
 
 export interface Order {
@@ -18,8 +19,10 @@ export interface Order {
   customerName: string;
   phoneNumber: string;
   tableOtp: string;
+  tableNumber: string;
   status: string;
   createdAt: Date;
+  restaurant: string;
 }
 
 interface Table {
@@ -29,6 +32,7 @@ interface Table {
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
+  restaurant: string;
 }
 
 @Injectable({
@@ -47,12 +51,22 @@ export class OrderService {
     this.setupWebSocketListeners();
   }
 
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
+
   getOrders(): Observable<Order[]> {
     return this.ordersSubject.asObservable();
   }
 
   fetchOrders(): void {
-    this.http.get<Order[]>(this.apiUrl).pipe(
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID not set');
+      return;
+    }
+    const params = new HttpParams().set('restaurantId', restaurantId);
+    this.http.get<Order[]>(this.apiUrl, { params }).pipe(
       catchError(this.handleError)
     ).subscribe(
       orders => this.ordersSubject.next(orders)
@@ -60,12 +74,22 @@ export class OrderService {
   }
 
   submitOrder(cartItems: CartItem[], totalPrice: number, customerInfo: { name: string, phoneNumber: string, tableOtp: string }): Observable<Order> {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
     const orderData = {
-      items: cartItems,
+      items: cartItems.map(item => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        category: item.category // Include category in the order data
+      })),
       totalPrice: totalPrice,
       customerName: customerInfo.name,
       phoneNumber: customerInfo.phoneNumber,
-      tableOtp: customerInfo.tableOtp
+      tableOtp: customerInfo.tableOtp,
+      restaurant: restaurantId
     };
 
     return this.http.post<Order>(this.apiUrl, orderData).pipe(
@@ -88,7 +112,12 @@ export class OrderService {
   }
 
   updateOrderStatus(orderId: string, newStatus: string): Observable<Order> {
-    return this.http.patch<Order>(`${this.apiUrl}/${orderId}`, { status: newStatus }).pipe(
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
+    const params = new HttpParams().set('restaurantId', restaurantId);
+    return this.http.patch<Order>(`${this.apiUrl}/${orderId}`, { status: newStatus }, { params }).pipe(
       tap(updatedOrder => {
         const currentOrders = this.ordersSubject.value;
         const updatedOrders = currentOrders.map(order =>
@@ -102,7 +131,12 @@ export class OrderService {
   }
 
   deleteOrder(orderId: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${orderId}`).pipe(
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
+    const params = new HttpParams().set('restaurantId', restaurantId);
+    return this.http.delete<void>(`${this.apiUrl}/${orderId}`, { params }).pipe(
       tap(() => {
         const currentOrders = this.ordersSubject.value;
         const updatedOrders = currentOrders.filter(order => order._id !== orderId);
@@ -125,7 +159,14 @@ export class OrderService {
   }
 
   getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}?tableOtp=${tableOtp}`).pipe(
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
+    const params = new HttpParams()
+      .set('tableOtp', tableOtp)
+      .set('restaurantId', restaurantId);
+    return this.http.get<Order[]>(this.apiUrl, { params }).pipe(
       catchError(this.handleError)
     );
   }
@@ -146,13 +187,20 @@ export class OrderService {
   }
 
   private updateTableStatus(tableOtp: string, isOccupied: boolean): Observable<void> {
-    return this.http.get<Table[]>(`${this.tableApiUrl}?otp=${tableOtp}`).pipe(
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
+    const params = new HttpParams()
+      .set('otp', tableOtp)
+      .set('restaurantId', restaurantId);
+    return this.http.get<Table[]>(this.tableApiUrl, { params }).pipe(
       switchMap(tables => {
         if (tables.length === 0) {
           return throwError(() => new Error('Table not found'));
         }
         const table = tables[0];
-        return this.http.patch<void>(`${this.tableApiUrl}/${table._id}`, { isOccupied });
+        return this.http.patch<void>(`${this.tableApiUrl}/${table._id}`, { isOccupied }, { params });
       }),
       catchError(error => {
         console.error('Error updating table status:', error);
@@ -163,16 +211,22 @@ export class OrderService {
 
   private setupWebSocketListeners(): void {
     this.webSocketService.listen('orderUpdate').subscribe((updatedOrder: Order) => {
-      const currentOrders = this.ordersSubject.value;
-      const updatedOrders = currentOrders.map(order =>
-        order._id === updatedOrder._id ? updatedOrder : order
-      );
-      this.ordersSubject.next(updatedOrders);
+      const restaurantId = this.getSelectedRestaurantId();
+      if (updatedOrder.restaurant === restaurantId) {
+        const currentOrders = this.ordersSubject.value;
+        const updatedOrders = currentOrders.map(order =>
+          order._id === updatedOrder._id ? updatedOrder : order
+        );
+        this.ordersSubject.next(updatedOrders);
+      }
     });
 
     this.webSocketService.listen('newOrder').subscribe((newOrder: Order) => {
-      const currentOrders = this.ordersSubject.value;
-      this.ordersSubject.next([...currentOrders, newOrder]);
+      const restaurantId = this.getSelectedRestaurantId();
+      if (newOrder.restaurant === restaurantId) {
+        const currentOrders = this.ordersSubject.value;
+        this.ordersSubject.next([...currentOrders, newOrder]);
+      }
     });
 
     this.webSocketService.listen('orderDeleted').subscribe((deletedOrderId: string) => {
@@ -185,10 +239,8 @@ export class OrderService {
   private handleError(error: HttpErrorResponse) {
     let errorMessage = 'An unknown error occurred';
     if (error.error instanceof ErrorEvent) {
-      // Client-side error
       errorMessage = `Error: ${error.error.message}`;
     } else {
-      // Server-side error
       errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
       if (error.error && typeof error.error === 'object') {
         errorMessage += `\nDetails: ${JSON.stringify(error.error)}`;

@@ -1,0 +1,15 @@
+{
+  "routes": [
+    "/admin-dashboard",
+    "/billing-dashboard",
+    "/cart",
+    "/cook-dashboard",
+    "/customer-dashboard",
+    "/customer-login",
+    "/dining-specialist",
+    "/dsorder-check",
+    "/login",
+    "/order-details",
+    "/verify-otp"
+  ]
+}

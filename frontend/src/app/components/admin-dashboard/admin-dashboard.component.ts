@@ -23,24 +23,43 @@ import { MatDialog } from '@angular/material/dialog';
 import { UserManagementComponent } from '../user-management/user-management.component';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ReportingComponent } from '../reports/reporting.component';
+import { RestaurantService } from '../../services/restaurant.service';
+import { RestaurantSelectorComponent } from '../restaurant-selector/restaurant-selector.component';
 
 interface MenuItem {
   _id?: string;
   name: string;
-  category: string;
+  category: string | FoodType;
   price: number;
   description?: string;
   imageUrl?: string;
   isVegetarian: boolean;
+  restaurant: string;
 }
 
 interface Table {
   _id?: string;
   number: string;
   capacity: number;
+  location?: string;
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
+  restaurant: string;
+}
+
+interface FoodType {
+  _id: string;
+  name: string;
+  restaurant: string;
+}
+
+interface Restaurant {
+  _id: string;
+  name: string;
+  parentOrganization: string;
+  type: 'branch' | 'franchisee';
+  city: string;
 }
 
 @Component({
@@ -64,7 +83,8 @@ interface Table {
     MatExpansionModule,
     UserManagementComponent,
     MatToolbarModule,
-    ReportingComponent
+    ReportingComponent,
+    RestaurantSelectorComponent
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
@@ -72,28 +92,52 @@ interface Table {
 export class AdminDashboardComponent implements OnInit {
   menuForm: FormGroup;
   tableForm: FormGroup;
+  foodTypeForm: FormGroup;
+  restaurantForm: FormGroup;
   menuItems: MenuItem[] = [];
   tables: Table[] = [];
+  foodTypes: FoodType[] = [];
+  restaurants: Restaurant[] = [];
   editingItem: MenuItem | null = null;
   editingTable: Table | null = null;
+  editingFoodType: FoodType | null = null;
+  editingRestaurant: Restaurant | null = null;
   isLoading = false;
   displayedColumns: string[] = ['name', 'category', 'price', 'description', 'isVegetarian', 'image', 'actions'];
-  displayedTableColumns: string[] = ['number', 'capacity', 'isOccupied', 'otp', 'actions'];
-  categories = ['Appetizers', 'Mains', 'Desserts', 'Beverages'];
+  displayedTableColumns: string[] = ['number', 'capacity', 'location', 'isOccupied', 'otp', 'actions'];
+  displayedFoodTypeColumns: string[] = ['name', 'actions'];
+  displayedRestaurantColumns: string[] = ['name', 'parentOrganization', 'type', 'city', 'actions'];
+  categories: string[] = [];
   selectedFile: File | null = null;
   activeView: string;
   sidenavCollapsed: boolean = false;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
+  currentRestaurant: Restaurant | null = null;
   
+  tableLocations: string[] = [
+    'Parcel - Take Away',
+    'First Floor - Main Dining Area',
+    'First Floor - Bar Area',
+    'First Floor - Patio',
+    'Second Floor - Fine Dining Section',
+    'Second Floor - Lounge Area',
+    'Second Floor - Balcony',
+    'Mezzanine - Private Dining Room A',
+    'Mezzanine - Private Dining Room B',
+    'Mezzanine - Corridor',
+    'Rooftop - Open-Air Dining',
+    'Rooftop - Rooftop Bar'
+  ];
 
   constructor(
-    private fb: FormBuilder,
+    private fb: FormBuilder, 
     private http: HttpClient,
     private snackBar: MatSnackBar,
     private authService: AuthService,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private restaurantService: RestaurantService
   ) {
     this.menuForm = this.fb.group({
       name: ['', Validators.required],
@@ -107,7 +151,19 @@ export class AdminDashboardComponent implements OnInit {
     this.tableForm = this.fb.group({
       number: ['', [Validators.required, Validators.min(1)]],
       capacity: ['', [Validators.required, Validators.min(1)]],
+      location: [''],
       isOccupied: [false]
+    });
+
+    this.foodTypeForm = this.fb.group({
+      name: ['', Validators.required]
+    });
+
+    this.restaurantForm = this.fb.group({
+      name: ['', Validators.required],
+      parentOrganization: ['', Validators.required],
+      type: ['', Validators.required],
+      city: ['', Validators.required]
     });
 
     this.activeView = localStorage.getItem('activeView') || 'Add Menu';
@@ -115,13 +171,23 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadMenuItems();
-    this.loadTables();
+    this.restaurantService.getCurrentRestaurant().subscribe(restaurantId => {
+      if (restaurantId) {
+        this.restaurantService.getRestaurant(restaurantId).subscribe(restaurant => {
+          this.currentRestaurant = restaurant;
+          this.loadMenuItems();
+          this.loadTables();
+          this.loadFoodTypes();
+        });
+      }
+    });
+    this.loadRestaurants();
   }
 
   loadMenuItems() {
+    if (!this.currentRestaurant) return;
     this.isLoading = true;
-    this.http.get<MenuItem[]>(`${environment.apiUrl}/food`).subscribe({
+    this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${this.currentRestaurant._id}`).subscribe({
       next: (items) => {
         this.menuItems = items;
         this.isLoading = false;
@@ -135,10 +201,11 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   loadTables() {
+    if (!this.currentRestaurant) return;
     this.isLoading = true;
-    this.http.get<Table[]>(`${environment.apiUrl}/tables`).subscribe({
+    this.http.get<Table[]>(`${environment.apiUrl}/tables?restaurantId=${this.currentRestaurant._id}`).subscribe({
       next: (tables) => {
-        this.tables = tables;
+        this.tables = this.sortTables(tables);
         this.isLoading = false;
       },
       error: (error) => {
@@ -149,13 +216,61 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
+  loadFoodTypes() {
+    if (!this.currentRestaurant) return;
+    this.isLoading = true;
+    this.http.get<FoodType[]>(`${environment.apiUrl}/food-types?restaurantId=${this.currentRestaurant._id}`).subscribe({
+      next: (types) => {
+        this.foodTypes = types;
+        this.categories = types.map(type => type.name);
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading food types:', error);
+        this.showSnackBar('Error loading food types');
+        this.isLoading = false;
+      }
+    });
+  }
+
+  loadRestaurants() {
+    this.isLoading = true;
+    this.restaurantService.getRestaurants().subscribe({
+      next: (restaurants) => {
+        this.restaurants = restaurants;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading restaurants:', error);
+        this.showSnackBar('Error loading restaurants');
+        this.isLoading = false;
+      }
+    });
+  }
+
+  sortTables(tables: Table[]): Table[] {
+    return tables.sort((a, b) => {
+      if (a.location === 'Parcel - Take Away') return -1;
+      if (b.location === 'Parcel - Take Away') return 1;
+      return 0;
+    });
+  }
+
   onSubmit() {
-    if (this.menuForm.valid) {
+    if (this.menuForm.valid && this.currentRestaurant) {
       this.isLoading = true;
       const formData = new FormData();
       Object.keys(this.menuForm.controls).forEach(key => {
-        formData.append(key, this.menuForm.get(key)?.value);
+        if (key === 'category') {
+          const categoryName = this.menuForm.get(key)?.value;
+          const category = this.foodTypes.find(type => type.name === categoryName);
+          formData.append(key, category ? category._id : categoryName);
+        } else {
+          formData.append(key, this.menuForm.get(key)?.value);
+        }
       });
+
+      formData.append('restaurant', this.currentRestaurant._id);
 
       if (this.selectedFile) {
         formData.append('image', this.selectedFile, this.selectedFile.name);
@@ -172,9 +287,9 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   onTableSubmit() {
-    if (this.tableForm.valid) {
+    if (this.tableForm.valid && this.currentRestaurant) {
       this.isLoading = true;
-      const tableData = this.tableForm.value;
+      const tableData = { ...this.tableForm.value, restaurant: this.currentRestaurant._id };
 
       if (this.editingTable) {
         this.updateTable(tableData);
@@ -183,6 +298,36 @@ export class AdminDashboardComponent implements OnInit {
       }
     } else {
       this.tableForm.markAllAsTouched();
+    }
+  }
+
+  onFoodTypeSubmit() {
+    if (this.foodTypeForm.valid && this.currentRestaurant) {
+      this.isLoading = true;
+      const foodTypeData = { ...this.foodTypeForm.value, restaurant: this.currentRestaurant._id };
+
+      if (this.editingFoodType) {
+        this.updateFoodType(foodTypeData);
+      } else {
+        this.addFoodType(foodTypeData);
+      }
+    } else {
+      this.foodTypeForm.markAllAsTouched();
+    }
+  }
+
+  onRestaurantSubmit() {
+    if (this.restaurantForm.valid) {
+      this.isLoading = true;
+      const restaurantData = this.restaurantForm.value;
+
+      if (this.editingRestaurant) {
+        this.updateRestaurant(restaurantData);
+      } else {
+        this.addRestaurant(restaurantData);
+      }
+    } else {
+      this.restaurantForm.markAllAsTouched();
     }
   }
 
@@ -203,33 +348,33 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  updateMenuItem(formData: FormData) {
-    if (!this.editingItem?._id) return;
+updateMenuItem(formData: FormData) {
+  if (!this.editingItem?._id) return;
 
-    this.http.put<MenuItem>(`${environment.apiUrl}/food/${this.editingItem._id}`, formData).subscribe({
-      next: (updatedItem) => {
-        const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
-        if (index !== -1) {
-          this.menuItems[index] = updatedItem;
-          this.menuItems = [...this.menuItems];
-        }
-        this.resetForm();
-        this.showSnackBar('Menu item updated successfully');
-      },
-      error: (error) => {
-        console.error('Error updating menu item:', error);
-        this.showSnackBar('Error updating menu item');
-      },
-      complete: () => {
-        this.isLoading = false;
+  this.http.put<MenuItem>(`${environment.apiUrl}/food/${this.editingItem._id}`, formData).subscribe({
+    next: (updatedItem) => {
+      const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
+      if (index !== -1) {
+        this.menuItems[index] = updatedItem;
+        this.menuItems = [...this.menuItems];
       }
-    });
-  }
+      this.resetForm();
+      this.showSnackBar('Menu item updated successfully');
+    },
+    error: (error) => {
+      console.error('Error updating menu item:', error);
+      this.showSnackBar('Error updating menu item');
+    },
+    complete: () => {
+      this.isLoading = false;
+    }
+  });
+}
 
   addTable(tableData: Table) {
     this.http.post<Table>(`${environment.apiUrl}/tables`, tableData).subscribe({
       next: (newTable) => {
-        this.tables = [...this.tables, newTable];
+        this.tables = this.sortTables([...this.tables, newTable]);
         this.resetTableForm();
         this.showSnackBar('Table added successfully');
       },
@@ -242,17 +387,15 @@ export class AdminDashboardComponent implements OnInit {
       }
     });
   }
-
   updateTable(tableData: Table) {
     if (!this.editingTable?._id) return;
 
     this.http.put<Table>(`${environment.apiUrl}/tables/${this.editingTable._id}`, tableData).subscribe({
       next: (updatedTable) => {
-        const index = this.tables.findIndex(table => table._id === updatedTable._id);
-        if (index !== -1) {
-          this.tables[index] = updatedTable;
-          this.tables = [...this.tables];
-        }
+        const updatedTables = this.tables.map(table => 
+          table._id === updatedTable._id ? updatedTable : table
+        );
+        this.tables = this.sortTables(updatedTables);
         this.resetTableForm();
         this.showSnackBar('Table updated successfully');
       },
@@ -266,10 +409,93 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
+  addFoodType(foodTypeData: FoodType) {
+    this.http.post<FoodType>(`${environment.apiUrl}/food-types`, foodTypeData).subscribe({
+      next: (newType) => {
+        this.foodTypes = [...this.foodTypes, newType];
+        this.categories = this.foodTypes.map(type => type.name);
+        this.resetFoodTypeForm();
+        this.showSnackBar('Food type added successfully');
+      },
+      error: (error) => {
+        console.error('Error adding food type:', error);
+        this.showSnackBar('Error adding food type');
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  updateFoodType(foodTypeData: FoodType) {
+    if (!this.editingFoodType?._id) return;
+
+    this.http.put<FoodType>(`${environment.apiUrl}/food-types/${this.editingFoodType._id}`, foodTypeData).subscribe({
+      next: (updatedType) => {
+        const index = this.foodTypes.findIndex(type => type._id === updatedType._id);
+        if (index !== -1) {
+          this.foodTypes[index] = updatedType;
+          this.foodTypes = [...this.foodTypes];
+          this.categories = this.foodTypes.map(type => type.name);
+        }
+        this.resetFoodTypeForm();
+        this.showSnackBar('Food type updated successfully');
+      },
+      error: (error) => {
+        console.error('Error updating food type:', error);
+        this.showSnackBar('Error updating food type');
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  addRestaurant(restaurantData: Restaurant) {
+    this.restaurantService.createRestaurant(restaurantData).subscribe({
+      next: (newRestaurant) => {
+        this.restaurants = [...this.restaurants, newRestaurant];
+        this.resetRestaurantForm();
+        this.showSnackBar('Restaurant added successfully');
+      },
+      error: (error) => {
+        console.error('Error adding restaurant:', error);
+        this.showSnackBar('Error adding restaurant');
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  updateRestaurant(restaurantData: Restaurant) {
+    if (!this.editingRestaurant?._id) return;
+
+    this.restaurantService.updateRestaurant(this.editingRestaurant._id, restaurantData).subscribe({
+      next: (updatedRestaurant) => {
+        const index = this.restaurants.findIndex(r => r._id === updatedRestaurant._id);
+        if (index !== -1) {
+          this.restaurants[index] = updatedRestaurant;
+          this.restaurants = [...this.restaurants];
+        }
+        this.resetRestaurantForm();
+        this.showSnackBar('Restaurant updated successfully');
+      },
+      error: (error) => {
+        console.error('Error updating restaurant:', error);
+        this.showSnackBar('Error updating restaurant');
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
   editItem(item: MenuItem) {
     this.editingItem = item;
     this.menuForm.patchValue({
       ...item,
+      category: typeof item.category === 'object' ? item.category._id : item.category,
       isVegetarian: item.isVegetarian
     });
     this.selectedFile = null;
@@ -280,7 +506,25 @@ export class AdminDashboardComponent implements OnInit {
     this.tableForm.patchValue({
       number: table.number,
       capacity: table.capacity,
+      location: table.location,
       isOccupied: table.isOccupied
+    });
+  }
+
+  editFoodType(foodType: FoodType) {
+    this.editingFoodType = foodType;
+    this.foodTypeForm.patchValue({
+      name: foodType.name
+    });
+  }
+
+  editRestaurant(restaurant: Restaurant) {
+    this.editingRestaurant = restaurant;
+    this.restaurantForm.patchValue({
+      name: restaurant.name,
+      parentOrganization: restaurant.parentOrganization,
+      type: restaurant.type,
+      city: restaurant.city
     });
   }
 
@@ -309,12 +553,51 @@ export class AdminDashboardComponent implements OnInit {
     this.isLoading = true;
     this.http.delete(`${environment.apiUrl}/tables/${table._id}`).subscribe({
       next: () => {
-        this.tables = this.tables.filter(t => t._id !== table._id);
+        this.tables = this.sortTables(this.tables.filter(t => t._id !== table._id));
         this.showSnackBar('Table deleted successfully');
       },
       error: (error) => {
         console.error('Error deleting table:', error);
         this.showSnackBar('Error deleting table');
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  deleteFoodType(foodType: FoodType) {
+    if (!foodType._id) return;
+
+    this.isLoading = true;
+    this.http.delete(`${environment.apiUrl}/food-types/${foodType._id}`).subscribe({
+      next: () => {
+        this.foodTypes = this.foodTypes.filter(type => type._id !== foodType._id);
+        this.categories = this.foodTypes.map(type => type.name);
+        this.showSnackBar('Food type deleted successfully');
+      },
+      error: (error) => {
+        console.error('Error deleting food type:', error);
+        this.showSnackBar('Error deleting food type');
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  deleteRestaurant(restaurant: Restaurant) {
+    if (!restaurant._id) return;
+
+    this.isLoading = true;
+    this.restaurantService.deleteRestaurant(restaurant._id).subscribe({
+      next: () => {
+        this.restaurants = this.restaurants.filter(r => r._id !== restaurant._id);
+        this.showSnackBar('Restaurant deleted successfully');
+      },
+      error: (error) => {
+        console.error('Error deleting restaurant:', error);
+        this.showSnackBar('Error deleting restaurant');
       },
       complete: () => {
         this.isLoading = false;
@@ -333,11 +616,10 @@ export class AdminDashboardComponent implements OnInit {
         this.isLoading = true;
         this.http.post<Table>(`${environment.apiUrl}/tables/${table._id}/refresh-otp`, {}).subscribe({
           next: (updatedTable) => {
-            const index = this.tables.findIndex(t => t._id === updatedTable._id);
-            if (index !== -1) {
-              this.tables[index] = updatedTable;
-              this.tables = [...this.tables];
-            }
+            const updatedTables = this.tables.map(t => 
+              t._id === updatedTable._id ? updatedTable : t
+            );
+            this.tables = this.sortTables(updatedTables);
             this.showSnackBar('Table reset and OTP refreshed successfully');
           },
           error: (error) => {
@@ -359,17 +641,31 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   resetTableForm() {
-    this.tableForm.reset();
+    this.tableForm.reset({}, { emitEvent: false });
     this.editingTable = null;
+    
+    this.tableForm.markAsPristine();
+    this.tableForm.markAsUntouched();
+  }
+
+  resetFoodTypeForm() {
+    this.foodTypeForm.reset();
+    this.editingFoodType = null;
+  }
+
+  resetRestaurantForm() {
+    this.restaurantForm.reset();
+    this.editingRestaurant = null;
   }
 
   getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) {
-      return 'assets/default-food-image.jpg'; // Path to a default image
+      return 'assets/default-food-image.jpg';
     }
-    // Remove '/api' from the environment.apiUrl and append the imageUrl
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
+    if (imageUrl.includes('cloudinary.com')) {
+      return imageUrl;
+    }
+    return `${environment.cloudinaryUrl}/image/upload/${imageUrl}`;
   }
 
   onFileSelected(event: Event) {
@@ -379,8 +675,21 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  getUniqueCategories(): string[] {
-    return Array.from(new Set(this.menuItems.map(item => item.category)));
+  getUniqueCategories(): FoodType[] {
+    return this.foodTypes;
+  }
+
+  getCategoryName(category: string | FoodType | undefined): string {
+    if (typeof category === 'string') {
+      return category;
+    } else if (category && typeof category === 'object' && 'name' in category) {
+      return category.name;
+    }
+    return '';
+  }
+
+  getDisplayCategory(item: MenuItem): string {
+    return this.getCategoryName(item.category);
   }
 
   setActiveView(view: string) {
@@ -402,19 +711,28 @@ export class AdminDashboardComponent implements OnInit {
     return this.activeView === 'User Management';
   }
 
+  isReportingActive(): boolean {
+    return this.activeView === 'Reporting';
+  }
+
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
-  isReportingActive(): boolean {
-    return this.activeView === 'Reporting';
-  }
+
   showSnackBar(message: string) {
     this.snackBar.open(message, 'Close', {
       duration: 5000,
       horizontalPosition: this.horizontalPosition,
       verticalPosition: this.verticalPosition
     });
+  }
+
+  onRestaurantChange(restaurant: Restaurant) {
+    this.currentRestaurant = restaurant;
+    this.loadMenuItems();
+    this.loadTables();
+    this.loadFoodTypes();
   }
 
   get f() { return this.menuForm.controls; }

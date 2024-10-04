@@ -1,13 +1,18 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, catchError, Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { isPlatformBrowser } from '@angular/common';
+import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
+import { RestaurantService } from './restaurant.service';
 
 interface AuthResponse {
   token: string;
   userType: string;
   username: string;
+  restaurantId?: string;
+  expiresIn?: number;
 }
 
 interface OtpSendResponse {
@@ -17,10 +22,11 @@ interface OtpSendResponse {
 interface OtpVerifyResponse extends AuthResponse {
   valid: boolean;
 }
+
 interface TableOtpValidationResponse {
   valid: boolean;
   message?: string;
-  tableNumber?: number;
+  tableNumber?: String;
 }
 
 @Injectable({
@@ -28,33 +34,38 @@ interface TableOtpValidationResponse {
 })
 export class AuthService {
   private tokenKey = 'auth_token';
+  private tokenExpirationKey = 'token_expiration';
   private userTypeKey = 'user_type';
   private usernameSubject = new BehaviorSubject<string | null>(null);
   private otpRequestedKey = 'otp_requested';
   private otpVerifiedKey = 'otp_verified';
+  private restaurantIdKey = 'restaurant_id';
+  private userNameKey = 'user_name';
   private isBrowser: boolean;
   private mobileNumber: string | null = null;
   private name: string | null = null;
   private tableOtp: string | null = null;
-  private userNameKey = 'user_name';
+  private tokenExpirationTimer: any;
+  private authStateSubject = new BehaviorSubject<boolean>(false);
 
   constructor(
     private http: HttpClient,
+    private restaurantService: RestaurantService,
+    private router: Router,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
+    if (this.isBrowser) {
+      this.checkTokenExpiration();
+      this.authStateSubject.next(this.isLoggedIn());
+    }
   }
 
   login(credentials: { username: string; password: string; userType: string }): Observable<AuthResponse> {
-    console.log('Login attempt with credentials:', JSON.stringify(credentials));
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       tap(response => {
-        console.log('Received login response:', JSON.stringify(response));
         if (response && response.token) {
-          this.setToken(response.token);
-          this.setUserType(response.userType);
-          this.setUsername(response.username);
-          console.log('After setting - Token:', this.getToken(), 'UserType:', this.getUserType(), 'getUsername:', this.getUsername());
+          this.handleAuthResponse(response);
         }
       }),
       catchError(error => {
@@ -63,33 +74,42 @@ export class AuthService {
       })
     );
   }
+
+  private handleAuthResponse(response: AuthResponse): void {
+    this.setToken(response.token);
+    this.setUserType(response.userType);
+    this.setUsername(response.username);
+    if (response.restaurantId) {
+      this.restaurantService.setCurrentRestaurant(response.restaurantId);
+    }
+    if (response.expiresIn) {
+      this.setTokenExpiration(response.expiresIn);
+    } else {
+      this.setTokenExpiration(3600); // Default 1 hour expiration
+    }
+    this.authStateSubject.next(true);
+  }
+
   setUsername(username: string) {
     if (this.isBrowser) {
       localStorage.setItem(this.userNameKey, username);
-      console.log('UserName set in localStorage:', username);
+      this.usernameSubject.next(username);
     }
   }
 
-  getUsername(): string | null {
-    if (this.isBrowser) {
-      const userNameKey = localStorage.getItem(this.userNameKey);
-      // console.log('UserName retrieved from localStorage:', userNameKey);
-      return userNameKey;
-    }
-    return null;
+  getUsername(): Observable<string | null> {
+    return this.usernameSubject.asObservable();
   }
+
   setToken(token: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.tokenKey, token);
-      // console.log('Token set in localStorage:', token);
     }
   }
 
   getToken(): string | null {
     if (this.isBrowser) {
-      const token = localStorage.getItem(this.tokenKey);
-      // console.log('Token retrieved from localStorage:', token);
-      return token;
+      return localStorage.getItem(this.tokenKey);
     }
     return null;
   }
@@ -97,23 +117,30 @@ export class AuthService {
   setUserType(userType: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.userTypeKey, userType);
-      // console.log('UserType set in localStorage:', userType);
     }
   }
 
   getUserType(): string | null {
     if (this.isBrowser) {
-      const userType = localStorage.getItem(this.userTypeKey);
-      // console.log('UserType retrieved from localStorage:', userType);
-      return userType;
+      return localStorage.getItem(this.userTypeKey);
     }
     return null;
   }
 
+  getRestaurantId(): Observable<string | null> {
+    return this.restaurantService.getCurrentRestaurant();
+  }
+
   isLoggedIn(): boolean {
-    const loggedIn = !!this.getToken();
-    // console.log('isLoggedIn check result:', loggedIn);
-    return loggedIn;
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+    const expiration = localStorage.getItem(this.tokenExpirationKey);
+    if (!expiration) {
+      return false;
+    }
+    return new Date(expiration) > new Date();
   }
 
   logout(): void {
@@ -123,11 +150,21 @@ export class AuthService {
       localStorage.removeItem(this.otpRequestedKey);
       localStorage.removeItem('otpUserData');
       localStorage.removeItem(this.otpVerifiedKey);
+      localStorage.removeItem(this.restaurantIdKey);
+      localStorage.removeItem(this.tokenExpirationKey);
+      localStorage.removeItem(this.userNameKey);
     }
+    if (this.tokenExpirationTimer) {
+      clearTimeout(this.tokenExpirationTimer);
+    }
+    this.authStateSubject.next(false);
+    this.router.navigate(['/login']);
   }
+
   getUsersByTableOtp(tableOtp: string): Observable<any> {
     return this.http.get(`${environment.apiUrl}/otp-users/users-by-table-otp/${tableOtp}`);
   }
+
   setOtpRequested(requested: boolean): void {
     if (this.isBrowser) {
       localStorage.setItem(this.otpRequestedKey, requested ? 'true' : 'false');
@@ -172,16 +209,12 @@ export class AuthService {
     }
   }
 
-
   sendOtp(name: string, mobileNumber: string, tableOtp: string): Observable<OtpSendResponse> {
     return this.validateTableOtp(tableOtp).pipe(
       switchMap(validationResponse => {
         if (!validationResponse.valid) {
-          // If Table OTP is invalid, throw an error to prevent sending the customer OTP
           throw new Error(validationResponse.message || 'Invalid Table OTP');
         }
-        
-        // If Table OTP is valid, proceed with sending the customer OTP using the correct endpoint
         return this.http.post<OtpSendResponse>(`${environment.apiUrl}/auth/send-otp`, { name, mobileNumber, tableOtp });
       }),
       tap(() => {
@@ -213,12 +246,12 @@ export class AuthService {
       })
     );
   }
+
   verifyOtp(mobileNumber: string, otp: string, tableOtp: string): Observable<OtpVerifyResponse> {
     return this.http.post<OtpVerifyResponse>(`${environment.apiUrl}/auth/verify-otp`, { mobileNumber, otp, tableOtp }).pipe(
       tap(response => {
         if (response.valid && response.token) {
-          this.setToken(response.token);
-          this.setUserType(response.userType);
+          this.handleAuthResponse(response);
           if (this.isBrowser) {
             this.setOtpVerified(true);
             this.clearOtpRequested();
@@ -234,6 +267,72 @@ export class AuthService {
         if (this.isBrowser) {
           this.setOtpVerified(false);
         }
+        return throwError(() => error);
+      })
+    );
+  }
+
+  private setTokenExpiration(expiresIn: number): void {
+    if (this.isBrowser) {
+      try {
+        const expirationDate = new Date(new Date().getTime() + expiresIn * 1000);
+        localStorage.setItem(this.tokenExpirationKey, expirationDate.toISOString());
+        this.setAutoLogout(expiresIn * 1000);
+      } catch (error) {
+        console.error('Error setting token expiration:', error);
+        const defaultExpiration = new Date(new Date().getTime() + 3600 * 1000);
+        localStorage.setItem(this.tokenExpirationKey, defaultExpiration.toISOString());
+        this.setAutoLogout(3600 * 1000);
+      }
+    }
+  }
+
+  private setAutoLogout(expirationDuration: number): void {
+    if (this.tokenExpirationTimer) {
+      clearTimeout(this.tokenExpirationTimer);
+    }
+    this.tokenExpirationTimer = setTimeout(() => {
+      this.logout();
+    }, expirationDuration);
+  }
+
+  private checkTokenExpiration(): void {
+    const expirationDate = localStorage.getItem(this.tokenExpirationKey);
+    if (expirationDate) {
+      try {
+        const now = new Date();
+        const expiresAt = new Date(expirationDate);
+        const timeLeft = expiresAt.getTime() - now.getTime();
+        if (timeLeft > 0) {
+          this.setAutoLogout(timeLeft);
+        } else {
+          this.logout();
+        }
+      } catch (error) {
+        console.error('Error checking token expiration:', error);
+        this.logout();
+      }
+    }
+  }
+
+  getAuthState(): Observable<boolean> {
+    return this.authStateSubject.asObservable();
+  }
+
+  refreshToken(): Observable<AuthResponse> {
+    const token = this.getToken();
+    if (!token) {
+      return throwError(() => new Error('No token available'));
+    }
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/refresh-token`, { token }).pipe(
+      tap(response => {
+        if (response && response.token) {
+          this.handleAuthResponse(response);
+        }
+      }),
+      catchError(error => {
+        console.error('Token refresh error:', error);
+        this.logout();
         return throwError(() => error);
       })
     );

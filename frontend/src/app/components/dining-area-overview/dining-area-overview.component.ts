@@ -10,15 +10,18 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subscription, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { MatTabsModule } from '@angular/material/tabs';
 
 interface Table {
   _id?: string;
   number: string;
   capacity: number;
+  location?: string;  // Dine In or Parcel
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
   hasOrders?: boolean;
+  waiterCalled?: boolean;
 }
 
 interface Order {
@@ -34,7 +37,8 @@ interface Order {
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatTabsModule
   ],
   templateUrl: './dining-area-overview.component.html',
   styleUrls: ['./dining-area-overview.component.scss']
@@ -42,7 +46,8 @@ interface Order {
 export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   private tablesSubject = new BehaviorSubject<Table[]>([]);
   tables$: Observable<Table[]> = this.tablesSubject.asObservable();
-  
+  dineInTables$: Observable<Table[]>;
+  parcelTables$: Observable<Table[]>;
   private isLoadingSubject = new BehaviorSubject<boolean>(true);
   isLoading$ = this.isLoadingSubject.asObservable();
 
@@ -64,7 +69,14 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private authService: AuthService,
     private router: Router
-  ) {}
+  ) {
+    this.dineInTables$ = this.tables$.pipe(
+      map(tables => tables.filter(table => table.location !== 'Parcel - Take Away'))
+    );
+    this.parcelTables$ = this.tables$.pipe(
+      map(tables => tables.filter(table => table.location === 'Parcel - Take Away'))
+    );
+  }
 
   ngOnInit() {
     this.loadTablesFromDb();
@@ -73,7 +85,9 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.subscription.unsubscribe();
   }
-
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
   onLogout() {
     this.authService.logout();
     this.router.navigate(['/login']);
@@ -92,9 +106,10 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   }
 
   private loadTablesFromDb() {
+    const restaurantId = this.getSelectedRestaurantId();
     this.isLoadingSubject.next(true);
     this.subscription.add(
-      this.http.get<Table[]>(`${environment.apiUrl}/tables`).pipe(
+      this.http.get<Table[]>(`${environment.apiUrl}/tables?restaurantId=${restaurantId}`).pipe(
         tap(tables => {
           this.tablesSubject.next(tables);
           this.isLoadingSubject.next(false);
@@ -115,26 +130,34 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   }
 
   private checkTablesForOrders(tables: Table[]): Observable<Table[]> {
-    if (tables.length === 0) {
-      return of([]);
-    }
-    const orderChecks = tables.map(table => 
+    const orderRequests = tables.map(table => 
       this.getOrdersByTableOtp(table.otp).pipe(
-        map(orders => ({
-          ...table,
-          hasOrders: orders.length > 0,
-          isOccupied: orders.length > 0 || table.isOccupied
-        })),
-        catchError(() => of({ ...table, hasOrders: false }))
+        map(orders => ({ ...table, hasOrders: orders.length > 0 })),
+        catchError(error => {
+          console.error(`Error fetching orders for table ${table.number}:`, error);
+          return of({ ...table, hasOrders: false });
+        })
       )
     );
-    return forkJoin(orderChecks);
+  
+    return forkJoin(orderRequests);
   }
 
   private getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
-    const url = `${environment.apiUrl}/orders?tableOtp=${tableOtp}`;
-    return this.http.get<Order[]>(url).pipe(
-      catchError(() => of([]))
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing. Unable to fetch orders.');
+      return of([]);
+    }
+  
+    const url = `${environment.apiUrl}/orders`;
+    const params = { tableOtp, restaurantId };
+  
+    return this.http.get<Order[]>(url, { params }).pipe(
+      catchError((error) => {
+        console.error('Error fetching orders:', error);
+        return of([]);
+      })
     );
   }
 }

@@ -1,0 +1,18 @@
+<h2 mat-dialog-title>Add Take Away Table</h2>
+    <mat-dialog-content>
+      <form [formGroup]="addTableForm" (ngSubmit)="createTable()">
+        <mat-form-field appearance="outline" class="mt-2">
+          <mat-label>Customer Name</mat-label>
+          <input matInput formControlName="name" required>
+        </mat-form-field>
+        
+        <mat-form-field appearance="outline">
+          <mat-label>Location</mat-label>
+          <input matInput formControlName="location" readonly>
+        </mat-form-field>
+        
+        <mat-dialog-actions>
+          <button mat-raised-button color="primary" type="submit" [disabled]="addTableForm.invalid">Create</button>
+        </mat-dialog-actions>
+      </form>
+    </mat-dialog-content>

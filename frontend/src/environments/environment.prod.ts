@@ -1,5 +1,6 @@
 export const environment = {
-    production: true,
-    apiUrl: 'http://192.168.1.5:5001/api',  
-    wsUrl: 'http://192.168.1.5:5001'       
-}
+  production: false,
+  apiUrl: 'https://ordore-2af9914fb46d.herokuapp.com/api',
+  wsUrl: 'https://ordore-2af9914fb46d.herokuapp.com/',
+  cloudinaryUrl: 'https://res.cloudinary.com/dzqmtrmmf'
+};

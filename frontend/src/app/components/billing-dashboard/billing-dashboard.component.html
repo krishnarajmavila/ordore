@@ -1,12 +1,21 @@
 <mat-sidenav-container class="sidenav-container w-100">
   <mat-sidenav mode="side" opened>
-    <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%" src="assets/img/ordore.png" alt="Ordore Logo" />
+    <img class="p-3 pt-4 mt-2 d-flex mx-auto align-items-center" width="50%" src="assets/img/ordore.png" alt="Ordore Logo" />
     <mat-nav-list class="mx-2">
       <mat-list-item class="mt-2" (click)="activeView = 'billing'" [class.active]="activeView === 'billing'">
-        <mat-icon>attach_money</mat-icon> Bill Dashboard
+      <div class="d-flex align-items-center">
+        <mat-icon class="me-1">attach_money</mat-icon> Bill Dashboard
+      </div>
       </mat-list-item>
       <mat-list-item class="mt-2" (click)="activeView = 'managebill'" [class.active]="activeView === 'managebill'">
-        <mat-icon>assignment</mat-icon> Manage Bill
+        <div class="d-flex align-items-center">
+        <mat-icon class="me-1">assignment</mat-icon> Manage Bill
+        </div>
+      </mat-list-item>
+      <mat-list-item class="mt-2" (click)="onParcelOrderSelected()" [class.active]="activeView === 'orders'">
+        <div class="d-flex align-items-center">
+          <mat-icon class="me-1">local_shipping</mat-icon> Orders (Parcel)
+        </div>
       </mat-list-item>
     </mat-nav-list>
   </mat-sidenav>
@@ -121,6 +130,22 @@
           (backToOrderManagement)="onBackToOrderManagement()">
         </app-bill-view>
       </div>
+    </div>
+    <div class="ordersforbiller" *ngIf="activeView === 'orders'">
+      <div class="headers d-flex align-items-center justify-content-between mb-4">  
+        <div class="d-flex align-items-center">   
+          <mat-icon (click)="onBackToOrderManagement()">keyboard_backspace</mat-icon>   
+          <!-- <h2 class="m-0 mx-3">Bill View for Table {{tableNumber}}</h2>   -->
+        </div>   
+        <div class="d-flex align-items-center">     
+          <button (click)="logout()" class="logout-button" mat-raised-button color="warn">Logout</button>   
+        </div>
+      </div> 
+      <app-order-management
+        [table]="parcelTable"
+        (backToTableSelection)="activeView = 'billing'"
+        (viewOrders)="onViewOrders($event)">
+      </app-order-management>
     </div>
   </mat-sidenav-content>
 </mat-sidenav-container>

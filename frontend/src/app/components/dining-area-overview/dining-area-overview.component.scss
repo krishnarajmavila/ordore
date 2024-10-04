@@ -27,3 +27,11 @@
   .has-orders {
     background-color: rgb(255, 216, 216) !important;
   }
+::ng-deep{
+  .mat-mdc-tab-header{
+    background-color: rgb(245, 248, 250) !important;
+  }
+  .mat-mdc-tab {
+    max-width: 197px;
+  }
+}

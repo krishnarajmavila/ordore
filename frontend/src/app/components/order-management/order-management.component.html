@@ -1,12 +1,10 @@
-<div class="container-fluid">
-  <div class="row mt-3 mb-1 px-1 align-items-center">
+<div class="container" style="margin: 0;">
+  <div class="headvals row mt-3 mb-1 px-1 align-items-center">
     <div class="col">
-      <button class="ord-btn d-flex align-items-center" (click)="showCart ? goBackToMenu() : goBackToTableSelection()">
-        <mat-icon class="mx-2">keyboard_backspace</mat-icon>
-      </button>
+      <mat-icon (click)="showCart ? goBackToMenu() : goBackToTableSelection()" class="mx-2">keyboard_backspace</mat-icon>
     </div>
     <div class="col-auto text-end" style="line-height: 0.3;">
-      <button mat-stroked-button color="primary" (click)="lookOrders();" class="mx-2">ORDERS (T{{table.number}})</button>
+      <button mat-stroked-button color="primary" (click)="lookOrders();" class="mx-2">{{table.number}} - BILL</button>
     </div>
   </div>
 
@@ -23,8 +21,24 @@
       </div>
     </div>
 
-    <mat-tab-group #tabGroup (selectedIndexChange)="onTabChange($event)">
-      <mat-tab *ngFor="let category of categories" [label]="category">
+    <div class="tab-scroll-container animate__animated animate__fadeInUp animate__faster">
+      <div class="tab-scroll" #tabScroll>
+        <button 
+          *ngFor="let category of categories; let i = index" 
+          class="tab-button" 
+          [class.active]="isCategorySelected(category)"
+          (click)="selectCategory(category)">
+          {{ category.name }}
+        </button>
+      </div>
+    </div>
+    
+    <mat-tab-group 
+      #tabGroup 
+      [selectedIndex]="selectedTabIndex"
+      (selectedIndexChange)="onTabChange($event)"
+      style="display: none;">
+      <mat-tab *ngFor="let category of categories" [label]="category.name">
       </mat-tab>
     </mat-tab-group>
 
@@ -85,7 +99,7 @@
 
   <div class="fixed-bottom bg-danger text-white p-3 animate__animated animate__slideInUp animate__faster"
     *ngIf="getOrderItemCount() > 0">
-    <div class="row align-items-center" (click)="showCart ? submitOrder() : navigateToCart()">
+    <div class="row align-items-center" (click)="showCart ? openConfirmationDialog() : navigateToCart()">
       <div class="col-6 cart-item-desc">
         {{ getOrderItemCount() }} Item{{ getOrderItemCount() !== 1 ? 's' : '' }} | ₹{{ currentOrder.totalPrice }}
       </div>

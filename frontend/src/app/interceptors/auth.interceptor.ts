@@ -13,6 +13,5 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(cloned);
   }
   
-  console.log('No token available, sending request without authentication');
   return next(req);
 };

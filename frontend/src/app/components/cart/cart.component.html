@@ -16,7 +16,7 @@
       </div>
   
     <div *ngIf="cartItems.length > 0" class="cart-items">
-      <div *ngFor="let cartItem of cartItems" class="cart-item">
+      <div *ngFor="let cartItem of cartItems" class="cart-item  animate__animated animate__fadeInUp animate__faster">
         <div class="item-details">
           <h3 class="m-0"><strong>{{ cartItem.name }}</strong></h3>
           <p>{{ cartItem.description }}</p>

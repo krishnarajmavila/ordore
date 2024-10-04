@@ -8,6 +8,7 @@
     </div>
     <div class="col-auto text-end d-flex align-items-center">
       <button mat-raised-button color="primary" (click)="lookOrders();" class="mx-2">BILL</button>
+      <mat-icon class="mx-2" style="width: 60px; color: #ecad00;" (click)="callWaiter()">pan_tool</mat-icon>
       <button mat-icon-button (click)="openSidenav()">
         <mat-icon class="animate__animated animate__rotateIn">settings_account_box</mat-icon>
       </button>
@@ -17,10 +18,6 @@
   <div class="sidenav" [ngClass]="{ 'open': isSidenavOpen }">
     <div class="sidenav-header">
       <mat-icon (click)="closeSidenav()">close</mat-icon>
-      <!-- <h4>User Details</h4>
-      <ng-container *ngIf="userData$ | async as userData">
-        <p>{{ userData?.tableOtp }}</p>
-      </ng-container> -->
     </div>
 
     <hr />
@@ -29,34 +26,13 @@
       <h4 class="text-danger">Home</h4>
       <h4>Group Members</h4>
       <h4 (click)="lookOrders();">Your Bill</h4>
-      <!-- <ul>
-        <ng-container *ngIf="users$ | async as users">
-          <li *ngFor="let user of users">
-            <p><strong>Name:</strong> {{ user.name }}</p>
-          </li>
-        </ng-container>
-      </ul> -->
     </div>
-    <!-- <hr class="mb-3" /> -->
-    <button style="    position: absolute;
-    bottom: 28px;
-    left: 22px;
-    width: 82%;" mat-raised-button color="primary" class="d-flex mt-3" (click)="logout()">
+    <button mat-raised-button color="primary" class="d-flex mt-3" (click)="logout()">
       Logout
     </button>
   </div>
-  <!-- <div class="row mt-3 mb-3 px-1 align-items-center">
-    <div class="col">
 
-    </div>
-    <div class="col text-end">
-      <ng-container *ngIf="userData$ | async as userData">
-        <p>{{ userData?.tableOtp }}</p>
-      </ng-container>
-    </div>
-  </div> -->
-
-  <div class="row mt-3 mb-3 px-1 align-items-center animate__animated animate__fadeInLeft animate__faster">
+  <div class="row mt-3 mb-3 px-1 align-items-center animate__animated animate__fadeInUp animate__faster">
     <div class="col">
       <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()"
         class="form-control ds-input" id="search-input" placeholder="Search..." dir="auto">
@@ -68,12 +44,28 @@
     </div>
   </div>
 
-  <mat-tab-group class="animate__animated animate__fadeInRight animate__faster" #tabGroup (selectedIndexChange)="onTabChange($event)">
-    <mat-tab *ngFor="let category of categories" [label]="category">
+  <div class="tab-scroll-container animate__animated animate__fadeInUp animate__faster">
+    <div class="tab-scroll" #tabScroll>
+      <button 
+        *ngFor="let category of categories; let i = index" 
+        class="tab-button" 
+        [class.active]="isCategorySelected(category)"
+        (click)="selectCategory(category.name)">
+        {{ category.name }}
+      </button>
+    </div>
+  </div>
+  
+  <mat-tab-group 
+    #tabGroup 
+    [selectedIndex]="selectedTabIndex"
+    (selectedIndexChange)="onTabChange($event)"
+    style="display: none;">
+    <mat-tab *ngFor="let category of categories" [label]="category.name">
     </mat-tab>
   </mat-tab-group>
 
-  <div class="menu-items mt-3 animate__animated animate__fadeInRight animate__faster">
+  <div class="menu-items mt-3 animate__animated animate__fadeIn">
     <ng-container *ngIf="getFilteredMenuItems() | async as filteredItems">
       <mat-card *ngFor="let item of filteredItems" class="p-0 mb-3">
         <mat-card-content>
@@ -82,9 +74,6 @@
               <h3 class="mb-1"><strong>{{ item.name }}</strong></h3>
               <p>{{ item.description }}</p>
               <h4>₹{{ item.price }}</h4>
-              <!-- <p [ngClass]="{'text-success': item.isInStock, 'text-danger': !item.isInStock}">
-                {{ item.isInStock ? 'In Stock' : 'Out of Stock' }}
-              </p> -->
             </div>
             <div class="col-4">
               <img [src]="getImageUrl(item.imageUrl)" [alt]="item.name" class="img-fluid rounded">

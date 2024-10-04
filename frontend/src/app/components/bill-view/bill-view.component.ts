@@ -20,7 +20,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ReactiveFormsModule, FormGroup, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { BillConfirmationDialogComponent } from '../bill-confirmation-dialog/bill-confirmation-dialog.component';
 
@@ -28,6 +28,7 @@ interface Table {
   _id?: string;
   number: string;
   capacity: number;
+  location?: string;
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
@@ -77,6 +78,8 @@ export class BillViewComponent implements OnInit {
   isAuthorized: boolean = false;
   confirmBill: boolean = false;
   isBillSaved: boolean = false;
+  paymentMethod: string = 'cash';
+  notes: string = '';
 
   constructor(
     private orderService: OrderService,
@@ -98,6 +101,8 @@ export class BillViewComponent implements OnInit {
       pincode: ['560037', [Validators.required, Validators.pattern(/^\d{6}$/)]],
       gstin: ['55AASFC9301J1WW', [Validators.required]],
       cashierName: ['', Validators.required],
+      paymentMethod: ['cash', Validators.required],
+      notes: ['']
     });
     this.kotNumber = this.generateKotNumber();
   }
@@ -109,7 +114,6 @@ export class BillViewComponent implements OnInit {
     }
     this.generateBillNumber();
 
-    // Log form state changes
     this.billForm.valueChanges.subscribe(() => {
       console.log('Form valid:', this.billForm.valid);
       console.log('Form values:', this.billForm.value);
@@ -117,7 +121,8 @@ export class BillViewComponent implements OnInit {
   }
 
   checkExistingBill(tableOtp: string) {
-    this.http.get<any>(`${environment.apiUrl}/bills/check/${tableOtp}`).subscribe(
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
+    this.http.get<any>(`${environment.apiUrl}/bills/check/${tableOtp}`, { headers }).subscribe(
       response => {
         if (response.exists) {
           this.isBillSaved = true;
@@ -127,6 +132,7 @@ export class BillViewComponent implements OnInit {
       },
       error => {
         console.error('Error checking existing bill:', error);
+        this.snackBar.open('Error checking bill status', 'Close', { duration: 5000 });
       }
     );
   }
@@ -162,6 +168,10 @@ export class BillViewComponent implements OnInit {
 
   getCustomerName() {
     return this.selectedOrder ? this.selectedOrder.customerName : 'N/A';
+  }
+
+  getCustomerPhoneNumber() {
+    return this.selectedOrder ? this.selectedOrder.phoneNumber : 'N/A';
   }
 
   onTableSelected(table: any) {
@@ -354,21 +364,44 @@ export class BillViewComponent implements OnInit {
   }
 
   saveBillToDatabase() {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      this.snackBar.open('Error: Restaurant ID not found', 'Close', { duration: 5000 });
+      return;
+    }
+  
     const billData = {
       billNumber: this.billNumber,
       tableNumber: this.tableNumber,
       tableOtp: this.tableOtp,
       customerName: this.getCustomerName(),
+      phoneNumber: this.getCustomerPhoneNumber(),
       items: this.orders.flatMap(order => order.items),
       subTotal: this.subTotal(),
       serviceCharge: this.serviceCharge(),
       gst: this.gst(),
       total: Math.floor(this.total()),
-      date: this.currentDate,
+      paymentMethod: this.billForm.get('paymentMethod')?.value,
       cashierName: this.billForm.get('cashierName')?.value,
+      restaurantInfo: {
+        name: this.billForm.get('restaurantName')?.value,
+        companyName: this.billForm.get('companyName')?.value,
+        addressLine1: this.billForm.get('addressLine1')?.value,
+        addressLine2: this.billForm.get('addressLine2')?.value,
+        addressLine3: this.billForm.get('addressLine3')?.value,
+        pincode: this.billForm.get('pincode')?.value,
+        gstin: this.billForm.get('gstin')?.value,
+      },
+      kotNumber: this.kotNumber,
+      status: 'pending',
+      notes: this.billForm.get('notes')?.value,
+      date: this.currentDate,
+      restaurant: restaurantId  // Add this line
     };
-
-    this.http.post(`${environment.apiUrl}/bills`, billData).subscribe(
+  
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
+  
+    this.http.post(`${environment.apiUrl}/bills`, billData, { headers }).subscribe(
       response => {
         console.log('Bill saved successfully', response);
         this.confirmBill = true;
@@ -378,14 +411,16 @@ export class BillViewComponent implements OnInit {
       },
       error => {
         console.error('Error saving bill', error);
-        this.snackBar.open('Error saving bill', 'Close', { duration: 5000 });
+        this.snackBar.open('Error saving bill: ' + (error.error?.message || 'Unknown error'), 'Close', { duration: 5000 });
       }
     );
+  }
+  
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
   }
 
   disableBillForm() {
     this.billForm.disable();
-    // You might want to enable specific fields even when the form is disabled
-    // this.billForm.get('cashierName')?.enable();
   }
 }

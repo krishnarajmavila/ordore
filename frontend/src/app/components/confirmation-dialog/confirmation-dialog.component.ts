@@ -12,7 +12,7 @@ export interface CustomerInfo {
   name: string;
   phoneNumber: string;
   tableOtp: string;
-  tableNumber?: number;
+  tableNumber?: String;
   otpTimestamp?: number;
 }
 @Component({

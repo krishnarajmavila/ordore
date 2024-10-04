@@ -152,7 +152,6 @@ export class ReportingComponent implements OnInit, OnDestroy {
 
   onDateChange(event: any) {
     const newDate = event.value;
-    console.log('Date changed:', newDate);
     this.loadReportData(newDate);
   }
   loadOrders() {
@@ -181,7 +180,6 @@ export class ReportingComponent implements OnInit, OnDestroy {
   }
 
   updateDashboard(data: any) {
-    console.log('Updating dashboard with data:', data);
     // Update all dashboard properties with new data
     this.totalRevenue = data.totalRevenue;
     this.revenueBreakdown = data.revenueBreakdown;
@@ -215,7 +213,6 @@ export class ReportingComponent implements OnInit, OnDestroy {
       if (this.ordersByStatus.hasOwnProperty(order.status)) {
         this.ordersByStatus[order.status]++;
       } else {
-        console.warn(`Unexpected order status: ${order.status}`);
       }
     });
   }
@@ -225,7 +222,6 @@ export class ReportingComponent implements OnInit, OnDestroy {
   }
 
   updateCharts() {
-    console.log('Updating charts');
     // Update order status chart
     this.orderStatusChartData.datasets[0].data = this.orderStatuses.map(status => this.getOrderCount(status));
     
@@ -239,12 +235,8 @@ export class ReportingComponent implements OnInit, OnDestroy {
   }
 
   exportReport() {
-    console.log('Exporting report for date:', this.selectedDate);
-    // Implement export functionality
   }
 
   closeReport() {
-    console.log('Closing report for date:', this.selectedDate);
-    // Implement close report functionality
   }
 }

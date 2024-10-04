@@ -2,7 +2,13 @@
   display: flex;
   height: 100vh;
 }
+.mat-button-toggle-checked {
+  background-color: rgb(245, 248, 250) !important; 
+}
 
+.mat-button-toggle-checked:hover {
+  background-color: rgb(230, 242, 250); 
+}
 .sidenav-container {
   height: 100%;
   .active{
@@ -38,6 +44,12 @@ p{
  .sidenav-container .active .mdc-list-item__primary-text{
   color: #C80000 !important;
  }
+ .mat-button-toggle{
+  min-width: 200px !important;
+ }
+}
+button{
+  height: 47px;
 }
 .img-fluid {
   width: 100%;
@@ -61,9 +73,7 @@ p{
   width: 22%;
   border-right: 1px solid #ececec;
 }
-// .column:last-child{
-//   border-right: 1px solid #ececec;
-// }
+
 .order-list:last-child{
   border-right: 0;
 }
