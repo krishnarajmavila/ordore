@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
@@ -494,10 +494,25 @@ updateMenuItem(formData: FormData) {
   editItem(item: MenuItem) {
     this.editingItem = item;
     this.menuForm.patchValue({
-      ...item,
-      category: typeof item.category === 'object' ? item.category._id : item.category,
-      isVegetarian: item.isVegetarian
+      name: item.name || '',
+      price: item.price || 0,
+      description: item.description || '',
+      isVegetarian: item.isVegetarian || false
     });
+  
+    // Handle category
+    if (item.category) {
+      if (typeof item.category === 'object' && item.category._id) {
+        this.menuForm.patchValue({ category: item.category._id });
+      } else if (typeof item.category === 'string') {
+        this.menuForm.patchValue({ category: item.category });
+      } else {
+        this.menuForm.patchValue({ category: '' });
+      }
+    } else {
+      this.menuForm.patchValue({ category: '' });
+    }
+  
     this.selectedFile = null;
   }
 
@@ -529,17 +544,39 @@ updateMenuItem(formData: FormData) {
   }
 
   deleteItem(item: MenuItem) {
-    if (!item._id) return;
-
+    if (!item._id) {
+      this.showSnackBar('Error: Item ID is missing');
+      return;
+    }
+  
+    if (!this.currentRestaurant?._id) {
+      this.showSnackBar('Error: Restaurant ID is missing');
+      return;
+    }
+  
+    // Check if both IDs are in a valid format (24-character hex string)
+    if (!/^[0-9a-fA-F]{24}$/.test(item._id) || !/^[0-9a-fA-F]{24}$/.test(this.currentRestaurant._id)) {
+      this.showSnackBar('Error: Invalid ID format');
+      return;
+    }
+  
     this.isLoading = true;
-    this.http.delete(`${environment.apiUrl}/food/${item._id}`).subscribe({
+    const url = `${environment.apiUrl}/food/${item._id}?restaurant=${this.currentRestaurant._id}`;
+    
+    this.http.delete(url).subscribe({
       next: () => {
         this.menuItems = this.menuItems.filter(menuItem => menuItem._id !== item._id);
         this.showSnackBar('Menu item deleted successfully');
       },
       error: (error) => {
         console.error('Error deleting menu item:', error);
-        this.showSnackBar('Error deleting menu item');
+        if (error.status === 400) {
+          this.showSnackBar(`Error: ${error.error.message || 'Bad Request'}`);
+        } else if (error.status === 404) {
+          this.showSnackBar('Error: Menu item not found');
+        } else {
+          this.showSnackBar('Error deleting menu item. Please try again.');
+        }
       },
       complete: () => {
         this.isLoading = false;
@@ -568,9 +605,21 @@ updateMenuItem(formData: FormData) {
 
   deleteFoodType(foodType: FoodType) {
     if (!foodType._id) return;
-
+  
     this.isLoading = true;
-    this.http.delete(`${environment.apiUrl}/food-types/${foodType._id}`).subscribe({
+  
+    const restaurantId = this.currentRestaurant?._id;
+  
+    if (!restaurantId) {
+      console.error('Restaurant ID is undefined');
+      this.showSnackBar('Error: Restaurant ID is missing');
+      this.isLoading = false;
+      return;
+    }
+  
+    const params = new HttpParams().set('restaurantId', restaurantId);
+  
+    this.http.delete(`${environment.apiUrl}/food-types/${foodType._id}`, { params }).subscribe({
       next: () => {
         this.foodTypes = this.foodTypes.filter(type => type._id !== foodType._id);
         this.categories = this.foodTypes.map(type => type.name);
@@ -689,9 +738,9 @@ updateMenuItem(formData: FormData) {
   }
 
   getDisplayCategory(item: MenuItem): string {
+    if (!item || !item.category) return 'Uncategorized';
     return this.getCategoryName(item.category);
   }
-
   setActiveView(view: string) {
     this.activeView = view;
     localStorage.setItem('activeView', view);

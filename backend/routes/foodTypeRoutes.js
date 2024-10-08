@@ -71,18 +71,18 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { restaurant } = req.body;
-    
-    if (!restaurant) {
+    const { restaurantId } = req.query;  // Changed from req.body to req.query
+
+    if (!restaurantId) {
       return res.status(400).json({ message: 'Restaurant ID is required' });
     }
-    
-    const deletedFoodType = await FoodType.findOneAndDelete({ _id: id, restaurant: restaurant });
-    
+
+    const deletedFoodType = await FoodType.findOneAndDelete({ _id: id, restaurant: restaurantId });
+
     if (!deletedFoodType) {
       return res.status(404).json({ message: 'Food type not found' });
     }
-    
+
     res.json({ message: 'Food type deleted successfully' });
   } catch (error) {
     console.error('Error deleting food type:', error);

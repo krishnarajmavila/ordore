@@ -147,7 +147,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       next: (types) => {
         this.categories = [
           { _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, 
-          ...types
+          ...types,
+          { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 }
         ];
         this.loadMenuItems();
       },
@@ -157,9 +158,6 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       }
     });
   }
-  
-
-  
 
   loadMenuItems() {
     const restaurantId = this.getSelectedRestaurantId();
@@ -171,7 +169,12 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
       next: (items) => {
-        this.menuItems = items;
+        this.menuItems = items.map(item => {
+          if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
+            return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
+          }
+          return item;
+        });
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
@@ -277,7 +280,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       ...this.currentOrder,
       tableOtp: this.table.otp,
       customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`,
-      restaurant: restaurantId  // Include the restaurantId in the order data
+      restaurant: restaurantId
     };
   
     this.http.post<Order>(`${environment.apiUrl}/orders`, orderData).subscribe({
@@ -332,6 +335,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   private getSelectedRestaurantId(): string | null {
     return localStorage.getItem('selectedRestaurantId');
   }
+
   refreshTableData() {
     if (!this.table._id) return;
 
@@ -358,6 +362,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.selectedCategory = category.name;
     this.updateSelectedTabIndex();
   }
+
   updateSelectedTabIndex() {
     const index = this.categories.findIndex(cat => cat.name === this.selectedCategory);
     this.selectedTabIndex = index !== -1 ? index : 0;
@@ -366,9 +371,11 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   toggleVegetarian() {
     this.isVegetarian = !this.isVegetarian;
   }
+
   isCategorySelected(category: FoodType): boolean {
     return this.selectedCategory === category.name;
   }
+
   getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) {
       return 'assets/default-food-image.jpg';
@@ -419,12 +426,14 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   }
 
   onSearch() {
-    // Implement search functionality
+    // Implement search functionality if needed
   }
 
   getFilteredMenuItems(): MenuItem[] {
     return this.menuItems.filter(item => 
-      (this.selectedCategory === 'All' || item.category.name === this.selectedCategory) &&
+      (this.selectedCategory === 'All' || 
+       this.selectedCategory === item.category.name || 
+       (this.selectedCategory === 'Uncategorized' && item.category.name === 'Uncategorized')) &&
       (!this.isVegetarian || item.isVegetarian === true) &&
       item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
     );

@@ -127,12 +127,14 @@ export class BillViewComponent implements OnInit {
         if (response.exists) {
           this.isBillSaved = true;
           this.disableBillForm();
-          this.snackBar.open('A bill for this table already exists.', 'Close', { duration: 5000 });
+          this.snackBar.open('A bill for this table already exists.', 'Close', { duration: 5000,     horizontalPosition: 'center',
+            verticalPosition: 'top' });
         }
       },
       error => {
         console.error('Error checking existing bill:', error);
-        this.snackBar.open('Error checking bill status', 'Close', { duration: 5000 });
+        this.snackBar.open('Error checking bill status', 'Close', { duration: 5000,     horizontalPosition: 'center',
+          verticalPosition: 'top' });
       }
     );
   }
@@ -246,10 +248,12 @@ export class BillViewComponent implements OnInit {
       const updatedBillData = this.billForm.value;
       console.log('Bill updated with:', updatedBillData);
       this.updateComponentWithFormData(updatedBillData);
-      this.snackBar.open('Bill updated successfully', 'Close', { duration: 3000 });
+      this.snackBar.open('Bill updated successfully', 'Close', { duration: 5000,     horizontalPosition: 'center',
+        verticalPosition: 'top' });
     } else {
       console.error('Form is invalid or bill is already saved');
-      this.snackBar.open('Cannot update: Form is invalid or bill is already saved', 'Close', { duration: 3000 });
+      this.snackBar.open('Cannot update: Form is invalid or bill is already saved', 'Close', { duration: 5000,      horizontalPosition: 'center',
+        verticalPosition: 'top' });
     }
   }
 
@@ -366,7 +370,8 @@ export class BillViewComponent implements OnInit {
   saveBillToDatabase() {
     const restaurantId = this.getSelectedRestaurantId();
     if (!restaurantId) {
-      this.snackBar.open('Error: Restaurant ID not found', 'Close', { duration: 5000 });
+      this.snackBar.open('Error: Restaurant ID not found', 'Close', { duration: 5000,     horizontalPosition: 'center',
+        verticalPosition: 'top' });
       return;
     }
   
@@ -407,11 +412,13 @@ export class BillViewComponent implements OnInit {
         this.confirmBill = true;
         this.isBillSaved = true;
         this.disableBillForm();
-        this.snackBar.open('Bill saved successfully', 'Close', { duration: 5000 });
+        this.snackBar.open('Bill saved successfully', 'Close', { duration: 5000,     horizontalPosition: 'center',
+          verticalPosition: 'top' });
       },
       error => {
         console.error('Error saving bill', error);
-        this.snackBar.open('Error saving bill: ' + (error.error?.message || 'Unknown error'), 'Close', { duration: 5000 });
+        this.snackBar.open('Error saving bill: ' + (error.error?.message || 'Unknown error'), 'Close', { duration: 5000,     horizontalPosition: 'center',
+          verticalPosition: 'top' });
       }
     );
   }

@@ -86,9 +86,11 @@ export class CustomerLoginComponent implements OnInit {
         error: (error) => {
           console.error('Error:', error);
           if (error.message.includes('Table OTP')) {
-            this.snackBar.open('Invalid Table OTP. Please check with the waiter.', 'Close', { duration: 5000 });
+            this.snackBar.open('Invalid Table OTP. Please check with the waiter.', 'Close', { duration: 5000,     horizontalPosition: 'center',
+              verticalPosition: 'top' });
           } else {
-            this.snackBar.open('Error sending OTP. Please try again.', 'Close', { duration: 5000 });
+            this.snackBar.open('Error sending OTP. Please try again.', 'Close', { duration: 5000,     horizontalPosition: 'center',
+              verticalPosition: 'top' });
           }
         }
       });

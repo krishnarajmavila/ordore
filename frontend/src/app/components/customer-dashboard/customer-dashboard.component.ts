@@ -130,7 +130,11 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
 
     this.http.get<FoodType[]>(`${environment.apiUrl}/food-types?restaurantId=${this.restaurantId}`).subscribe({
       next: (types) => {
-        this.categories = [{ _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, ...types];
+        this.categories = [
+          { _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 },
+          ...types,
+          { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 }
+        ];
         this.loadMenuItems();
       },
       error: (error) => {
@@ -149,8 +153,13 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
 
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${this.restaurantId}`).subscribe({
       next: (items) => {
-        this.menuItems = items;
-        this.menuItemsSubject.next(items);
+        this.menuItems = items.map(item => {
+          if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
+            return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
+          }
+          return item;
+        });
+        this.menuItemsSubject.next(this.menuItems);
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
@@ -184,11 +193,11 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.selectedCategory = category;
     this.updateSelectedTabIndex();
   }
+
   updateSelectedTabIndex() {
     const index = this.categories.findIndex(cat => cat.name === this.selectedCategory);
     this.selectedTabIndex = index !== -1 ? index : 0;
   }
-
 
   toggleVegetarian() {
     this.isVegetarian = !this.isVegetarian;
@@ -238,7 +247,9 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   getFilteredMenuItems(): Observable<MenuItem[]> {
     return this.menuItems$.pipe(
       map(items => items.filter(item => 
-        (this.selectedCategory === 'All' || item.category.name === this.selectedCategory) &&
+        (this.selectedCategory === 'All' || 
+         this.selectedCategory === item.category.name || 
+         (this.selectedCategory === 'Uncategorized' && item.category.name === 'Uncategorized')) &&
         (!this.isVegetarian || item.isVegetarian === true) &&
         item.isInStock &&
         (this.searchQuery === '' || item.name.toLowerCase().includes(this.searchQuery.toLowerCase()))
@@ -254,6 +265,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   isCategorySelected(category: FoodType): boolean {
     return this.selectedCategory === category.name;
   }
+
   onSwipe(event: TouchEvent, direction: string) {
     const currentIndex = this.tabGroup?.selectedIndex;
   
@@ -301,13 +313,18 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
 
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food/search?query=${this.searchQuery}&restaurantId=${this.restaurantId}`).pipe(
       catchError(error => {
-        // console.error('Error searching menu items:', error);
-        // this.showErrorSnackBar('Error searching menu items. Please try again.');
+        console.error('Error searching menu items:', error);
+        this.showErrorSnackBar('Error searching menu items. Please try again.');
         return [];
       })
     ).subscribe(items => {
-      this.menuItems = items;
-      this.menuItemsSubject.next(items);
+      this.menuItems = items.map(item => {
+        if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
+          return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
+        }
+        return item;
+      });
+      this.menuItemsSubject.next(this.menuItems);
     });
   }
 
@@ -322,6 +339,9 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   private updateMenuItem(updatedItem: MenuItem) {
     const index = this.menuItems.findIndex(item => item._id === updatedItem._id);
     if (index !== -1) {
+      if (!updatedItem.category || !this.categories.some(cat => cat._id === updatedItem.category._id)) {
+        updatedItem.category = { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 };
+      }
       this.menuItems[index] = updatedItem;
       this.menuItemsSubject.next([...this.menuItems]);
     }
