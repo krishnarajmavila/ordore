@@ -10,11 +10,13 @@
       <mat-tab label="Dine In">
         <div class="table-grid mt-4" *ngIf="!(isLoading$ | async); else loading">
           <mat-card *ngFor="let table of dineInTables$ | async"
-                    (click)="onTableSelect(table)"
-                    [class.occupied]="table.isOccupied"
-                    [class.has-orders]="table.hasOrders"
-                    [matTooltip]="getTableTooltip(table)" >
+          (click)="onTableSelect(table)"
+          [class.occupied]="table.isOccupied"
+          [class.has-orders]="table.hasOrders"
+          [class.payment-completed]="table.paymentCompleted"
+          [matTooltip]="getTableTooltip(table)">
             <mat-card-content>
+              <img *ngIf="table.paymentCompleted" src="assets/img/paid.png" class="paid-seal animate__animated animate__bounceIn">
               <div class="table-info">
                 <mat-icon>restaurant</mat-icon>
                 <h2>Table {{table.number}}</h2>

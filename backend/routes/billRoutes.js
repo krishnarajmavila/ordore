@@ -80,7 +80,11 @@ router.get('/check/:tableOtp', async (req, res) => {
       restaurant: restaurantId,
       status: { $ne: 'cancelled' } // Exclude cancelled bills
     });
-    res.json({ exists: !!existingBill });
+    res.json({ 
+      exists: !!existingBill,
+      status: existingBill ? existingBill.status : null,
+      billId: existingBill ? existingBill._id : null
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

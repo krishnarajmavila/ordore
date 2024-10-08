@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subscription, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { MatTabsModule } from '@angular/material/tabs';
+import { TableStatusService } from '../../services/table-status.service';
 
 interface Table {
   _id?: string;
@@ -22,11 +23,13 @@ interface Table {
   otpGeneratedAt: Date;
   hasOrders?: boolean;
   waiterCalled?: boolean;
+  paymentCompleted?: boolean;
 }
 
 interface Order {
   _id: string;
   tableOtp: string;
+  status: string;
 }
 
 @Component({
@@ -68,7 +71,8 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private tableStatusService: TableStatusService
   ) {
     this.dineInTables$ = this.tables$.pipe(
       map(tables => tables.filter(table => table.location !== 'Parcel - Take Away'))
@@ -76,8 +80,18 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     this.parcelTables$ = this.tables$.pipe(
       map(tables => tables.filter(table => table.location === 'Parcel - Take Away'))
     );
+    this.subscription.add(
+      this.tableStatusService.tableStatusUpdate$.subscribe(update => {
+        this.updateTableStatus(update.tableOtp, update.paymentCompleted);
+      })
+    );
   }
-
+  private updateTableStatus(tableOtp: string, paymentCompleted: boolean) {
+    const updatedTables = this.tablesSubject.value.map(table => 
+      table.otp === tableOtp ? { ...table, paymentCompleted } : table
+    );
+    this.tablesSubject.next(updatedTables);
+  }
   ngOnInit() {
     this.loadTablesFromDb();
   }
@@ -102,9 +116,11 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     if (table.hasOrders) {
       status += ' - Has Orders';
     }
+    if (table.paymentCompleted) {
+      status += ' - Payment Completed';
+    }
     return `Table ${table.number} - ${status}`;
   }
-
   private loadTablesFromDb() {
     const restaurantId = this.getSelectedRestaurantId();
     this.isLoadingSubject.next(true);
@@ -131,16 +147,37 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
 
   private checkTablesForOrders(tables: Table[]): Observable<Table[]> {
     const orderRequests = tables.map(table => 
-      this.getOrdersByTableOtp(table.otp).pipe(
-        map(orders => ({ ...table, hasOrders: orders.length > 0 })),
+      this.getBillStatusByTableOtp(table.otp).pipe(
+        map(billStatus => ({
+          ...table,
+          hasOrders: billStatus.exists,
+          paymentCompleted: billStatus.status === 'paid'
+        })),
         catchError(error => {
-          console.error(`Error fetching orders for table ${table.number}:`, error);
-          return of({ ...table, hasOrders: false });
+          console.error(`Error fetching bill status for table ${table.number}:`, error);
+          return of({ ...table, hasOrders: false, paymentCompleted: false });
         })
       )
     );
   
     return forkJoin(orderRequests);
+  }
+  private getBillStatusByTableOtp(tableOtp: string): Observable<any> {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      console.error('Restaurant ID is missing. Unable to fetch bill status.');
+      return of({ exists: false, status: null });
+    }
+  
+    const url = `${environment.apiUrl}/bills/check/${tableOtp}`;
+    const params = { restaurantId };
+  
+    return this.http.get<any>(url, { params }).pipe(
+      catchError((error) => {
+        console.error('Error fetching bill status:', error);
+        return of({ exists: false, status: null });
+      })
+    );
   }
 
   private getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
