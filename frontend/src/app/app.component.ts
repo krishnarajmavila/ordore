@@ -9,14 +9,14 @@ import { interval } from 'rxjs';
   imports: [RouterOutlet],
   template: '<router-outlet></router-outlet>',
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   constructor(private authService: AuthService) {}
 
-  ngOnInit() {
-    interval(300000).subscribe(() => {
-      if (this.authService.isLoggedIn()) {
-        this.authService.refreshToken().subscribe();
-      }
-    });
-  }
+  // ngOnInit() {
+  //   interval(300000).subscribe(() => {
+  //     if (this.authService.isLoggedIn()) {
+  //       this.authService.refreshToken().subscribe();
+  //     }
+  //   });
+  // }
 }
