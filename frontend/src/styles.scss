@@ -70,7 +70,13 @@ html{
     background-color: #A00000 !important;
     border-color: #A00000 !important;
   }
-
+  .sticky-column {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid #ccc;
+  }
   .mat-mdc-tab .mdc-tab-indicator__content--underline{
     display: none;
   }

@@ -34,7 +34,7 @@
 
       <div *ngIf="activeView === 'Add Menu'">
         <div class="row m-0 p-2">
-          <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+          <div class="col-3 p-3 sticky-column" style="border-right: 1px solid #ccc;">
             <h3>Add Menu</h3>
             <form class="adding" [formGroup]="menuForm" (ngSubmit)="onSubmit()">
               <mat-form-field appearance="outline">
@@ -152,7 +152,7 @@
           
           <div *ngIf="activeView === 'tables'">
           <div class="row m-0 p-2">
-            <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+            <div class="col-3 p-3 sticky-column" style="border-right: 1px solid #ccc;">
               <h3>{{editingTable ? 'Edit' : 'Add'}} Table</h3>
               <form [formGroup]="tableForm" (ngSubmit)="onTableSubmit()">
                 <mat-form-field appearance="outline">
@@ -255,7 +255,7 @@
           
           <div *ngIf="activeView === 'Configuration'">
           <div class="row m-0 p-2">
-            <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+            <div class="col-3 p-3 sticky-column" style="border-right: 1px solid #ccc;">
               <h3>{{editingFoodType ? 'Edit' : 'Add'}} Food Type</h3>
               <form [formGroup]="foodTypeForm" (ngSubmit)="onFoodTypeSubmit()">
                 <mat-form-field appearance="outline">
@@ -306,7 +306,7 @@
           </div>
           <div *ngIf="activeView === 'Create Branch'">
             <div class="row m-0 p-2">
-              <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+              <div class="col-3 p-3 sticky-column" style="border-right: 1px solid #ccc;">
                 <h3>Add New Branch</h3>
                 <form [formGroup]="restaurantForm" (ngSubmit)="onRestaurantSubmit()">
                   <mat-form-field appearance="outline">
