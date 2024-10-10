@@ -1,5 +1,5 @@
-<mat-sidenav-container>
-  <mat-sidenav class="w-100" #sidenav mode="over" position="end">
+<mat-sidenav-container class="mx-2">
+  <mat-sidenav class="sidnavs" #sidenav mode="over" position="end">
     <div class="p-3 d-flex align-items-center">
       <mat-icon (click)="sidenav.toggle()">close</mat-icon>
       <h3 class="m-0 px-3">Preparing Orders</h3>  
@@ -41,9 +41,17 @@
         <h2 class="text-danger ps-2 m-0">TABLES</h2>
       </div>
       <div class="col-auto text-end d-flex align-items-center text-right">
-        <button mat-icon-button (click)="sidenav.toggle()">
+        <!-- <button mat-icon-button (click)="sidenav.toggle()">
           <mat-icon class="animate__animated animate__rotateIn">hourglass_top</mat-icon>
-        </button>
+        </button> -->
+ <div class="position-relative">
+  <img (click)="sidenav.toggle()" style="height: 54px;
+  width: 54px;
+  position: absolute;
+  top: -29px;
+  right: 11px;
+" src="../../../assets/img/frying-pan.gif"/>
+ </div>
         <button mat-icon-button (click)="logout()">
           <mat-icon>exit_to_app</mat-icon>
         </button>

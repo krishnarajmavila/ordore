@@ -4,7 +4,7 @@
     <div class="row px-1 align-items-center">
       <div class="col px-0">
         <div class="row">
-          <app-table-selection 
+          <app-table-selection class="p-0"
           *ngIf="!selectedTable && !showOrderCheck && !showOrderManagement" 
           [tables]="tables" 
           (tableSelected)="onTableSelected($event)"
