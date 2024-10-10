@@ -79,6 +79,8 @@ export class WebSocketService {
     return this.connectionStatus.asObservable();
   }
 
+  
+
   reconnect(): void {
     console.log('WebSocketService: Attempting to reconnect');
     if (this.socket) {

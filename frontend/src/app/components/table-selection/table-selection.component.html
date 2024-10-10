@@ -1,13 +1,54 @@
-<div class="row bg-red text-dark p-2 mb-4 px-1 align-items-center">
-  <div class="col">
-    <h2 class="text-danger ps-2 m-0">TABLES</h2>
-  </div>
-  <div class="col-auto text-end d-flex align-items-center text-right">
-    <button mat-icon-button (click)="logout()">
-      <mat-icon>exit_to_app</mat-icon>
-    </button>
-  </div>
-</div>
+<mat-sidenav-container>
+  <mat-sidenav class="w-100" #sidenav mode="over" position="end">
+    <div class="p-3 d-flex align-items-center">
+      <mat-icon (click)="sidenav.toggle()">close</mat-icon>
+      <h3 class="m-0 px-3">Preparing Orders</h3>  
+    </div>
+    <hr class="m-0">
+    <mat-nav-list>
+      <div class="order-refresh-status" style="padding: 10px 15px;
+    background: #e6ffe7;">
+        <p class="m-0">Orders are refreshed on a minute-by-minute basis.</p>
+      </div>
+      <div class="order-notifications">
+        <div *ngIf="(preparingOrders$ | async) as orders">
+          <div *ngIf="orders.length > 0; else noOrders">
+            <div *ngFor="let order of orders" class="order-card" [ngClass]="order.status">
+              <div class="order-header">
+                <p class="m-0">Table #{{ order.tableNumber }}</p>
+              </div>
+              <ul class="item-list">
+                <li *ngFor="let item of order.items">
+                  <span class="item-name">{{ item.name }} x {{ item.quantity }}</span>
+                  <span class="item-details">
+                    <span class="item-status"  [ngClass]="item.status">{{ item.status | titlecase }}</span>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <ng-template #noOrders>
+            <p class="no-orders">No orders in preparation.</p>
+          </ng-template>
+        </div>
+      </div>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <div class="row bg-red text-dark p-2 mb-4 px-1 align-items-center">
+      <div class="col">
+        <h2 class="text-danger ps-2 m-0">TABLES</h2>
+      </div>
+      <div class="col-auto text-end d-flex align-items-center text-right">
+        <button mat-icon-button (click)="sidenav.toggle()">
+          <mat-icon class="animate__animated animate__rotateIn">hourglass_top</mat-icon>
+        </button>
+        <button mat-icon-button (click)="logout()">
+          <mat-icon>exit_to_app</mat-icon>
+        </button>
+      </div>
+    </div>
 
 <div class="container-fluid">
   <!-- Mat Tabs for Dine In and Parcel -->
@@ -82,3 +123,5 @@
     </mat-tab>
   </mat-tab-group>
 </div>
+</mat-sidenav-content>
+</mat-sidenav-container>

@@ -90,17 +90,24 @@ export class AuthService {
     this.authStateSubject.next(true);
   }
 
-  setUsername(username: string) {
+  setUsername(username: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.userNameKey, username);
-      this.usernameSubject.next(username);
     }
+    this.usernameSubject.next(username);
   }
 
   getUsername(): Observable<string | null> {
     return this.usernameSubject.asObservable();
   }
 
+  // New method for synchronous username access
+  getUsernameSync(): string {
+    if (this.isBrowser) {
+      return localStorage.getItem(this.userNameKey) || '';
+    }
+    return this.usernameSubject.getValue() || '';
+  }
   setToken(token: string): void {
     if (this.isBrowser) {
       localStorage.setItem(this.tokenKey, token);

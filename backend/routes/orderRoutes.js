@@ -95,72 +95,73 @@ module.exports = function(io) {
     }
   });
 
-  // PATCH route to update order status
-  router.patch('/:id', checkRestaurantId, async (req, res) => {
+  router.patch('/:id/item/:itemIndex', checkRestaurantId, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id, itemIndex } = req.params;
       const { status } = req.body;
-
-      const safeId = createSafeObjectId(id);
-      if (!safeId) {
-        return res.status(400).json({ message: 'Invalid order ID' });
-      }
-
-      const updatedOrder = await Order.findOneAndUpdate(
-        { _id: safeId, restaurant: req.restaurantId },
-        { status },
-        { new: true }
-      );
-      if (!updatedOrder) {
-        return res.status(404).json({ message: 'Order not found for this restaurant' });
-      }
-
-      if (io && typeof io.emit === 'function') {
-        io.emit('orderUpdated', updatedOrder);
-      }
-
-      res.json(updatedOrder);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
-  });
-
-  // DELETE route to delete a completed order and archive it
-  router.delete('/:id', checkRestaurantId, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const safeId = createSafeObjectId(id);
-      if (!safeId) {
-        return res.status(400).json({ message: 'Invalid order ID' });
-      }
-
-      const orderToDelete = await Order.findOne({ _id: safeId, restaurant: req.restaurantId });
-
-      if (!orderToDelete) {
-        return res.status(404).json({ message: 'Order not found for this restaurant' });
-      }
-
-      if (orderToDelete.status !== 'completed') {
-        return res.status(400).json({ message: 'Only completed orders can be deleted' });
-      }
-
-      const archivedOrder = new ArchivedOrder({
-        originalOrder: orderToDelete._id,
-        orderData: orderToDelete.toObject(),
+  
+      const order = await Order.findOne({ 
+        _id: id, 
         restaurant: req.restaurantId
       });
-
-      await archivedOrder.save();
-      await Order.findOneAndDelete({ _id: safeId, restaurant: req.restaurantId });
-
-      if (io && typeof io.emit === 'function') {
-        io.emit('orderDeleted', id);
+  
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found for this restaurant' });
       }
-
-      res.json({ message: 'Order deleted and archived successfully' });
+  
+      if (itemIndex < 0 || itemIndex >= order.items.length) {
+        return res.status(404).json({ message: 'Item index out of range' });
+      }
+  
+      order.items[itemIndex].status = status;
+      order.updateOverallStatus();  // Use the method we defined in the schema
+  
+      await order.save();
+  
+      if (io && typeof io.emit === 'function') {
+        io.emit('orderUpdated', order);
+      }
+  
+      res.json(order);
     } catch (error) {
-      console.error('Error deleting order:', error);
+      console.error('Error updating item status:', error);
       res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+  });
+  // DELETE route to delete a completed order and archive it
+  router.delete('/:orderId/items/:itemIndex', async (req, res) => {
+    try {
+      const { orderId, itemIndex } = req.params;
+      const order = await Order.findById(orderId);
+  
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+  
+      const itemIndexNum = parseInt(itemIndex, 10);
+  
+      if (isNaN(itemIndexNum) || itemIndexNum < 0 || itemIndexNum >= order.items.length) {
+        return res.status(400).json({ message: 'Invalid item index' });
+      }
+  
+      // Remove the item at the specified index
+      order.items.splice(itemIndexNum, 1);
+  
+      // Recalculate the total price
+      order.totalPrice = order.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  
+      if (order.items.length === 0) {
+        // If no items left, delete the entire order
+        await Order.findByIdAndDelete(orderId);
+        return res.status(200).json(null);
+      } else {
+        // Save the updated order
+        const updatedOrder = await order.save();
+        return res.status(200).json(updatedOrder);
+      }
+    } catch (error) {
+      console.error('Error deleting order item:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
 

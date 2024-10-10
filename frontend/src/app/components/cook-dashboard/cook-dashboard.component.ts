@@ -31,13 +31,15 @@ interface FoodType {
   __v: number;
 }
 
-interface AggregatedItem {
+interface OrderItem {
+  id: string;
   name: string;
-  totalQuantity: number;
-  tables: { tableNumber: string; quantity: number }[];
+  quantity: number;
+  tableNumber: string;
   category: string;
   status: string;
-  orderIds: string[];
+  orderId: string;
+  itemIndex: number;
 }
 
 @Component({
@@ -66,16 +68,16 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
   menuItems$ = new BehaviorSubject<MenuItem[]>([]);
   orders$ = new BehaviorSubject<Order[]>([]);
   orderStatuses: string[] = ['pending', 'preparing', 'ready', 'completed'];
-  ordersByStatus: { [key: string]: Order[] } = {};
-  ordersByFoodType: { [key: string]: any[] } = {};
+  orderItemsByStatus: { [key: string]: OrderItem[] } = {};
+  allOrderItems: OrderItem[] = [];
   activeView = 'orders';
   viewMode: 'kanban' | 'itemType' = 'kanban';
   private subscriptions: Subscription[] = [];
   private ordersMap = new Map<string, Order>();
   restaurantId: string | null = null;
   categories: FoodType[] = [];
-  items: MatTableDataSource<AggregatedItem>;
-  displayedColumns: string[] = ['category', 'name', 'quantity', 'tables', 'status', 'actions'];
+  items: MatTableDataSource<OrderItem>;
+  displayedColumns: string[] = ['category', 'name', 'quantity', 'tableNumber', 'status'];
 
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -88,7 +90,7 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
     private cdr: ChangeDetectorRef,
     private http: HttpClient
   ) {
-    this.items = new MatTableDataSource<AggregatedItem>([]);
+    this.items = new MatTableDataSource<OrderItem>([]);
   }
 
   ngOnInit() {
@@ -154,7 +156,7 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
           { _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 },
           ...types
         ];
-        this.updateOrdersByFoodType();
+        this.updateOrderItemsByStatus();
       },
       error: (error) => {
         console.error('Error loading categories:', error);
@@ -166,55 +168,41 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
     this.ordersMap.clear();
     orders.forEach(order => this.ordersMap.set(order._id, order));
     this.orders$.next(Array.from(this.ordersMap.values()));
-    this.updateOrdersByStatus();
-    this.updateOrdersByFoodType();
+    this.updateOrderItemsByStatus();
   }
 
-  updateOrdersByStatus() {
+  updateOrderItemsByStatus() {
     const orders = Array.from(this.ordersMap.values());
-    this.ordersByStatus = {};
+    this.orderItemsByStatus = {};
     this.orderStatuses.forEach(status => {
-      this.ordersByStatus[status] = orders.filter(order => order.status === status);
+      this.orderItemsByStatus[status] = [];
     });
-  }
 
-  updateOrdersByFoodType() {
-    const orders = Array.from(this.ordersMap.values());
-    const aggregatedItems: { [key: string]: AggregatedItem } = {};
-    
+    this.allOrderItems = [];
+
     orders.forEach(order => {
-      order.items.forEach(item => {
+      order.items.forEach((item, index) => {
         const category = this.categories.find(c => c._id === item.category)?.name || 'Uncategorized';
-        const key = `${category}-${item.name}`;
-        
-        if (!aggregatedItems[key]) {
-          aggregatedItems[key] = {
-            name: item.name,
-            totalQuantity: 0,
-            tables: [],
-            category: category,
-            status: order.status,
-            orderIds: []
-          };
-        }
-        
-        aggregatedItems[key].totalQuantity += item.quantity;
-        aggregatedItems[key].orderIds.push(order._id);
-        
-        const existingTable = aggregatedItems[key].tables.find(t => t.tableNumber === order.tableNumber);
-        if (existingTable) {
-          existingTable.quantity += item.quantity;
-        } else {
-          aggregatedItems[key].tables.push({ tableNumber: order.tableNumber, quantity: item.quantity });
-        }
+        const orderItem: OrderItem = {
+          id: `${order._id}-${index}`,
+          name: item.name,
+          quantity: item.quantity,
+          tableNumber: order.tableNumber,
+          category: category,
+          status: item.status || order.status, // Use item status if available, otherwise use order status
+          orderId: order._id,
+          itemIndex: index
+        };
+        this.orderItemsByStatus[orderItem.status].push(orderItem);
+        this.allOrderItems.push(orderItem);
       });
     });
 
-    this.items.data = Object.values(aggregatedItems);
+    this.items.data = this.allOrderItems;
     this.cdr.detectChanges();
   }
 
-  drop(event: CdkDragDrop<Order[]>) {
+  drop(event: CdkDragDrop<OrderItem[]>) {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
@@ -224,11 +212,11 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
         event.previousIndex,
         event.currentIndex
       );
-
-      const draggedOrder = event.container.data[event.currentIndex];
+  
+      const draggedItem = event.container.data[event.currentIndex];
       const newStatus = this.getStatusFromContainerId(event.container.id);
       
-      this.updateOrderStatus(draggedOrder._id, newStatus);
+      this.updateItemStatus(draggedItem.id, newStatus);
     }
   }
 
@@ -236,44 +224,55 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
     return containerId.split('-')[1];
   }
 
-  updateOrderStatus(orderId: string, newStatus: string) {
-    console.log('Updating order status for orderId:', orderId);
-    if (!orderId) {
-      console.error('orderId is undefined or null');
-      return;
-    }
-  
-    this.orderService.updateOrderStatus(orderId, newStatus).subscribe({
+  updateItemStatus(itemId: string, newStatus: string) {
+    const [orderId, itemIndexStr] = itemId.split('-');
+    const itemIndex = parseInt(itemIndexStr, 10);
+    
+    this.orderService.updateItemStatus(orderId, itemIndex, newStatus).subscribe({
       next: (updatedOrder) => {
-        const order = this.ordersMap.get(updatedOrder._id);
-        if (order) {
-          order.status = updatedOrder.status;
-          this.updateOrdersByStatus();
-          this.updateOrdersByFoodType();
-          this.cdr.detectChanges();
+        // Update the specific item in allOrderItems
+        const updatedItem = this.allOrderItems.find(item => item.id === itemId);
+        if (updatedItem) {
+          updatedItem.status = newStatus;
         }
+
+        // Update the order in ordersMap
+        this.ordersMap.set(updatedOrder._id, updatedOrder);
+
+        // Refresh the view
+        this.updateOrderItemsByStatus();
       },
       error: (error) => {
-        console.error('Error updating order status:', error);
+        console.error('Error updating item status:', error);
         this.loadInitialData();
       }
     });
   }
 
-  deleteOrder(orderId: string) {
-    if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
-      this.orderService.deleteOrder(orderId).subscribe({
-        next: () => {
-          this.ordersMap.delete(orderId);
+  deleteOrder(itemId: string) {
+    const [orderId, itemIndexStr] = itemId.split('-');
+    const itemIndex = parseInt(itemIndexStr, 10);
+
+    if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+      this.orderService.deleteOrderItem(orderId, itemIndex).subscribe({
+        next: (updatedOrder) => {
+          if (updatedOrder) {
+            // If the order still exists (has other items), update it
+            this.ordersMap.set(updatedOrder._id, updatedOrder);
+          } else {
+            // If the order was completely deleted, remove it from the map
+            this.ordersMap.delete(orderId);
+          }
           this.updateOrdersList(Array.from(this.ordersMap.values()));
         },
         error: (error) => {
-          console.error('Failed to delete order:', error);
-          alert(`Failed to delete order. ${error.message}`);
+          console.error('Failed to delete order item:', error);
+          alert(`Failed to delete order item. ${error.message}`);
         }
       });
     }
   }
+
 
   loadViewMode() {
     const savedViewMode = localStorage.getItem('viewMode');

@@ -21,7 +21,12 @@ const OrderSchema = new mongoose.Schema({
       ref: 'FoodType',
       required: true
     },
-    imageUrl: String
+    imageUrl: String,
+    status: {  // Add this field for individual item status
+      type: String,
+      enum: ['pending', 'preparing', 'ready', 'completed'],
+      default: 'pending'
+    }
   }],
   totalPrice: {
     type: Number,
@@ -66,5 +71,19 @@ OrderSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Add a method to update the overall order status based on item statuses
+OrderSchema.methods.updateOverallStatus = function() {
+  const statuses = this.items.map(item => item.status);
+  if (statuses.every(status => status === 'completed')) {
+    this.status = 'completed';
+  } else if (statuses.some(status => status === 'ready')) {
+    this.status = 'ready';
+  } else if (statuses.some(status => status === 'preparing')) {
+    this.status = 'preparing';
+  } else {
+    this.status = 'pending';
+  }
+};
 
 module.exports = mongoose.model('Order', OrderSchema);

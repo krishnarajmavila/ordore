@@ -122,7 +122,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     if (this.table && this.table.otp) {
       this.loadExistingOrders();
     }
-    this.currentOrder.customerName = `${this.authService.getUsername()}(DS)`;
+    this.currentOrder.customerName = `${this.authService.getUsernameSync()}(DS)`;
   }
 
   ngOnChanges(changes: SimpleChanges) {
