@@ -109,4 +109,7 @@ export class CustomerLoginComponent implements OnInit {
     const control = this.loginForm.get(fieldName);
     return control ? (control.invalid && (control.touched || control.dirty)) : false;
   }
+  routerNav(){
+    this.router.navigate(['/login']);
+  }
 }
