@@ -44,6 +44,15 @@ interface Table {
   orders?: Order[];
 }
 
+interface GroupedOrder {
+  tableNumber: string;
+  items: {
+    name: string;
+    quantity: number;
+    status: string;
+  }[];
+}
+
 @Component({
   selector: 'app-table-selection',
   standalone: true,
@@ -68,7 +77,7 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
   tables$: Observable<Table[]> = this.tablesSubject.asObservable();
   dineInTables$: Observable<Table[]>;
   parcelTables$: Observable<Table[]>;
-  preparingOrders$!: Observable<Order[]>;
+  groupedOrders$!: Observable<GroupedOrder[]>;
   private ordersSubject = new BehaviorSubject<Order[]>([]);
   orders$ = this.ordersSubject.asObservable();
   public secondsAgo: number = 0;
@@ -107,6 +116,7 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.restaurantId = this.getSelectedRestaurantId();
+    console.log('Restaurant ID:', this.restaurantId);
     if (!this.restaurantId) {
       console.error('No restaurant ID found');
       return;
@@ -116,31 +126,17 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
     this.fetchTables();
     this.orderService.fetchOrders();
     this.updateFetchTime();
-    this.preparingOrders$ = this.orderService.getOrders().pipe(
-      tap(orders => console.log('All fetched orders:', orders)),
+    this.groupedOrders$ = this.orderService.getOrders().pipe(
+      map(orders => this.groupOrdersByTable(orders)),
       catchError(error => {
         console.error('Error fetching orders:', error);
-        return of([]); // Return an empty array if an error occurs
+        return of([]);
       })
     );
     this.startOrderFetch();
     this.orderService.startOrderRefresh();
   }
-  private startOrderFetch(): void {
-    this.subscription = interval(60000).subscribe(() => {
-      this.orderService.fetchOrders(); // Call to fetch orders
-    });
-  }
-  private updateFetchTime(): void {
-    this.lastFetchedTime = Date.now();
-    this.updateSecondsAgo();
-  }
 
-  private updateSecondsAgo(): void {
-    const currentTime = Date.now();
-    const differenceInSeconds = Math.floor((currentTime - this.lastFetchedTime) / 1000);
-    this.secondsAgo = differenceInSeconds;
-  }
   ngOnDestroy() {
     this.subscription.unsubscribe();
     this.orderService.stopOrderRefresh();
@@ -155,15 +151,15 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
 
     this.http.get<Table[]>(`${environment.apiUrl}/tables`, {
       params: new HttpParams().set('restaurantId', this.restaurantId)
-    }).subscribe(
-      tables => {
+    }).subscribe({
+      next: (tables) => {
         console.log('Fetched tables:', tables);
         this.tables = tables;
         this.tablesSubject.next(tables);
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
-      error => console.error('Error fetching tables:', error)
-    );
+      error: (error) => console.error('Error fetching tables:', error)
+    });
   }
 
   logout() {
@@ -186,53 +182,60 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
   }
 
   acknowledgeWaiterCall(table: Table, event: Event) {
+    console.log('Acknowledging waiter call for table:', table);
     event.stopPropagation();
-    const key = `waiterCalled_${table.number}`;
+    const key = `waiterCalled_${table.number}_${this.restaurantId}`;
     localStorage.removeItem(key);
 
     const payload = {
       tableId: table._id || table.number,
-      restaurantId: this.restaurantId
+      restaurantId: this.restaurantId,
+      tableOtp: table.otp
     };
 
     this.http.post(`${environment.apiUrl}/waiter-calls/acknowledge`, payload)
-      .subscribe(
-        () => {
+      .subscribe({
+        next: () => {
           this.updateWaiterCallStatus(table.number, false);
           const updatedTables = this.tablesSubject.value.map(t =>
             t.number === table.number ? { ...t, waiterCalled: false } : t
           );
           this.tablesSubject.next(updatedTables);
-          this.cdr.detectChanges();
+          this.cdr.markForCheck();
 
-          this.webSocketService.emit('waiterCallAcknowledged', { tableNumber: table.number, restaurantId: this.restaurantId });
+          this.webSocketService.emit('waiterCallAcknowledged', { 
+            tableNumber: table.number, 
+            restaurantId: this.restaurantId,
+            tableOtp: table.otp
+          });
 
           console.log(`Waiter call acknowledged for table ${table.number}`);
         },
-        error => {
+        error: (error) => {
           console.error('Error acknowledging waiter call:', error);
         }
-      );
+      });
   }
+
   private updateWaiterCallStatus(tableNumber: string, status: boolean) {
     const updatedTables = this.tablesSubject.value.map(table => {
-        if (table.number === tableNumber) {
-            // Update the waiterCalled status
-            return { ...table, waiterCalled: status };
-        }
-        return table;
+      if (table.number === tableNumber) {
+        return { ...table, waiterCalled: status };
+      }
+      return table;
     });
-    this.tablesSubject.next(updatedTables); // Update the BehaviorSubject with the new table statuses
+    this.tablesSubject.next(updatedTables);
 
-    // Update local storage to persist the waiter call status
-    const key = `waiterCalled_${tableNumber}`;
+    const key = `waiterCalled_${tableNumber}_${this.restaurantId}`;
     if (status) {
-        localStorage.setItem(key, 'true'); // Set as true if the waiter was called
+      localStorage.setItem(key, 'true');
     } else {
-        localStorage.removeItem(key); // Remove from local storage if the call was acknowledged
+      localStorage.removeItem(key);
     }
-    this.cdr.markForCheck(); // Ensure the view is updated
-}
+    
+    console.log(`Updated waiter call status for table ${tableNumber}: ${status}`);
+    this.cdr.markForCheck();
+  }
 
   private updateTablePaymentStatus(tableOtp: string, isPayInitiated: boolean, paymentType: string) {
     const updatedTables = this.tablesSubject.value.map(table => {
@@ -249,70 +252,64 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
 
   private setupWebSocketListeners() {
     this.subscription.add(
-      this.webSocketService.listen('payOrder').subscribe(
-        (data: { orders: Order[], paymentType: string, tableOtp: string }) => {
+      this.webSocketService.listen('payOrder').subscribe({
+        next: (data: { orders: Order[], paymentType: string, tableOtp: string }) => {
           console.log('TableSelectionComponent: Received payOrder event:', data);
           this.updateTablePaymentStatus(data.tableOtp, true, data.paymentType);
         },
-        error => console.error('TableSelectionComponent: Error in payOrder listener:', error)
-      )
+        error: error => console.error('TableSelectionComponent: Error in payOrder listener:', error)
+      })
     );
+
     this.subscription.add(
-      this.webSocketService.listen('tableUpdate').subscribe(
-        (updatedTable: Table & { restaurantId: string }) => {
+      this.webSocketService.listen('tableUpdate').subscribe({
+        next: (updatedTable: Table & { restaurantId: string }) => {
           console.log('Received table update:', updatedTable);
           if (updatedTable.restaurantId === this.restaurantId) {
             this.ngZone.run(() => {
               this.updateTableInList(updatedTable);
-              this.cdr.detectChanges();
+              this.cdr.markForCheck();
             });
           }
         },
-        error => console.error('Error in tableUpdate listener:', error)
-      )
+        error: error => console.error('Error in tableUpdate listener:', error)
+      })
     );
 
     this.subscription.add(
-      this.webSocketService.listen('newOrder').subscribe(
-        (newOrder: Order & { restaurantId: string }) => {
+      this.webSocketService.listen('newOrder').subscribe({
+        next: (newOrder: Order & { restaurantId: string }) => {
           if (newOrder.restaurantId === this.restaurantId) {
             console.log('Received newOrder event:', newOrder);
             this.updateTableStatus(newOrder.tableOtp, true);
           }
         },
-        error => console.error('Error in newOrder listener:', error)
-      )
+        error: error => console.error('Error in newOrder listener:', error)
+      })
     );
 
     this.subscription.add(
-      this.webSocketService.listen('orderStatusChange').subscribe(
-        (data: { tableOtp: string, hasOrders: boolean, restaurantId: string }) => {
+      this.webSocketService.listen('orderStatusChange').subscribe({
+        next: (data: { tableOtp: string, hasOrders: boolean, restaurantId: string }) => {
           if (data.restaurantId === this.restaurantId) {
             console.log('Received orderStatusChange event:', data);
             this.updateTableStatus(data.tableOtp, data.hasOrders);
           }
         },
-        error => console.error('Error in orderStatusChange listener:', error)
-      )
+        error: error => console.error('Error in orderStatusChange listener:', error)
+      })
     );
 
     this.subscription.add(
-      this.webSocketService.listen('orderUpdated').subscribe(
-        (updatedOrder: Order) => {
+      this.webSocketService.listen('orderUpdated').subscribe({
+        next: (updatedOrder: Order) => {
           console.log('Received orderUpdated event:', updatedOrder);
-          
-          // Update the order in the current list
-          const currentOrders = this.ordersSubject.value;
-          const updatedOrders = currentOrders.map(order =>
-            order._id === updatedOrder._id ? updatedOrder : order
-          );
-          this.ordersSubject.next(updatedOrders); // Emit the updated orders
-          this.cdr.detectChanges(); // Refresh the UI if needed
+          this.orderService.fetchOrders(); // Refetch all orders to ensure we have the latest data
+          this.cdr.markForCheck();
         },
-        error => console.error('Error in orderUpdated listener:', error)
-      )
+        error: error => console.error('Error in orderUpdated listener:', error)
+      })
     );
-    
   }
 
   private updateTableInList(updatedTable: Table) {
@@ -333,27 +330,25 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
       return table;
     });
     this.tablesSubject.next(updatedTables);
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
   }
 
   private listenForWaiterCalls() {
-    const waiterCallKey = `waiterCalled_${this.restaurantId}`;
     this.subscription.add(
-      this.webSocketService.listen('waiterCalled').subscribe(
-        (tableNumber: string) => {
-          console.log(`Waiter called for table: ${tableNumber}`);
-          localStorage.setItem(waiterCallKey, 'true');
-          const updatedTables = this.tablesSubject.value.map(table => {
-            if (table.number === tableNumber) {
-              return { ...table, waiterCalled: true };
+      this.webSocketService.listen('waiterCalled').subscribe({
+        next: (data: { tableOtp: string, restaurantId: string }) => {
+          console.log('Waiter called:', data);
+          if (data.restaurantId === this.restaurantId) {
+            const table = this.tablesSubject.value.find(t => t.otp === data.tableOtp);
+            if (table) {
+              this.updateWaiterCallStatus(table.number, true);
+            } else {
+              console.error('Table not found for OTP:', data.tableOtp);
             }
-            return table;
-          });
-          this.tablesSubject.next(updatedTables);
-          this.cdr.detectChanges();
+          }
         },
-        error => console.error('Error in waiterCalled listener:', error)
-      )
+        error: error => console.error('Error in waiterCalled listener:', error)
+      })
     );
   }
 
@@ -379,33 +374,104 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
       )
     );
 
-    forkJoin(orderChecks).subscribe(
-      (updatedTables: Table[]) => {
+    forkJoin(orderChecks).subscribe({
+      next: (updatedTables: Table[]) => {
         console.log('Initial table status check:', updatedTables);
         this.tablesSubject.next(updatedTables);
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
-      error => console.error('Error checking initial table status:', error)
-    );
+      error: error => console.error('Error checking initial table status:', error)
+    });
   }
+
   openAddTableDialog() {
     if (!this.restaurantId) {
-        console.error('No restaurant ID found');
-        return; // Exit if there's no restaurant ID
+      console.error('No restaurant ID found');
+      return;
     }
 
     const dialogRef = this.dialog.open(AddTableDialogComponent, {
-        width: '80%', // Set the width of the dialog
-        height: 'auto', // Set the height of the dialog
-        data: { restaurantId: this.restaurantId } // Pass the restaurant ID to the dialog
+      width: '80%',
+      height: 'auto',
+      data: { restaurantId: this.restaurantId }
     });
 
-    // Subscribe to the tableAdded event from the dialog
     dialogRef.componentInstance.tableAdded.subscribe((newTable: Table) => {
-        const updatedTables = [...this.tablesSubject.value, newTable]; // Add the new table to the existing list
-        this.tablesSubject.next(updatedTables); // Update the BehaviorSubject with the new tables list
-        this.cdr.detectChanges(); // Trigger change detection to refresh the view
+      const updatedTables = [...this.tablesSubject.value, newTable];
+      this.tablesSubject.next(updatedTables);
+      this.cdr.markForCheck();
     });
-}
+  }
+
+  private startOrderFetch(): void {
+    this.subscription.add(
+      interval(60000).subscribe(() => {
+        this.orderService.fetchOrders();
+        this.updateFetchTime();
+      })
+    );
+  }
+
+  private updateFetchTime(): void {
+    this.lastFetchedTime = Date.now();
+    this.updateSecondsAgo();
+  }
+
+  private updateSecondsAgo(): void {
+    const currentTime = Date.now();
+    const differenceInSeconds = Math.floor((currentTime - this.lastFetchedTime) / 1000);
+    this.secondsAgo = differenceInSeconds;
+    this.cdr.markForCheck();
+  }
+
+  refreshOrders(): void {
+    this.orderService.fetchOrders();
+    this.updateFetchTime();
+  }
+
+  private groupOrdersByTable(orders: Order[]): GroupedOrder[] {
+    const groupedOrders: { [tableNumber: string]: GroupedOrder } = {};
+  
+    orders.forEach(order => {
+      if (!groupedOrders[order.tableNumber]) {
+        groupedOrders[order.tableNumber] = {
+          tableNumber: order.tableNumber,
+          items: []
+        };
+      }
+  
+      order.items.forEach(item => {
+        const existingItem = groupedOrders[order.tableNumber].items.find(i => i.name === item.name);
+        if (existingItem) {
+          existingItem.quantity += item.quantity;
+          // Ensure we always have a valid string for status
+          existingItem.status = this.determineStatus(existingItem.status, item.status);
+        } else {
+          groupedOrders[order.tableNumber].items.push({
+            name: item.name,
+            quantity: item.quantity,
+            status: item.status || 'unknown' // Provide a default value if status is undefined
+          });
+        }
+      });
+    });
+  
+    return Object.values(groupedOrders);
+  }
+  private determineStatus(existingStatus: string, newStatus: string | undefined): string {
+    if (existingStatus === 'pending' || newStatus === 'pending') {
+      return 'pending';
+    }
+    if (newStatus === undefined) {
+      return existingStatus;
+    }
+    return newStatus;
+  }
+  private handleError(error: any): void {
+    console.error('An error occurred:', error);
+    // Implement any error handling logic here, such as displaying a user-friendly message
+  }
+
+  // You can add any additional methods or properties here if needed
 
 }
