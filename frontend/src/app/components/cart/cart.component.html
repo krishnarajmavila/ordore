@@ -3,9 +3,9 @@
       <mat-icon (click)="goBack()">keyboard_backspace</mat-icon>
       <h2 class="px-3 text-danger m-0">CHECKOUT</h2>
     </div>
-    <div class="col-auto text-end d-flex align-items-center">
+    <!-- <div class="col-auto text-end d-flex align-items-center">
       <button mat-raised-button color="primary" (click)="lookOrders();">BILL</button>
-    </div>
+    </div> -->
   </div>
   <div class="container pt-3">
     
@@ -17,17 +17,12 @@
   
     <div *ngIf="cartItems.length > 0" class="cart-items  animate__animated animate__fadeInUp animate__faster">
       <div *ngFor="let cartItem of cartItems" class="cart-item">
-        <div class="item-details d-flex align-items-center">
+        <div class="item-details d-flex">
           <!-- <img [src]="getImageUrl(cartItem.imageUrl)" [alt]="cartItem.name" class="item-image me-3"> -->
           <div>
-            <h3 style="line-height: 1.3;" class="m-0"><strong>{{ cartItem.name }}</strong></h3>
+            <h3 style="line-height: 1.3;" class="m-0">{{ cartItem.name }}</h3>
             <h4 class="m-0">₹{{ cartItem.price }}</h4>
-            <div class="item-notes">
-              <a class="text-left mt-2 p-0 text-danger" color="text-danger"  (click)="openItemNotesSheet(cartItem)">
-                {{ cartItem.notes ? 'Edit Notes' : 'Add Notes' }}
-              </a>
-              <small>{{cartItem.notes}}</small>
-            </div>
+            <small *ngIf="cartItem.notes">Notes: {{cartItem.notes}}</small>
           </div>
         </div>
         <div class="item-actions position-relative">
@@ -35,6 +30,11 @@
             <button mat-mini-fab color="warn" (click)="decreaseQuantity(cartItem)">—</button>
             <span>{{ cartItem.quantity }}</span>
             <button mat-mini-fab color="warn" (click)="increaseQuantity(cartItem)">＋</button>
+          </div>
+          <div class="item-notes mt-1">
+            <a class="text-left mt-2 p-0 text-danger" color="text-danger"  (click)="openItemNotesSheet(cartItem)">
+              {{ cartItem.notes ? 'Edit Notes' : 'Add Notes' }}
+            </a>
           </div>
         </div>
       </div>
