@@ -39,9 +39,9 @@ export class AppComponent {
         .pipe(filter((evt): evt is VersionReadyEvent => evt.type === 'VERSION_READY'))
         .subscribe(() => {
           const snack = this.snackBar.open('A new version is available. Update it?', 'Update', {
-            duration: 6000,
+            duration: 16000,
             horizontalPosition: 'center',
-            verticalPosition: 'bottom',
+            verticalPosition: 'top',
           });
 
           snack.onAction().subscribe(() => {
