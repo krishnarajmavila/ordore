@@ -130,13 +130,13 @@ module.exports = function(io) {
     }
   });
   // DELETE route to delete a completed order and archive it
-  router.delete('/:orderId/items/:itemIndex', async (req, res) => {
+  router.delete('/:orderId/items/:itemIndex', checkRestaurantId, async (req, res) => {
     try {
       const { orderId, itemIndex } = req.params;
-      const order = await Order.findById(orderId);
+      const order = await Order.findOne({ _id: orderId, restaurant: req.restaurantId });
   
       if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
+        return res.status(404).json({ message: 'Order not found for this restaurant' });
       }
   
       const itemIndexNum = parseInt(itemIndex, 10);
@@ -151,15 +151,23 @@ module.exports = function(io) {
       // Recalculate the total price
       order.totalPrice = order.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   
+      let result;
       if (order.items.length === 0) {
         // If no items left, delete the entire order
         await Order.findByIdAndDelete(orderId);
-        return res.status(200).json(null);
+        result = null;
+        if (io && typeof io.emit === 'function') {
+          io.emit('orderDeleted', orderId);
+        }
       } else {
         // Save the updated order
-        const updatedOrder = await order.save();
-        return res.status(200).json(updatedOrder);
+        result = await order.save();
+        if (io && typeof io.emit === 'function') {
+          io.emit('orderUpdated', result);
+        }
       }
+  
+      res.status(200).json(result);
     } catch (error) {
       console.error('Error deleting order item:', error);
       res.status(500).json({ message: 'Server error', error: error.message });
