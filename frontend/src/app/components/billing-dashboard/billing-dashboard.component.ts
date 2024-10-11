@@ -38,10 +38,17 @@ interface Table {
   _id?: string;
   number: string;
   capacity: number;
+  location?: string;
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
   hasOrders?: boolean;
+  waiterCalled?: boolean;
+  paymentCompleted?: boolean;
+  restaurant: string;
+  isPayInitiated?: boolean;
+  paymentType?: string;
+  orders?: Order[];
 }
 
 interface ExtendedOrder extends Order {
@@ -85,7 +92,8 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
     isOccupied: Math.random() > 0.5,
     otp: Math.random().toString(36).substring(7).toUpperCase(),
     otpGeneratedAt: new Date(),
-    hasOrders: Math.random() > 0.7
+    hasOrders: Math.random() > 0.7,
+    restaurant: this.getSelectedRestaurantId() || '' // Add this line
   }));
 
   selectedTable: Table | null = null;
@@ -182,9 +190,9 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
     capacity: 0,
     isOccupied: false,
     otp: 'PARCEL',
-    otpGeneratedAt: new Date()
+    otpGeneratedAt: new Date(),
+    restaurant: this.getSelectedRestaurantId() || '' // Add this line
   };
-
   constructor(
     private reportingService: ReportingService,
     private orderService: OrderService,
@@ -205,7 +213,9 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
       this.ordersSubscription.unsubscribe();
     }
   }
-
+  private getSelectedRestaurantId(): string | null {
+    return localStorage.getItem('selectedRestaurantId');
+  }
   loadReportData() {
     console.log('Loading report data for date:', this.selectedDate);
     this.reportingService.getReportData(this.selectedDate).subscribe({

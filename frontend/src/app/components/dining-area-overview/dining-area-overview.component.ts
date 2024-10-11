@@ -1,10 +1,10 @@
-import { Component, Output, EventEmitter, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Output, EventEmitter, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
@@ -12,24 +12,24 @@ import { BehaviorSubject, Observable, Subscription, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TableStatusService } from '../../services/table-status.service';
+import { WebSocketService } from '../../services/web-socket.service';
+import { OrderService, Order } from '../../services/order.service';
 
 interface Table {
   _id?: string;
   number: string;
   capacity: number;
-  location?: string;  // Dine In or Parcel
+  location?: string;
   isOccupied: boolean;
   otp: string;
   otpGeneratedAt: Date;
   hasOrders?: boolean;
   waiterCalled?: boolean;
   paymentCompleted?: boolean;
-}
-
-interface Order {
-  _id: string;
-  tableOtp: string;
-  status: string;
+  restaurant: string;
+  isPayInitiated?: boolean;
+  paymentType?: string;
+  orders?: Order[];
 }
 
 @Component({
@@ -55,6 +55,7 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   isLoading$ = this.isLoadingSubject.asObservable();
 
   private subscription = new Subscription();
+  private restaurantId: string | null = null;
 
   @Input() set tables(value: Table[] | null) {
     if (value) {
@@ -72,7 +73,10 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private authService: AuthService,
     private router: Router,
-    private tableStatusService: TableStatusService
+    private tableStatusService: TableStatusService,
+    private webSocketService: WebSocketService,
+    private orderService: OrderService,
+    private cdr: ChangeDetectorRef
   ) {
     this.dineInTables$ = this.tables$.pipe(
       map(tables => tables.filter(table => table.location !== 'Parcel - Take Away'))
@@ -80,28 +84,28 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     this.parcelTables$ = this.tables$.pipe(
       map(tables => tables.filter(table => table.location === 'Parcel - Take Away'))
     );
-    this.subscription.add(
-      this.tableStatusService.tableStatusUpdate$.subscribe(update => {
-        this.updateTableStatus(update.tableOtp, update.paymentCompleted);
-      })
-    );
   }
-  private updateTableStatus(tableOtp: string, paymentCompleted: boolean) {
-    const updatedTables = this.tablesSubject.value.map(table => 
-      table.otp === tableOtp ? { ...table, paymentCompleted } : table
-    );
-    this.tablesSubject.next(updatedTables);
-  }
+
   ngOnInit() {
-    this.loadTablesFromDb();
+    this.restaurantId = this.getSelectedRestaurantId();
+    if (this.restaurantId) {
+      this.loadTablesFromDb();
+      this.setupWebSocketListeners();
+      this.orderService.startOrderRefresh();
+    } else {
+      console.error('Restaurant ID is not available');
+    }
   }
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
+    this.orderService.stopOrderRefresh();
   }
+
   private getSelectedRestaurantId(): string | null {
     return localStorage.getItem('selectedRestaurantId');
   }
+
   onLogout() {
     this.authService.logout();
     this.router.navigate(['/login']);
@@ -121,11 +125,24 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     }
     return `Table ${table.number} - ${status}`;
   }
+
   private loadTablesFromDb() {
-    const restaurantId = this.getSelectedRestaurantId();
     this.isLoadingSubject.next(true);
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
     this.subscription.add(
-      this.http.get<Table[]>(`${environment.apiUrl}/tables?restaurantId=${restaurantId}`).pipe(
+      this.http.get<Table[]>(`${environment.apiUrl}/tables?restaurantId=${this.restaurantId}`, { headers }).pipe(
+        switchMap(tables => {
+          const billStatusChecks = tables.map(table => 
+            this.http.get<any>(`${environment.apiUrl}/bills/check/${table.otp}?restaurantId=${this.restaurantId}`, { headers }).pipe(
+              map(response => ({
+                ...table,
+                paymentCompleted: response.status === 'paid'
+              })),
+              catchError(() => of(table))
+            )
+          );
+          return forkJoin(billStatusChecks);
+        }),
         tap(tables => {
           this.tablesSubject.next(tables);
           this.isLoadingSubject.next(false);
@@ -139,6 +156,7 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
       ).subscribe({
         next: (updatedTables: Table[]) => {
           this.tablesSubject.next(updatedTables);
+          this.cdr.markForCheck();
         },
         error: (error) => console.error('Error updating tables:', error)
       })
@@ -146,55 +164,62 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
   }
 
   private checkTablesForOrders(tables: Table[]): Observable<Table[]> {
-    const orderRequests = tables.map(table => 
-      this.getBillStatusByTableOtp(table.otp).pipe(
-        map(billStatus => ({
+    const orderChecks = tables.map(table => 
+      this.orderService.getOrdersByTableOtp(table.otp).pipe(
+        map(orders => ({
           ...table,
-          hasOrders: billStatus.exists,
-          paymentCompleted: billStatus.status === 'paid'
+          hasOrders: orders.length > 0,
+          isOccupied: orders.length > 0 || table.isOccupied
         })),
-        catchError(error => {
-          console.error(`Error fetching bill status for table ${table.number}:`, error);
-          return of({ ...table, hasOrders: false, paymentCompleted: false });
-        })
+        catchError(() => of(table))
       )
     );
   
-    return forkJoin(orderRequests);
+    return forkJoin(orderChecks);
   }
-  private getBillStatusByTableOtp(tableOtp: string): Observable<any> {
-    const restaurantId = this.getSelectedRestaurantId();
-    if (!restaurantId) {
-      console.error('Restaurant ID is missing. Unable to fetch bill status.');
-      return of({ exists: false, status: null });
-    }
-  
-    const url = `${environment.apiUrl}/bills/check/${tableOtp}`;
-    const params = { restaurantId };
-  
-    return this.http.get<any>(url, { params }).pipe(
-      catchError((error) => {
-        console.error('Error fetching bill status:', error);
-        return of({ exists: false, status: null });
+
+  private setupWebSocketListeners() {
+    this.subscription.add(
+      this.webSocketService.listen('newOrder').subscribe((newOrder: Order) => {
+        if (newOrder.restaurant === this.restaurantId) {
+          this.updateTableStatus(newOrder.tableOtp, true, true);
+        }
+      })
+    );
+
+    this.subscription.add(
+      this.webSocketService.listen('orderStatusChange').subscribe((data: { tableOtp: string, hasOrders: boolean, restaurantId: string }) => {
+        if (data.restaurantId === this.restaurantId) {
+          this.updateTableStatus(data.tableOtp, data.hasOrders, data.hasOrders);
+        }
+      })
+    );
+
+    this.subscription.add(
+      this.tableStatusService.tableStatusUpdate$.subscribe(update => {
+        this.updateTableStatus(update.tableOtp, true, true, update.paymentCompleted);
+      })
+    );
+
+    this.subscription.add(
+      this.webSocketService.listen('paymentCompleted').subscribe((data: { tableOtp: string, restaurantId: string }) => {
+        if (data.restaurantId === this.restaurantId) {
+          this.updateTableStatus(data.tableOtp, true, true, true);
+        }
       })
     );
   }
 
-  private getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
-    const restaurantId = this.getSelectedRestaurantId();
-    if (!restaurantId) {
-      console.error('Restaurant ID is missing. Unable to fetch orders.');
-      return of([]);
-    }
-  
-    const url = `${environment.apiUrl}/orders`;
-    const params = { tableOtp, restaurantId };
-  
-    return this.http.get<Order[]>(url, { params }).pipe(
-      catchError((error) => {
-        console.error('Error fetching orders:', error);
-        return of([]);
-      })
+  private updateTableStatus(tableOtp: string, isOccupied: boolean, hasOrders: boolean, paymentCompleted?: boolean) {
+    const updatedTables = this.tablesSubject.value.map(table => 
+      table.otp === tableOtp ? { 
+        ...table, 
+        isOccupied, 
+        hasOrders, 
+        paymentCompleted: paymentCompleted ?? table.paymentCompleted 
+      } : table
     );
+    this.tablesSubject.next(updatedTables);
+    this.cdr.markForCheck();
   }
 }
