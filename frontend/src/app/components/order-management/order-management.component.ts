@@ -113,7 +113,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   displayedColumns: string[] = ['name', 'quantity', 'price', 'actions'];
   showCart: boolean = false;
   restaurantId: string | null = this.getSelectedRestaurantId();
-  menuLoaded: boolean = true;
+  menuLoaded: boolean = false;
 
   constructor(
     private http: HttpClient,
@@ -179,12 +179,12 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
       next: (items) => {
         this.menuItems = items.map(item => {
-          this.menuLoaded=false;
           if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
             return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
           }
           return item;
         });
+        this.menuLoaded = true;
       },
       error: (error) => {
         console.error('Error loading menu items:', error);

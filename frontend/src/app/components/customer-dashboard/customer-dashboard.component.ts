@@ -80,7 +80,7 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
   users$: Observable<any[]> = this.usersSubject.asObservable();
 
   restaurantId: string | null = null;
-  menuLoaded: boolean = true;
+  menuLoaded: boolean = false;
 
   constructor(
     private menuService: MenuService,
@@ -155,13 +155,13 @@ export class CustomerDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${this.restaurantId}`).subscribe({
       next: (items) => {
         this.menuItems = items.map(item => {
-          this.menuLoaded = false;
           if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
             return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
           }
           return item;
         });
         this.menuItemsSubject.next(this.menuItems);
+        this.menuLoaded = true;
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
