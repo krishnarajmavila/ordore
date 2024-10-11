@@ -43,6 +43,8 @@
     </mat-tab-group>
 
     <div class="menu-items mt-3">
+      <mat-spinner *ngIf="menuLoaded"></mat-spinner>
+
       <mat-card *ngFor="let item of getFilteredMenuItems()" class="p-0 mb-3">
         <mat-card-content>
           <div class="row">

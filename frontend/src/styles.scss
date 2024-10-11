@@ -157,3 +157,17 @@ flex-wrap: wrap !important;
       border-radius: 5px;
   }
 } 
+.mat-mdc-progress-spinner{
+  position: absolute;
+  z-index: 99;
+  margin: 0 auto;
+  width: 96%;
+  top: 45%;
+  height: 40px !important;
+  top:180px !important;
+}
+.spinner-container {
+  display: flex;
+  flex-direction: row;
+  height: 40px;
+}

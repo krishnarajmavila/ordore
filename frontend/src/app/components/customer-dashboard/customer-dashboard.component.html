@@ -66,6 +66,7 @@
   </mat-tab-group>
 
   <div class="menu-items mt-3 animate__animated animate__fadeIn">
+    <mat-spinner *ngIf="menuLoaded"></mat-spinner>
     <ng-container *ngIf="getFilteredMenuItems() | async as filteredItems">
       <mat-card *ngFor="let item of filteredItems" class="p-0 mb-3">
         <mat-card-content>

@@ -22,6 +22,7 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { InhouseConfirmationComponent } from '../inhouse-confirmation/inhouse-confirmation.component';
 import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
 import { ItemNotesSheetComponent } from '../item-notes-sheet/item-notes-sheet.component';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 interface OrderItem {
   name: string;
@@ -79,7 +80,8 @@ interface MenuItem {
     CartFilterPipe,
     InhouseConfirmationComponent,
     MatBottomSheetModule,
-    ItemNotesSheetComponent
+    ItemNotesSheetComponent,
+    MatProgressSpinnerModule
   ],
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
@@ -111,6 +113,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   displayedColumns: string[] = ['name', 'quantity', 'price', 'actions'];
   showCart: boolean = false;
   restaurantId: string | null = this.getSelectedRestaurantId();
+  menuLoaded: boolean = true;
 
   constructor(
     private http: HttpClient,
@@ -176,6 +179,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
       next: (items) => {
         this.menuItems = items.map(item => {
+          this.menuLoaded=false;
           if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
             return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
           }

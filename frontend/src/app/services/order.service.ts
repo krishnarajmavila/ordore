@@ -176,7 +176,29 @@ fetchOrders(): void {
     );
   }
   deleteOrderItem(orderId: string, itemIndex: number): Observable<Order | null> {
-    return this.http.delete<Order | null>(`${this.apiUrl}/${orderId}/items/${itemIndex}`);
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
+    const params = new HttpParams().set('restaurantId', restaurantId);
+    return this.http.delete<Order | null>(`${this.apiUrl}/${orderId}/items/${itemIndex}`, { params }).pipe(
+      tap((updatedOrder) => {
+        if (updatedOrder) {
+          const currentOrders = this.ordersSubject.value;
+          const updatedOrders = currentOrders.map(order => 
+            order._id === updatedOrder._id ? updatedOrder : order
+          );
+          this.ordersSubject.next(updatedOrders);
+        } else {
+          // If the order is now empty and deleted
+          const currentOrders = this.ordersSubject.value;
+          const updatedOrders = currentOrders.filter(order => order._id !== orderId);
+          this.ordersSubject.next(updatedOrders);
+        }
+        this.webSocketService.emit('orderUpdated', orderId);
+      }),
+      catchError(this.handleError)
+    );
   }
   startOrderRefresh(): void {
     // Stop any previous refresh logic (if using polling or WebSockets)

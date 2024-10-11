@@ -254,18 +254,20 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
   deleteOrder(itemId: string) {
     const [orderId, itemIndexStr] = itemId.split('-');
     const itemIndex = parseInt(itemIndexStr, 10);
-
+  
     if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
       this.orderService.deleteOrderItem(orderId, itemIndex).subscribe({
         next: (updatedOrder) => {
           if (updatedOrder) {
-            // If the order still exists (has other items), update it
+            // Update the order in the local map
             this.ordersMap.set(updatedOrder._id, updatedOrder);
           } else {
-            // If the order was completely deleted, remove it from the map
+            // If the order is now empty, remove it from the map
             this.ordersMap.delete(orderId);
           }
+          // Update the orders list and view
           this.updateOrdersList(Array.from(this.ordersMap.values()));
+          console.log('Order item deleted successfully');
         },
         error: (error) => {
           console.error('Failed to delete order item:', error);
