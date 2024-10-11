@@ -53,6 +53,7 @@ export class DsOrderCheckComponent implements OnInit {
   tables: any[] = [];
   showOrderManagement = false;
   isLoading = false;
+  orderLoaded:boolean = false;
 
   constructor(
     private orderService: OrderService,
@@ -80,6 +81,7 @@ export class DsOrderCheckComponent implements OnInit {
         }
         this.showOrderManagement = true;
         this.isLoading = false;
+        this.orderLoaded = true;
       },
       (error) => {
         console.error('Error fetching orders:', error);

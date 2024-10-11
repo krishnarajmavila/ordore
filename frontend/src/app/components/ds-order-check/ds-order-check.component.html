@@ -14,6 +14,7 @@
       <h2 class="m-0 px-2 text-danger">BILL</h2>
     </div>
     <div class="container p-0">
+      <mat-spinner *ngIf="!orderLoaded" class="faster-spinner"></mat-spinner>
       <ng-container *ngIf="orders && orders.length > 0; else noOrders">
         <div class="confirmation-card m-0">
           <div class="card-body item-body p-3">

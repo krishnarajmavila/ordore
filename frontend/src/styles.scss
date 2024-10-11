@@ -171,3 +171,15 @@ flex-wrap: wrap !important;
   flex-direction: row;
   height: 40px;
 }
+
+@keyframes faster-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.faster-spinner svg {
+  animation: faster-spinner 0.3s linear infinite !important;
+}

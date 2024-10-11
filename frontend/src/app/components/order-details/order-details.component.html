@@ -11,6 +11,7 @@
       </div>
     </div>
     <div class="container p-0">
+      <mat-spinner *ngIf="!orderLoaded" class="faster-spinner"></mat-spinner>
       <ng-container *ngIf="orders && orders.length > 0; else noOrders">
         <div class="confirmation-card m-0">
           <div class="card-body item-body p-3">

@@ -40,7 +40,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 })
 export class OrderDetailsComponent implements OnInit {
   orders: Order[] = [];
-
+  orderLoaded:boolean = false;
   constructor(
     private orderService: OrderService,
     private customerService: CustomerService,
@@ -54,6 +54,7 @@ export class OrderDetailsComponent implements OnInit {
       this.orderService.getOrdersByTableOtp(customerInfo.tableOtp).subscribe(
         (orders) => {
           this.orders = orders;
+          this.orderLoaded = true;
         },
         (error) => {
           console.error('Error fetching orders:', error);
