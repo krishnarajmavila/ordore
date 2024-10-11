@@ -5,10 +5,12 @@ import {
   EventEmitter,
   OnInit,
   OnDestroy,
+  AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   ViewChild,
-  NgZone
+  NgZone,
+  ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -27,6 +29,7 @@ import { WebSocketService } from '../../services/web-socket.service';
 import { MatDialog } from '@angular/material/dialog';
 import { AddTableDialogComponent } from '../add-table-dialog/add-table-dialog.component';
 import { OrderService, Order } from '../../services/order.service';
+import { Platform } from '@angular/cdk/platform';
 
 interface Table {
   _id?: string;
@@ -69,7 +72,7 @@ interface GroupedOrder {
   styleUrls: ['./table-selection.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TableSelectionComponent implements OnInit, OnDestroy {
+export class TableSelectionComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('sidenav') sidenav: any;
   @ViewChild('addTableModal') addTableModal: any;
 
@@ -97,7 +100,8 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
     private orderService: OrderService,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private platform: Platform
   ) {
     this.dineInTables$ = this.tables$.pipe(
       map(tables => tables.filter(table => table.location !== 'Parcel - Take Away'))
@@ -137,9 +141,20 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
     this.orderService.startOrderRefresh();
   }
 
+  ngAfterViewInit() {
+    this.sidenav.openedChange.subscribe((opened: boolean) => {
+      if (opened) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    });
+  }
+
   ngOnDestroy() {
     this.subscription.unsubscribe();
     this.orderService.stopOrderRefresh();
+    document.body.style.overflow = '';
   }
 
   private getSelectedRestaurantId(): string | null {
@@ -431,7 +446,7 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
 
   private groupOrdersByTable(orders: Order[]): GroupedOrder[] {
     const groupedOrders: { [tableNumber: string]: GroupedOrder } = {};
-  
+
     orders.forEach(order => {
       if (!groupedOrders[order.tableNumber]) {
         groupedOrders[order.tableNumber] = {
@@ -439,25 +454,25 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
           items: []
         };
       }
-  
+
       order.items.forEach(item => {
         const existingItem = groupedOrders[order.tableNumber].items.find(i => i.name === item.name);
         if (existingItem) {
           existingItem.quantity += item.quantity;
-          // Ensure we always have a valid string for status
           existingItem.status = this.determineStatus(existingItem.status, item.status);
         } else {
           groupedOrders[order.tableNumber].items.push({
             name: item.name,
             quantity: item.quantity,
-            status: item.status || 'unknown' // Provide a default value if status is undefined
+            status: item.status || 'unknown'
           });
         }
       });
     });
-  
+
     return Object.values(groupedOrders);
   }
+
   private determineStatus(existingStatus: string, newStatus: string | undefined): string {
     if (existingStatus === 'pending' || newStatus === 'pending') {
       return 'pending';
@@ -467,6 +482,9 @@ export class TableSelectionComponent implements OnInit, OnDestroy {
     }
     return newStatus;
   }
+
+ 
+
   private handleError(error: any): void {
     console.error('An error occurred:', error);
     // Implement any error handling logic here, such as displaying a user-friendly message

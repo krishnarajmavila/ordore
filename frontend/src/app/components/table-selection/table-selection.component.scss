@@ -194,3 +194,31 @@
   .sidnavs{
     width: 92% !important;
   }
+
+  .sidenav-container {
+    height: 100vh;
+  }
+  
+  .sidnavs {
+    width: 80%;
+    max-width: 400px;
+  }
+  
+  .sidenav-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .main-content {
+    height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
