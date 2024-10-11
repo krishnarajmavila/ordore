@@ -20,6 +20,8 @@ import { CartFilterPipe } from '../../pipe/cart-filter.pipe';
 import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { InhouseConfirmationComponent } from '../inhouse-confirmation/inhouse-confirmation.component';
+import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
+import { ItemNotesSheetComponent } from '../item-notes-sheet/item-notes-sheet.component';
 
 interface OrderItem {
   name: string;
@@ -27,6 +29,7 @@ interface OrderItem {
   price: number;
   imageUrl?: string;
   category: string;
+  notes?: string;
 }
 
 interface Order {
@@ -74,7 +77,9 @@ interface MenuItem {
     MatSlideToggleModule,
     MatTabsModule,
     CartFilterPipe,
-    InhouseConfirmationComponent
+    InhouseConfirmationComponent,
+    MatBottomSheetModule,
+    ItemNotesSheetComponent
   ],
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
@@ -113,7 +118,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     private router: Router,
     private authService: AuthService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private bottomSheet: MatBottomSheet
   ) {}
 
   ngOnInit() {
@@ -204,14 +210,16 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     
     if (existingItemIndex > -1) {
       this.currentOrder.items[existingItemIndex].quantity += 1;
+      this.openItemNotesSheet(this.currentOrder.items[existingItemIndex]);
     } else {
-      this.currentOrder.items.push({
+      const newItem: OrderItem = {
         name: item.name,
         quantity: 1,
         price: item.price,
         imageUrl: item.imageUrl,
         category: item.category._id
-      });
+      };
+      this.currentOrder.items.push(newItem);
     }
     
     this.calculateTotalPrice();
@@ -278,6 +286,10 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   
     const orderData = {
       ...this.currentOrder,
+      items: this.currentOrder.items.map(item => ({
+        ...item,
+        notes: item.notes || ''
+      })),
       tableOtp: this.table.otp,
       customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`,
       restaurant: restaurantId
@@ -480,5 +492,19 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       console.error('Table OTP is missing');
       this.showErrorSnackBar('Unable to view orders. Table information is missing.');
     }
+  }
+  openItemNotesSheet(item: OrderItem) {
+    const bottomSheetRef = this.bottomSheet.open(ItemNotesSheetComponent, {
+      data: { itemName: item.name, existingNotes: item.notes }
+    });
+  
+    bottomSheetRef.afterDismissed().subscribe((notes: string | undefined) => {
+      if (notes !== undefined) {
+        const index = this.currentOrder.items.findIndex(i => i.name === item.name);
+        if (index !== -1) {
+          this.currentOrder.items[index].notes = notes;
+        }
+      }
+    });
   }
 }

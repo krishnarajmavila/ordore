@@ -51,7 +51,8 @@ module.exports = function(io) {
 
       const itemsWithCategory = items.map(item => ({
         ...item,
-        category: createSafeObjectId(item.category) || item.category
+        category: createSafeObjectId(item.category) || item.category,
+        notes: item.notes || ''
       }));
 
       const newOrder = new Order({

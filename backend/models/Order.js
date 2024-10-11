@@ -22,6 +22,7 @@ const OrderSchema = new mongoose.Schema({
       required: true
     },
     imageUrl: String,
+    notes: String, 
     status: {  // Add this field for individual item status
       type: String,
       enum: ['pending', 'preparing', 'ready', 'completed'],

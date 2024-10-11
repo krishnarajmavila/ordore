@@ -10,18 +10,27 @@ import { CartService, CartItem } from '../../services/cart.service';
 import { AuthService } from '../../services/auth.service';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { FormsModule } from '@angular/forms';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { ItemNotesSheetComponent } from '../item-notes-sheet/item-notes-sheet.component';
 
 @Component({
   selector: 'app-cart',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatInputModule, MatFormFieldModule, FormsModule],
   templateUrl: './cart.component.html',
   styleUrls: ['./cart.component.scss']
 })
 export class CartComponent implements OnInit {
   cartItems: CartItem[] = [];
+  chefNotes: string = '';
 
-  constructor(private router: Router, private cartService: CartService, private authService: AuthService, private dialog: MatDialog) {}
+  constructor(private router: Router, private cartService: CartService, 
+    private authService: AuthService, 
+    private dialog: MatDialog,
+    private bottomSheet: MatBottomSheet) {}
 
   ngOnInit() {
     this.cartService.cartItems$.subscribe(items => {
@@ -60,20 +69,32 @@ export class CartComponent implements OnInit {
 
   placeOrder() {
     console.log('Placing order:', this.cartItems);
-    // Implement order placement logic here
+    console.log('Chef notes:', this.chefNotes);
   }
   openConfirmationDialog() {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '400px',
       data: { 
         cartItems: this.cartItems,
-        totalPrice: this.getTotalPrice() 
+        totalPrice: this.getTotalPrice(),
+        chefNotes: this.chefNotes
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.placeOrder();
+      }
+    });
+  }
+  openItemNotesSheet(item: CartItem) {
+    const bottomSheetRef = this.bottomSheet.open(ItemNotesSheetComponent, {
+      data: { itemName: item.name, existingNotes: item.notes }
+    });
+
+    bottomSheetRef.afterDismissed().subscribe((notes: string | undefined) => {
+      if (notes !== undefined) {
+        this.cartService.updateItemNotes(item._id, notes);
       }
     });
   }

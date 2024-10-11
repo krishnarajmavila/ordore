@@ -35,6 +35,7 @@ html{
     box-shadow: rgb(240, 241, 242) 0px 2px 4px;
   }
   .action-space{
+    min-width: 88px;
     background: #C80000;
     color: #fff;
     border-radius: 5px;
@@ -69,6 +70,10 @@ html{
   .btn-primary:active {
     background-color: #A00000 !important;
     border-color: #A00000 !important;
+  }
+  .mdc-fab{
+    border-radius: 5px !important;
+    min-height: 40px !important;
   }
   .sticky-column {
     position: sticky;
@@ -141,3 +146,14 @@ html{
     display: flex !important;
 flex-wrap: wrap !important;
 }
+.item-notes{
+  width: 90px;
+  a{
+    text-decoration: unset;
+      background: #ffdbdb;
+      padding: 4px 9px !important;
+      display: flex;
+      justify-content: center;
+      border-radius: 5px;
+  }
+} 

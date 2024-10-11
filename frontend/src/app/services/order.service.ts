@@ -12,6 +12,7 @@ export interface CartItem {
   category: string; 
   status?: string; 
   _id?: string;
+  notes?: string;
 }
 
 export interface Order {
@@ -94,7 +95,8 @@ fetchOrders(): void {
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        category: item.category // Include category in the order data
+        category: item.category,
+        notes: item.notes || ''
       })),
       totalPrice: totalPrice,
       customerName: customerInfo.name,

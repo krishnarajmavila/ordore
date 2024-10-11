@@ -1,12 +1,24 @@
 <div class="kanban-layout">
   <mat-sidenav-container class="sidenav-container w-100">
     <mat-sidenav mode="side" opened>
-      <img class="p-3 pt-4 mt-2 d-flex mx-auto" width="50%" src="assets/img/ordore.png" />
+      <img
+        class="p-3 pt-4 mt-2 d-flex mx-auto"
+        width="50%"
+        src="assets/img/ordore.png"
+      />
       <mat-nav-list class="mx-2">
-        <mat-list-item class="mt-2" (click)="activeView = 'orders'" [class.active]="activeView === 'orders'">
+        <mat-list-item
+          class="mt-2"
+          (click)="activeView = 'orders'"
+          [class.active]="activeView === 'orders'"
+        >
           <mat-icon>assignment</mat-icon> Manage Orders
         </mat-list-item>
-        <mat-list-item class="mt-2" (click)="activeView = 'menu'" [class.active]="activeView === 'menu'">
+        <mat-list-item
+          class="mt-2"
+          (click)="activeView = 'menu'"
+          [class.active]="activeView === 'menu'"
+        >
           <mat-icon>restaurant_menu</mat-icon>Manage Stocks
         </mat-list-item>
       </mat-nav-list>
@@ -16,32 +28,63 @@
         <div class="headers d-flex align-items-center justify-content-between">
           <h2 class="m-0">Hello Chef</h2>
           <div class="d-flex align-items-center">
-            <mat-button-toggle-group [(ngModel)]="viewMode" class="mr-3" (change)="onViewModeChange($event.value)">
+            <mat-button-toggle-group
+              [(ngModel)]="viewMode"
+              class="mr-3"
+              (change)="onViewModeChange($event.value)"
+            >
               <mat-button-toggle value="kanban">Kanban View</mat-button-toggle>
               <mat-button-toggle value="itemType">Item View</mat-button-toggle>
             </mat-button-toggle-group>
-            
-            <button (click)="logout()" class="ms-3 lgout-button" mat-raised-button color="warn">Logout</button>
+
+            <button
+              (click)="logout()"
+              class="ms-3 lgout-button"
+              mat-raised-button
+              color="warn"
+            >
+              Logout
+            </button>
           </div>
         </div>
         <div *ngIf="viewMode === 'kanban'" class="kanban-board">
           <div cdkDropListGroup class="board-columns">
             <div *ngFor="let status of orderStatuses" class="column">
               <h3 class="text-center m-3">{{ status | titlecase }}</h3>
-              <div cdkDropList [id]="'items-' + status" [cdkDropListData]="orderItemsByStatus[status]"
-                (cdkDropListDropped)="drop($event)" class="order-list">
-                <div *ngFor="let item of orderItemsByStatus[status]" cdkDrag [cdkDragData]="item" 
-                     [ngClass]="item.status" class="order-item" [attr.touch-action]="'none'">
-                  <h4 class="m-0">{{ item.name }}</h4>
-                  <h4 class="mb-2">Category: {{ item.category }}</h4>
-                  
-           <div class="d-flex align-items-center justify-content-between" style="border-top: 1px dashed rgb(84, 84, 84);">
-            <h4 class="m-0 mt-2">Quantity: {{ item.quantity }}</h4>
-            <h4 class="m-0 mt-2">Table: {{ item.tableNumber }}</h4>
-           </div>
-                  <button *ngIf="item.status === 'completed'" 
-                          (click)="deleteOrder(item.id)" 
-                          class="btn btn-danger btn-sm mt-2">
+              <div
+                cdkDropList
+                [id]="'items-' + status"
+                [cdkDropListData]="orderItemsByStatus[status]"
+                (cdkDropListDropped)="drop($event)"
+                class="order-list">
+                <div *ngFor="let item of orderItemsByStatus[status]"
+                  cdkDrag
+                  [cdkDragData]="item"
+                  [ngClass]="item.status"
+                  class="order-item"
+                  [attr.touch-action]="'none'">
+               <div class="mb-2">
+                <h4 class="mb-0">
+                  <strong>{{ item.name }}</strong>
+                </h4>
+                <div *ngIf="item.notes">
+                  <h4 class="mb-0 mt-0">
+                    Notes: {{ item.notes }}
+                  </h4>
+                </div>
+               </div>
+                  <div
+                    class="d-flex align-items-center justify-content-between mb-2"
+                    style="border-top: 1px dashed rgb(84, 84, 84)"
+                  >
+                    <h4 class="m-0 mt-2">Category: {{ item.category }}</h4>
+                    <h4 class="m-0 mt-2">Table: {{ item.tableNumber }}</h4>
+                  </div>
+                  <button
+                    *ngIf="item.status === 'completed'"
+                    (click)="deleteOrder(item.id)"
+                    class="btn btn-danger btn-sm mt-2"
+                  >
                     Remove
                   </button>
                 </div>
@@ -55,35 +98,53 @@
           <table mat-table [dataSource]="items" matSort>
             <!-- Category Column -->
             <ng-container matColumnDef="category">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Category </th>
-              <td mat-cell *matCellDef="let item"> {{item.category}} </td>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Category
+              </th>
+              <td mat-cell *matCellDef="let item">{{ item.category }}</td>
             </ng-container>
-          
+
             <!-- Item Column -->
             <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Item </th>
-              <td mat-cell *matCellDef="let item"> {{item.name}} </td>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Item</th>
+              <td mat-cell *matCellDef="let item">{{ item.name }}</td>
             </ng-container>
-          
+
             <!-- Quantity Column -->
             <ng-container matColumnDef="quantity">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Quantity </th>
-              <td mat-cell *matCellDef="let item"> {{item.quantity}} </td>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Quantity
+              </th>
+              <td mat-cell *matCellDef="let item">{{ item.quantity }}</td>
             </ng-container>
-          
+
             <!-- Table Numbers Column -->
             <ng-container matColumnDef="tableNumber">
-              <th mat-header-cell *matHeaderCellDef> Table Number </th>
-              <td mat-cell *matCellDef="let item"> {{item.tableNumber}} </td>
+              <th mat-header-cell *matHeaderCellDef>Table Number</th>
+              <td mat-cell *matCellDef="let item">{{ item.tableNumber }}</td>
             </ng-container>
-          
+
+            <ng-container matColumnDef="notes">
+              <th mat-header-cell *matHeaderCellDef>Notes</th>
+              <td mat-cell *matCellDef="let item">
+                {{ item.notes || "No notes" }}
+              </td>
+            </ng-container>
             <!-- Status Column -->
             <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Item Status </th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Item Status
+              </th>
               <td mat-cell *matCellDef="let item">
-                <mat-select [(ngModel)]="item.status" (selectionChange)="updateItemStatus(item.id, $event.value)">
-                  <mat-option *ngFor="let status of orderStatuses" [value]="status">
-                    {{status}}
+                <mat-select
+                  [(ngModel)]="item.status"
+                  (selectionChange)="updateItemStatus(item.id, $event.value)"
+                >
+                  <mat-option
+                    *ngFor="let status of orderStatuses"
+                    [value]="status"
+                  >
+                    {{ status }}
                   </mat-option>
                 </mat-select>
               </td>
@@ -91,49 +152,68 @@
 
             <!-- Action Column -->
             <ng-container matColumnDef="action">
-              <th mat-header-cell *matHeaderCellDef> Action </th>
+              <th mat-header-cell *matHeaderCellDef>Action</th>
               <td mat-cell *matCellDef="let item">
-                <button *ngIf="item.status === 'completed'" 
-                        (click)="deleteOrder(item.id)" 
-                        class="btn btn-danger btn-sm">
+                <button
+                  *ngIf="item.status === 'completed'"
+                  (click)="deleteOrder(item.id)"
+                  class="btn btn-danger btn-sm"
+                >
                   Remove
                 </button>
               </td>
             </ng-container>
-          
+
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
           </table>
         </div>
-        
       </div>
       <div *ngIf="activeView === 'menu'">
         <div class="headers d-flex align-items-center justify-content-between">
           <h2 class="m-0">Hello Chef</h2>
-          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+          <button
+            (click)="logout()"
+            class="lgout-button"
+            mat-raised-button
+            color="warn"
+          >
+            Logout
+          </button>
         </div>
         <mat-accordion multi="true" class="menu-categories">
-          <mat-expansion-panel *ngFor="let category of getUniqueCategories()" [expanded]="true">
+          <mat-expansion-panel
+            *ngFor="let category of getUniqueCategories()"
+            [expanded]="true"
+          >
             <mat-expansion-panel-header>
               <mat-panel-title>
                 <h3 class="m-0">{{ category }}</h3>
               </mat-panel-title>
             </mat-expansion-panel-header>
             <div class="menu-items row">
-              <ng-container *ngFor="let item of (menuItems$ | async)">
+              <ng-container *ngFor="let item of menuItems$ | async">
                 <mat-card class="col-2" *ngIf="item.category.name === category">
-                  <img *ngIf="item.imageUrl" class="img-fluid" [src]="getImageUrl(item.imageUrl)" [alt]="item.name">
+                  <img
+                    *ngIf="item.imageUrl"
+                    class="img-fluid"
+                    [src]="getImageUrl(item.imageUrl)"
+                    [alt]="item.name"
+                  />
                   <mat-card-header class="px-0">
                     <mat-card-title>{{ item.name }}</mat-card-title>
                     <mat-card-subtitle>{{ item.category }}</mat-card-subtitle>
                   </mat-card-header>
                   <mat-card-content class="px-0">
                     <p>{{ item.description }}</p>
-                    <p><strong>Price: {{ item.price | currency }}</strong></p>
+                    <p>
+                      <strong>Price: {{ item.price | currency }}</strong>
+                    </p>
                     <mat-slide-toggle
                       [checked]="item.isInStock"
-                      (change)="toggleStockStatus(item)">
-                      {{ item.isInStock ? 'In Stock' : 'Out of Stock' }}
+                      (change)="toggleStockStatus(item)"
+                    >
+                      {{ item.isInStock ? "In Stock" : "Out of Stock" }}
                     </mat-slide-toggle>
                   </mat-card-content>
                 </mat-card>

@@ -9,6 +9,7 @@ export interface CartItem {
   description?: string;
   imageUrl?: string;
   quantity: number;
+  notes?: string;
 }
 
 @Injectable({
@@ -61,6 +62,15 @@ export class CartService {
 
   getCartItems(): CartItem[] {
     return this.cartItemsSubject.getValue();
+  }
+
+  updateItemNotes(itemId: string, notes: string) {
+    const currentItems = this.cartItemsSubject.getValue();
+    const updatedItems = currentItems.map(item => 
+      item._id === itemId ? { ...item, notes } : item
+    );
+    this.cartItemsSubject.next(updatedItems);
+    this.saveCartToLocalStorage(updatedItems);
   }
 
   clearCart() {

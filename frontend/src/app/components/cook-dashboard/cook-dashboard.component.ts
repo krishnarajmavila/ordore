@@ -40,6 +40,7 @@ interface OrderItem {
   status: string;
   orderId: string;
   itemIndex: number;
+  notes?: string;
 }
 
 @Component({
@@ -77,7 +78,7 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
   restaurantId: string | null = null;
   categories: FoodType[] = [];
   items: MatTableDataSource<OrderItem>;
-  displayedColumns: string[] = ['category', 'name', 'quantity', 'tableNumber', 'status'];
+  displayedColumns: string[] = ['category', 'name', 'quantity', 'tableNumber', 'notes', 'status'];
 
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -191,7 +192,8 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
           category: category,
           status: item.status || order.status, // Use item status if available, otherwise use order status
           orderId: order._id,
-          itemIndex: index
+          itemIndex: index,
+          notes: item.notes
         };
         this.orderItemsByStatus[orderItem.status].push(orderItem);
         this.allOrderItems.push(orderItem);
