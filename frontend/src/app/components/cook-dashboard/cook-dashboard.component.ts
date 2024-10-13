@@ -14,7 +14,7 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { WebSocketService } from '../../services/web-socket.service';
 import { HttpClient } from '@angular/common/http';
@@ -66,6 +66,7 @@ interface OrderItem {
   styleUrls: ['./cook-dashboard.component.scss']
 })
 export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild('sidenav') sidenav!: MatSidenav;
   menuItems$ = new BehaviorSubject<MenuItem[]>([]);
   orders$ = new BehaviorSubject<Order[]>([]);
   orderStatuses: string[] = ['pending', 'preparing', 'ready', 'completed'];
@@ -79,6 +80,9 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
   categories: FoodType[] = [];
   items: MatTableDataSource<OrderItem>;
   displayedColumns: string[] = ['category', 'name', 'quantity', 'tableNumber', 'notes', 'status'];
+  isMinimized = false;
+  sidenavMode: 'side' | 'over' = 'side';
+  sidenavOpened = true;
 
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -250,7 +254,10 @@ export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit 
       }
     });
   }
-
+  toggleSidenav() {
+    this.isMinimized = !this.isMinimized;
+    // this.sidenav.toggle();
+  }
   deleteOrder(itemId: string) {
     const [orderId, itemIndexStr] = itemId.split('-');
     const itemIndex = parseInt(itemIndexStr, 10);

@@ -134,18 +134,13 @@
     <div class="ordersforbiller" *ngIf="activeView === 'orders'">
       <div class="headers d-flex align-items-center justify-content-between mb-4">  
         <div class="d-flex align-items-center">   
-          <mat-icon (click)="onBackToOrderManagement()">keyboard_backspace</mat-icon>   
-          <!-- <h2 class="m-0 mx-3">Bill View for Table {{tableNumber}}</h2>   -->
+          <h2 class="m-0 mx-3">Create Take Away Orders</h2>  
         </div>   
         <div class="d-flex align-items-center">     
           <button (click)="logout()" class="logout-button" mat-raised-button color="warn">Logout</button>   
         </div>
       </div> 
-      <app-order-management
-        [table]="parcelTable"
-        (backToTableSelection)="activeView = 'billing'"
-        (viewOrders)="onViewOrders($event)">
-      </app-order-management>
+      <app-parcel-order></app-parcel-order>
     </div>
   </mat-sidenav-content>
 </mat-sidenav-container>

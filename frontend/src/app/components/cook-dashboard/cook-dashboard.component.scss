@@ -174,3 +174,65 @@ button{
   box-shadow: 0 5px 5px -3px rgba(0,0,0,0.2), 0 8px 10px 1px rgba(0,0,0,0.14), 0 3px 14px 2px rgba(0,0,0,0.12);
   z-index: 10;
 }
+
+.mat-sidenav {
+  width: 200px;
+  transition: width 0.03s ease-in-out;
+  overflow-x: hidden;
+
+  &.minimized {
+    width: 74px !important;
+  }
+}
+
+.sidenav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.full-logo {
+  width: 50%;
+}
+
+.mini-logo {
+  width: 39px;
+  padding: 0px !important;
+}
+.full-ml {
+  margin-left: 200px;
+  transition: margin-left 0.05s ease-in-out;
+}
+
+.mini-ml {
+  margin-left: 74px !important;
+  transition: margin-left 0.05s ease-in-out;
+}
+
+.toggle-btn {
+  position: absolute;
+  right: -20px;
+  bottom: 60px;
+  z-index: 100;
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+mat-nav-list {
+  .mat-list-item {
+    .mat-icon {
+      margin-right: 15px;
+    }
+  }
+}
+
+.minimized {
+  mat-nav-list {
+    .mat-list-item {
+      .mat-icon {
+        margin-right: 0;
+      }
+    }
+  }
+}

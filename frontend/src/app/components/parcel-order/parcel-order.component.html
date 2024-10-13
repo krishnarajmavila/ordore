@@ -1,0 +1,88 @@
+<div class="container-fluid parcel-order-container">
+  <div class="row">
+    <!-- Menu Section -->
+    <div class="col-md-9 menu-section">
+      <div class="search-bar mb-3" style="width: 50%;">
+        <div class="input-group gap-4 align-items-center">
+          <input type="search" class="form-control" [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Search...">
+          <div class="input-group-append">
+            <mat-slide-toggle [(ngModel)]="isVegetarian" (change)="toggleVegetarian()">VEG</mat-slide-toggle>
+          </div>
+        </div>
+      </div>
+
+      <!-- Horizontal Category Slider -->
+      <div class="category-slider-container mb-3">
+        <button mat-icon-button class="slider-arrow left" (click)="scrollCategories('left')">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <div class="category-slider" #categorySlider>
+          <button mat-button 
+                  *ngFor="let category of categories" 
+                  [class.active]="category._id === selectedCategory._id"
+                  (click)="selectCategory(category)">
+            {{ category.name }}
+          </button>
+        </div>
+        <button mat-icon-button class="slider-arrow right" (click)="scrollCategories('right')">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <!-- Menu Items -->
+      <div class="row menu-items pb-5">
+        <div class="col-md-3 mb-4" *ngFor="let item of getFilteredMenuItems()">
+          <mat-card class="h-100">
+            <img mat-card-image [src]="getImageUrl(item.imageUrl)" [alt]="item.name" class="menu-item-image">
+            <mat-card-content>
+              <h3>{{ item.name }}</h3>
+              <p>{{ item.description }}</p>
+              <div class="d-flex justify-content-between align-items-center itembt">
+                <span class="price">₹{{ item.price }}</span>
+                <button mat-raised-button color="primary" (click)="addItemToOrder(item)">ADD</button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Section -->
+    <div class="col-md-3 cart-section">
+      <h2>Cart - Take Away #{{ currentParcelTable?.number }}</h2>
+      <div class="cart-items">
+        <div class="cart-item" *ngFor="let item of currentOrder.items">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span>{{ item.name }} - ₹{{ item.price }}</span>
+            <div class="btn-group" role="group">
+              <button mat-icon-button (click)="decrementCartItem(item)">
+                <mat-icon>remove</mat-icon>
+              </button>
+              <span class="quantity d-flex align-items-center">{{ item.quantity }}</span>
+              <button mat-icon-button (click)="incrementCartItem(item)">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+          </div>
+          <button style="width: 140px;" mat-stroked-button color="primary" (click)="openItemNotesSheet(item)">
+            {{ item.notes ? 'Edit Notes' : 'Add Notes' }}
+          </button>
+        </div>
+      </div>
+      <div class="cart-total mt-4">
+        <h3>Total: ₹{{ currentOrder.totalPrice }}</h3>
+        <button style="height: 50px;" mat-raised-button color="primary" (click)="openAddTableDialog()" *ngIf="!currentParcelTable">
+          Create Takeaway Table Before Proceed 
+        </button>
+        <button style="height: 50px;" class="mt-3" mat-raised-button color="primary" (click)="placeOrder()" [disabled]="!canPlaceOrder()">
+          Place Take Away Order
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Table Button -->
+<!-- <button mat-fab color="accent" class="add-table-fab" (click)="openAddTableDialog()" *ngIf="!currentParcelTable">
+  <mat-icon>add</mat-icon>
+</button> -->

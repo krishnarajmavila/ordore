@@ -22,6 +22,7 @@ import { BaseChartDirective, NgChartsModule } from 'ng2-charts';
 import { DiningAreaOverviewComponent } from '../dining-area-overview/dining-area-overview.component';
 import { BillViewComponent } from '../bill-view/bill-view.component';
 import { OrderManagementComponent } from '../order-management/order-management.component';
+import { ParcelOrderComponent } from '../parcel-order/parcel-order.component';
 
 interface ReportData {
   dailyRevenue: number;
@@ -77,7 +78,7 @@ interface ExtendedOrder extends Order {
     NgChartsModule,
     DiningAreaOverviewComponent,
     BillViewComponent,
-    OrderManagementComponent
+    ParcelOrderComponent
   ],
   templateUrl: './billing-dashboard.component.html',
   styleUrls: ['./billing-dashboard.component.scss']

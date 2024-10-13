@@ -1,29 +1,43 @@
 <div class="kanban-layout">
   <mat-sidenav-container class="sidenav-container w-100">
-    <mat-sidenav mode="side" opened>
+    <mat-sidenav #sidenav [class.minimized]="isMinimized" [mode]="sidenavMode" [opened]="sidenavOpened">
+      <div class="sidenav-header">
       <img
-        class="p-3 pt-4 mt-2 d-flex mx-auto"
-        width="50%"
-        src="assets/img/ordore.png"
-      />
+      class="full-logo d-flex mx-auto"
+      style="    width: 56%;
+    padding-top: 20px;"
+      *ngIf="!isMinimized"
+      src="assets/img/ordore.png"
+    />
+    <img
+    class="mini-logo p-3 pt-4 mt-2 d-flex mx-auto"
+    *ngIf="isMinimized"
+    src="assets/img/lminimum.png"
+  />
+        <button mat-icon-button class="toggle-btn" (click)="toggleSidenav()">
+          <mat-icon>{{ isMinimized ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+        </button>
+      </div>
       <mat-nav-list class="mx-2">
         <mat-list-item
           class="mt-2"
           (click)="activeView = 'orders'"
           [class.active]="activeView === 'orders'"
         >
-          <mat-icon>assignment</mat-icon> Manage Orders
+          <mat-icon>assignment</mat-icon>
+          <span *ngIf="!isMinimized">Manage Orders</span>
         </mat-list-item>
         <mat-list-item
           class="mt-2"
           (click)="activeView = 'menu'"
           [class.active]="activeView === 'menu'"
         >
-          <mat-icon>restaurant_menu</mat-icon>Manage Stocks
+          <mat-icon>restaurant_menu</mat-icon>
+          <span *ngIf="!isMinimized">Manage Stocks</span>
         </mat-list-item>
       </mat-nav-list>
     </mat-sidenav>
-    <mat-sidenav-content>
+    <mat-sidenav-content [ngClass]="{'full-ml': !isMinimized, 'mini-ml': isMinimized}">
       <div *ngIf="activeView === 'orders'">
         <div class="headers d-flex align-items-center justify-content-between">
           <h2 class="m-0">Hello Chef</h2>
