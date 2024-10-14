@@ -300,7 +300,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
           this.confirmationDialogRef.close();
         }
         setTimeout(() => {
-          this.openAddTableDialog();
+          // this.openAddTableDialog();
         }, 0);
       },
       error: (error) => {
@@ -404,7 +404,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
 
   placeOrder() {
     if (this.canPlaceOrder()) {
-      // this.openConfirmationDialog();
+      this.openConfirmationDialog();
     } else {
       this.showErrorSnackBar('Please add items to the cart and create a parcel table before placing an order.');
     }
