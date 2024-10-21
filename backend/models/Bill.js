@@ -14,6 +14,13 @@ const BillSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
+  customerName: {
+    type: String,
+    required: true
+  },
+  phoneNumber: {
+    type: String
+  },
   items: [{
     name: String,
     price: Number,
@@ -40,14 +47,34 @@ const BillSchema = new mongoose.Schema({
     enum: ['cash', 'card', 'upi', 'other'],
     default: 'cash'
   },
+  cashierName: {
+    type: String,
+    required: true
+  },
+  restaurantInfo: {
+    name: String,
+    companyName: String,
+    addressLine1: String,
+    addressLine2: String,
+    addressLine3: String,
+    pincode: String,
+    gstin: String
+  },
+  kotNumber: {
+    type: String
+  },
   status: {
     type: String,
     enum: ['pending', 'paid', 'cancelled'],
     default: 'pending'
   },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
+  notes: {
+    type: String
+  },
+  restaurant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant',
+    required: true
   }
 }, { 
   timestamps: true 

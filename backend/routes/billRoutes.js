@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Bill = require('../models/Bill');
-const auth = require('../middleware/auth'); // Add this line to import the auth middleware
+const auth = require('../middleware/auth');
 
 // Get all bills for a restaurant
 router.get('/', auth, async (req, res) => {
@@ -89,6 +89,28 @@ router.get('/recent', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching recent bills:', error);
     res.status(500).json({ message: 'Error fetching recent bills', error: error.message });
+  }
+});
+
+// Check if a bill exists for a given tableOtp
+router.get('/check/:tableOtp', auth, async (req, res) => {
+  try {
+    const { tableOtp } = req.params;
+    const { restaurantId } = req.query;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
+    }
+
+    const existingBill = await Bill.findOne({ tableOtp, restaurant: restaurantId });
+    res.json({ 
+      exists: !!existingBill,
+      status: existingBill ? existingBill.status : null,
+      billId: existingBill ? existingBill._id : null
+    });
+  } catch (error) {
+    console.error('Error checking existing bill:', error);
+    res.status(500).json({ message: 'Error checking existing bill', error: error.message });
   }
 });
 
