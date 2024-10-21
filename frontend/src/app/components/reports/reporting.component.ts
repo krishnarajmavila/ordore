@@ -137,7 +137,7 @@ export class ReportingComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.loadReportData(this.selectedDate);
+    // this.loadReportData(this.selectedDate);
     this.loadOrders();
   }
 
@@ -150,10 +150,10 @@ export class ReportingComponent implements OnInit, OnDestroy {
     }
   }
 
-  onDateChange(event: any) {
-    const newDate = event.value;
-    this.loadReportData(newDate);
-  }
+  // onDateChange(event: any) {
+  //   const newDate = event.value;
+  //   this.loadReportData(newDate);
+  // }
   loadOrders() {
     this.reportingService.fetchOrders();
     this.ordersSubscription = this.reportingService.getOrders().subscribe({
@@ -167,17 +167,17 @@ export class ReportingComponent implements OnInit, OnDestroy {
       }
     });
   }
-  loadReportData(date: Date) {
-    this.dataSubscription = this.reportingService.getReportData(date).subscribe({
-      next: (data) => {
-        this.updateDashboard(data);
-      },
-      error: (error) => {
-        console.error('Error fetching report data:', error);
-        // Handle error (e.g., show error message to user)
-      }
-    });
-  }
+  // loadReportData(date: Date) {
+  //   this.dataSubscription = this.reportingService.getReportData(date).subscribe({
+  //     next: (data) => {
+  //       this.updateDashboard(data);
+  //     },
+  //     error: (error) => {
+  //       console.error('Error fetching report data:', error);
+  //       // Handle error (e.g., show error message to user)
+  //     }
+  //   });
+  // }
 
   updateDashboard(data: any) {
     // Update all dashboard properties with new data

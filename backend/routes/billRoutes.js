@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Bill = require('../models/Bill');
+const auth = require('../middleware/auth'); // Add this line to import the auth middleware
 
 // Get all bills for a restaurant
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const { restaurantId } = req.query;
     if (!restaurantId) {
@@ -17,7 +18,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get a specific bill by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const { restaurantId } = req.query;
@@ -30,7 +31,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new bill
-router.post('/', async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const newBill = new Bill(req.body);
     const savedBill = await newBill.save();
@@ -41,7 +42,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update a bill
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const { restaurantId, ...updateData } = req.body;
@@ -58,7 +59,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 // Delete a bill
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const { restaurantId } = req.query;
@@ -70,23 +71,24 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Check if a bill exists for a given tableOtp
-router.get('/check/:tableOtp', async (req, res) => {
+// Get recent bills
+router.get('/recent', auth, async (req, res) => {
   try {
-    const { tableOtp } = req.params;
     const { restaurantId } = req.query;
-    const existingBill = await Bill.findOne({ 
-      tableOtp, 
-      restaurant: restaurantId,
-      status: { $ne: 'cancelled' } // Exclude cancelled bills
-    });
-    res.json({ 
-      exists: !!existingBill,
-      status: existingBill ? existingBill.status : null,
-      billId: existingBill ? existingBill._id : null
-    });
+    
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
+    }
+
+    const recentBills = await Bill.find({ restaurant: restaurantId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('billNumber tableNumber total status createdAt');
+
+    res.json(recentBills);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error fetching recent bills:', error);
+    res.status(500).json({ message: 'Error fetching recent bills', error: error.message });
   }
 });
 

@@ -14,6 +14,10 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { TableStatusService } from '../../services/table-status.service';
 import { WebSocketService } from '../../services/web-socket.service';
 import { OrderService, Order } from '../../services/order.service';
+import { TableService } from '../../services/table.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmationComponent, ConfirmationData } from '../shared/confirmation/confirmation.component';
 
 interface Table {
   _id?: string;
@@ -76,7 +80,10 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     private tableStatusService: TableStatusService,
     private webSocketService: WebSocketService,
     private orderService: OrderService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private tableService: TableService,
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {
     this.dineInTables$ = this.tables$.pipe(
       map(tables => tables.filter(table => table.location !== 'Parcel - Take Away'))
@@ -208,6 +215,21 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
         }
       })
     );
+
+    // New listener for table status changes
+    this.subscription.add(
+      this.webSocketService.listen('tableStatusChange').subscribe((data: { 
+        tableOtp: string, 
+        isOccupied: boolean, 
+        hasOrders: boolean, 
+        paymentCompleted: boolean,
+        restaurantId: string 
+      }) => {
+        if (data.restaurantId === this.restaurantId) {
+          this.updateTableStatus(data.tableOtp, data.isOccupied, data.hasOrders, data.paymentCompleted);
+        }
+      })
+    );
   }
 
   private updateTableStatus(tableOtp: string, isOccupied: boolean, hasOrders: boolean, paymentCompleted?: boolean) {
@@ -221,5 +243,60 @@ export class DiningAreaOverviewComponent implements OnInit, OnDestroy {
     );
     this.tablesSubject.next(updatedTables);
     this.cdr.markForCheck();
+  }
+
+  deleteTable(table: Table, event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!table._id || !this.restaurantId) {
+      this.showSnackBar('Error: Table ID or Restaurant ID is missing');
+      return;
+    }
+
+    if (table.isOccupied || table.hasOrders) {
+      this.showSnackBar('Cannot delete an occupied table or a table with orders');
+      return;
+    }
+
+    const dialogData: ConfirmationData = {
+      title: 'Confirm Table Deletion',
+      message: `Are you sure you want to delete Table ${table.number}?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationComponent, {
+      width: '450px',
+      data: dialogData
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.proceedWithTableDeletion(table);
+      }
+    });
+  }
+
+  private proceedWithTableDeletion(table: Table) {
+    this.tableService.deleteTable(table._id!, this.restaurantId!).subscribe({
+      next: () => {
+        const updatedTables = this.tablesSubject.value.filter(t => t._id !== table._id);
+        this.tablesSubject.next(updatedTables);
+        this.showSnackBar('Table deleted successfully');
+      },
+      error: (error) => {
+        console.error('Error deleting table:', error);
+        this.showSnackBar('Error deleting table: ' + (error.message || 'Unknown error'));
+      }
+    });
+  }
+
+  private showSnackBar(message: string) {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: 'center',
+      verticalPosition: 'top',
+    });
   }
 }

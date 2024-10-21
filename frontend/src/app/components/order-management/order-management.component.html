@@ -1,7 +1,8 @@
 <div class="container" style="margin: 0;">
   <div class="headvals row mt-3 mb-1 px-1 align-items-center">
-    <div class="col">
+    <div class="col d-flex align-items-center">
       <mat-icon (click)="showCart ? goBackToMenu() : goBackToTableSelection()" class="mx-2">keyboard_backspace</mat-icon>
+      <h2 class="text-danger m-0">MENU</h2>
     </div>
     <div class="col-auto text-end" style="line-height: 0.3;">
       <button mat-stroked-button color="primary" (click)="lookOrders();" class="mx-2">{{table.number}} - BILL</button>

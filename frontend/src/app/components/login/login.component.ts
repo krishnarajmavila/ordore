@@ -52,6 +52,7 @@ export class LoginComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.authService.shouldPreventLoginPageAccess();
     console.log('LoginComponent initialized');
     this.onUserTypeChange();
   }

@@ -1,9 +1,7 @@
-// reportRoutes.js
 const express = require('express');
 const router = express.Router();
 const Bill = require('../models/Bill');
 const Restaurant = require('../models/Restaurant');
-const Order = require('../models/Order');
 const auth = require('../middleware/auth');
 
 // Get report data for a specific restaurant
@@ -25,31 +23,45 @@ router.get('/', auth, async (req, res) => {
     const endOfMonth = new Date(startOfDay.getFullYear(), startOfDay.getMonth() + 1, 0, 23, 59, 59, 999);
 
     // Daily data
-    const dailyOrders = await Order.find({
+    const dailyBills = await Bill.find({
       restaurant: restaurantId,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
+      status: 'paid'
     });
 
-    const dailyRevenue = dailyOrders.reduce((sum, order) => sum + order.totalPrice, 0);
-    const dailyOrderCount = dailyOrders.length;
+    const dailyRevenue = dailyBills.reduce((sum, bill) => sum + bill.total, 0);
+    const dailyBillCount = dailyBills.length;
 
     // Monthly data
-    const monthlyOrders = await Order.find({
+    const monthlyBills = await Bill.find({
       restaurant: restaurantId,
-      createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+      status: 'paid'
     });
 
-    const monthlyRevenue = monthlyOrders.reduce((sum, order) => sum + order.totalPrice, 0);
-    const monthlyOrderCount = monthlyOrders.length;
+    const monthlyRevenue = monthlyBills.reduce((sum, bill) => sum + bill.total, 0);
+    const monthlyBillCount = monthlyBills.length;
 
-    // Calculate average order value
-    const averageOrderValue = dailyOrderCount > 0 ? dailyRevenue / dailyOrderCount : 0;
+    // Calculate average bill value
+    const averageBillValue = dailyBillCount > 0 ? dailyRevenue / dailyBillCount : 0;
 
     // Get top selling items
-    const topSellingItems = await Order.aggregate([
-      { $match: { restaurant: restaurantId, createdAt: { $gte: startOfDay, $lte: endOfDay } } },
+    const topSellingItems = await Bill.aggregate([
+      { 
+        $match: { 
+          restaurant: restaurantId, 
+          createdAt: { $gte: startOfDay, $lte: endOfDay },
+          status: 'paid'
+        } 
+      },
       { $unwind: '$items' },
-      { $group: { _id: '$items.name', totalQuantity: { $sum: '$items.quantity' } } },
+      { 
+        $group: { 
+          _id: '$items.name', 
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
+        } 
+      },
       { $sort: { totalQuantity: -1 } },
       { $limit: 5 }
     ]);
@@ -57,9 +69,9 @@ router.get('/', auth, async (req, res) => {
     res.json({
       dailyRevenue,
       monthlyRevenue,
-      dailyOrderCount,
-      monthlyOrderCount,
-      averageOrderValue,
+      dailyBillCount,
+      monthlyBillCount,
+      averageBillValue,
       topSellingItems
     });
 
@@ -69,157 +81,113 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get combined report data across all restaurants
-router.get('/combined', auth, async (req, res) => {
+// Get weekly report
+router.get('/weekly', auth, async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { restaurantId } = req.query;
     
-    if (!startDate || !endDate) {
-      return res.status(400).json({ message: 'Start date and end date are required' });
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
     }
 
-    const restaurants = await Restaurant.find({ createdBy: req.user.userId });
-    
-    let combinedReport = {
-      totalRevenue: 0,
-      totalOrderCount: 0,
-      averageOrderValue: 0,
-      restaurantReports: []
-    };
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    for (let restaurant of restaurants) {
-      const orders = await Order.find({
-        restaurant: restaurant._id,
-        createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
-      });
+    const bills = await Bill.find({
+      restaurant: restaurantId,
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: 'paid'
+    });
 
-      const restaurantRevenue = orders.reduce((sum, order) => sum + order.totalPrice, 0);
-      const orderCount = orders.length;
-      const averageOrderValue = orderCount > 0 ? restaurantRevenue / orderCount : 0;
+    const totalRevenue = bills.reduce((sum, bill) => sum + bill.total, 0);
+    const totalBills = bills.length;
+    const averageDailyRevenue = totalRevenue / 7;
 
-      combinedReport.totalRevenue += restaurantRevenue;
-      combinedReport.totalOrderCount += orderCount;
-
-      combinedReport.restaurantReports.push({
-        restaurantId: restaurant._id,
-        restaurantName: restaurant.name,
-        revenue: restaurantRevenue,
-        orderCount: orderCount,
-        averageOrderValue: averageOrderValue
-      });
+    const dailyBillCounts = {};
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      const dayString = day.toISOString().split('T')[0];
+      dailyBillCounts[dayString] = 0;
     }
 
-    combinedReport.averageOrderValue = combinedReport.totalOrderCount > 0 
-      ? combinedReport.totalRevenue / combinedReport.totalOrderCount 
-      : 0;
+    bills.forEach(bill => {
+      const dayString = bill.createdAt.toISOString().split('T')[0];
+      dailyBillCounts[dayString] = (dailyBillCounts[dayString] || 0) + 1;
+    });
 
-    // Get top selling items across all restaurants
-    const topSellingItems = await Order.aggregate([
-      { $match: { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } } },
-      { $unwind: '$items' },
-      { $group: { _id: '$items.name', totalQuantity: { $sum: '$items.quantity' } } },
-      { $sort: { totalQuantity: -1 } },
-      { $limit: 10 }
-    ]);
-
-    combinedReport.topSellingItems = topSellingItems;
-
-    res.json(combinedReport);
+    res.json({
+      totalBills,
+      totalRevenue,
+      averageDailyRevenue,
+      dailyBillCounts
+    });
   } catch (error) {
-    console.error('Error generating combined report:', error);
-    res.status(500).json({ message: 'Error generating combined report', error: error.message });
+    console.error('Error generating weekly report:', error);
+    res.status(500).json({ message: 'Error generating weekly report', error: error.message });
   }
 });
 
-// Get daily sales trend for a specific restaurant
-router.get('/sales-trend', auth, async (req, res) => {
+// Get most ordered items
+router.get('/most-ordered', auth, async (req, res) => {
   try {
-    const { restaurantId, startDate, endDate } = req.query;
-
-    if (!restaurantId || !startDate || !endDate) {
-      return res.status(400).json({ message: 'Restaurant ID, start date, and end date are required' });
+    const { restaurantId } = req.query;
+    
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
     }
 
-    const salesTrend = await Order.aggregate([
-      {
-        $match: {
+    const mostOrderedItems = await Bill.aggregate([
+      { 
+        $match: { 
           restaurant: restaurantId,
-          createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
-        }
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          totalSales: { $sum: "$totalPrice" },
-          orderCount: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
-
-    res.json(salesTrend);
-  } catch (error) {
-    console.error('Error fetching sales trend:', error);
-    res.status(500).json({ message: 'Error fetching sales trend', error: error.message });
-  }
-});
-
-// Get category-wise sales for a specific restaurant
-router.get('/category-sales', auth, async (req, res) => {
-  try {
-    const { restaurantId, startDate, endDate } = req.query;
-
-    if (!restaurantId || !startDate || !endDate) {
-      return res.status(400).json({ message: 'Restaurant ID, start date, and end date are required' });
-    }
-
-    const categorySales = await Order.aggregate([
-      {
-        $match: {
-          restaurant: restaurantId,
-          createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
-        }
+          status: 'paid'
+        } 
       },
       { $unwind: '$items' },
-      {
-        $lookup: {
-          from: 'foods',
-          localField: 'items.name',
-          foreignField: 'name',
-          as: 'foodInfo'
-        }
+      { 
+        $group: { 
+          _id: '$items.name', 
+          count: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
+        } 
       },
-      { $unwind: '$foodInfo' },
-      {
-        $group: {
-          _id: '$foodInfo.category',
-          totalSales: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
-          itemCount: { $sum: '$items.quantity' }
-        }
-      },
-      {
-        $lookup: {
-          from: 'foodtypes',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'categoryInfo'
-        }
-      },
-      { $unwind: '$categoryInfo' },
-      {
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+      { 
         $project: {
-          category: '$categoryInfo.name',
-          totalSales: 1,
-          itemCount: 1
+          name: '$_id',
+          count: 1,
+          totalRevenue: 1,
+          _id: 0
         }
-      },
-      { $sort: { totalSales: -1 } }
+      }
     ]);
 
-    res.json(categorySales);
+    res.json(mostOrderedItems);
   } catch (error) {
-    console.error('Error fetching category-wise sales:', error);
-    res.status(500).json({ message: 'Error fetching category-wise sales', error: error.message });
+    console.error('Error fetching most ordered items:', error);
+    res.status(500).json({ message: 'Error fetching most ordered items', error: error.message });
+  }
+});
+
+// Get recent bills
+router.get('/recent', auth, async (req, res) => {
+  try {
+    const { restaurantId } = req.query;
+    
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
+    }
+
+    const recentBills = await Bill.find({ restaurant: restaurantId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('billNumber tableNumber total status createdAt');
+
+    res.json(recentBills);
+  } catch (error) {
+    console.error('Error fetching recent bills:', error);
+    res.status(500).json({ message: 'Error fetching recent bills', error: error.message });
   }
 });
 

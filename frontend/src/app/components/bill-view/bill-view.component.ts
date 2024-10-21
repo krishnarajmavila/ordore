@@ -362,7 +362,97 @@ export class BillViewComponent implements OnInit {
 
   printBill() {
     const printContents = document.querySelector('.bill-container')?.innerHTML;
-    // ... (rest of the printBill method remains the same)
+  
+    // Create a new window for printing
+    const popup = window.open('', '_blank', 'width=400,height=600');
+    if (popup) {
+      popup.document.open();
+      popup.document.write(`
+        <html>
+          <head>
+            <title>Bill</title>
+            <style>
+              /* Add styles for the printed bill */
+              body {
+                font-family: 'Courier Prime', monospace;
+                margin: 0;
+                padding: 20px;
+                background-color: #fff; /* Set background to white for printing */
+                max-width: 400px; /* Ensure body does not exceed this width */
+                width: 100%; /* Allow for responsive resizing */
+                box-sizing: border-box; /* Include padding in width */
+              }
+              .bill-container {
+                width: 400px !important; /* Set width of the container */
+              }
+              .bill {
+                border: none;
+                margin: 0;
+                padding: 0;
+                box-shadow: none; /* Remove shadow for print */
+              }
+              .logo {
+                text-align: center;
+                font-size: 24px;
+                margin-bottom: 10px;
+              }
+              .header {
+            text-align: center;
+              }
+              .divider {
+                border-top: 1px dashed #000;
+                margin: 10px 0;
+              }
+              .item {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 5px;
+                font-size: 14px;
+              }
+              .item-details {
+                flex-grow: 1;
+              }
+              .amount {
+                text-align: right;
+              }
+              .total {
+                font-weight: bold;
+                margin-top: 10px;
+              }
+              .taxes {
+                font-size: 12px;
+              }
+              .signature {
+                margin-top: 20px;
+                text-align: center;
+              }
+              .footer {
+                text-align: center;
+                font-size: 12px;
+                margin-top: 10px;
+              }
+              .pay-button {
+                display: none; /* Hide pay button when printing */
+              }
+              @media print {
+                @page {
+                  margin: 0; /* Remove page margin */
+                }
+                body {
+                  margin: 0; /* Remove body margin */
+                }
+              }
+            </style>
+          </head>
+          <body onload="window.print(); window.close();">
+            <div class="bill-container">
+              ${printContents}
+            </div>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    }
   }
 
   onPaymentCompleted() {

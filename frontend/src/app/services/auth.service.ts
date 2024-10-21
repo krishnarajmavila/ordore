@@ -344,4 +344,34 @@ export class AuthService {
       })
     );
   }
+  shouldPreventLoginPageAccess(): boolean {
+    const isLoggedIn = this.isLoggedIn();
+    const userType = this.getUserType();
+
+    if (isLoggedIn) {
+      // Redirect based on user type
+      switch (userType) {
+        case 'admin':
+          this.router.navigate(['/admin-dashboard']);
+          break;
+        case 'customer':
+          this.router.navigate(['/customer-dashboard']);
+          break;
+        case 'cook':
+          this.router.navigate(['/cook-dashboard']);
+          break;
+        case 'billing':
+          this.router.navigate(['/billing-dashboard']);
+          break;
+        case 'diningspecialist':
+          this.router.navigate(['/dining-specialist']);
+          break;
+        default:
+          // If user type is unknown, redirect to a default page
+          this.router.navigate(['/']);
+      }
+      return true;
+    }
+    return false;
+  }
 }

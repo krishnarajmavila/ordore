@@ -34,6 +34,12 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// Middleware to attach io to req object
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/food', foodRoutes);
@@ -56,7 +62,6 @@ app.use(express.static(path.join(__dirname, '../frontend/dist/frontend/browser')
 
 // For all GET requests, send back index.html
 // so that PathLocationStrategy can be used
-// This should be the last route
 app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, '../frontend/dist/frontend/browser/index.html'));
 });
