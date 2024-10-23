@@ -1,112 +1,125 @@
-<div class="container-fluid mt-4 px-4">
-    <div>
-      <!-- <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-          <h5 class="card-title">Daily Report <span class="text-muted small">(Running)</span></h5>
-        </div>
-      </div> -->
-  
-      <div class="card-body">
-        <div class="row p-2">
-            <div class="card-body">
-              <div class="row align-items-center">
-                <div class="col-md-8">
-                  <div class="row">
-                    <div class="col-sm-6 mb-3">
-                      <div class="d-flex align-items-center">
-                        <i class="bi bi-clock me-2 text-muted"></i>
-                        <div>
-                          <small class="text-muted d-block">Start Time</small>
-                          <strong>{{ reportStartTime | date:'MM/dd/yyyy h:mm a' }}</strong>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-sm-6 mb-3">
-                      <div class="d-flex align-items-center">
-                        <i class="bi bi-calendar me-2 text-muted"></i>
-                        <div>
-                          <small class="text-muted d-block">End Time</small>
-                          <strong>Closing at {{ reportEndTime | date:'h:mm a' }} tomorrow</strong>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <hr>
-            <div class="col-md-4">
-                <div class="mb-3">
-                  <h3 class="d-block mb-1">Total Revenue</h3>
-                  <h1 class="display-6 mb-0 text-success">
-                    {{ totalRevenue | currency:'INR':'symbol':'1.2-2' }}
-                  </h1>
-                </div>
-              </div>
-          </div>
-        <div class="row">
-          <!-- Report Details -->
-  
-          <!-- Cash Journal Section -->
-          <div class="p-2 col-3">
-            <h3>Cash Journal 
-            </h3>
-            <div class="text-center">
-                <canvas baseChart [data]="cashJournalChartData" [options]="doughnutChartOptions" [type]="'doughnut'"></canvas>
-                <p class="mt-2"><strong>{{ cashRevenue | currency:'INR':'symbol':'1.2-2' }}</strong> Cash Revenue</p>
-              </div>
-              <ul class="list-group">
-                <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let item of cashJournalData; let i = index">
-                  <span class="badge" [style.backgroundColor]="doughnutChartColors[i]">&nbsp;</span>
-                  {{ item.label }}: <span class="ml-2">{{ item.percentage }}%</span>
-                </li>
-              </ul>
-         </div>
-          <!-- Improvement Area Section -->
-          <div class="p-2 col-3">
-            <h3>Improvement Area 
-             
-            </h3>
-            <div class="text-center">
-              <canvas baseChart [data]="improvementAreaChartData" [options]="doughnutChartOptions" [type]="'doughnut'"></canvas>
-              <p class="mt-2"><strong>{{ totalLoss | currency:'INR':'symbol':'1.2-2' }}</strong> Total Loss</p>
-            </div>
-            <ul class="list-group">
-              <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let item of improvementAreaData; let i = index">
-                <span class="badge" [style.backgroundColor]="doughnutChartColors[i]">&nbsp;</span>
-                {{ item.label }}: <span class="ml-2">{{ item.value }}</span>
-              </li>
-            </ul>
-          </div>
-  
-  
-          <!-- Shifts and Payrolls Section -->
-          <!-- <div class="p-2 flex-fill">
-            <h5>Shifts and Payrolls 
-              <mat-icon class="info-icon" matTooltip="Click for more details">info</mat-icon>
-            </h5>
-            <p><strong>{{ totalWorkingHours }}h</strong> Total Working Hours</p>
-          </div> -->
-  
-          <!-- Order Status Section -->
-          <div class="p-2 col-6">
-            <h3>Order Status </h3>
-            <canvas baseChart [data]="orderStatusChartData" [options]="barChartOptions" [type]="'bar'"></canvas>
-          </div>
-       
-        </div>
-        <div class="p-2 row">
-            <h3>Gross Revenue 
-            </h3>
-            <div class="progress mb-3" style="    height: 55px;">
-              <div class="progress-bar" *ngFor="let item of revenueBreakdown" role="progressbar" [style.width]="item.percentage + '%'" [style.backgroundColor]="item.color">
-                {{ item.amount | currency:'INR':'symbol':'1.2-2' }} ({{ item.taxRate }}% Tax)
-              </div>
-            </div>
-          </div>
-      </div>
+<div class="container-fluid px-4">
+  <div class="row justify-content-between align-items-baseline">
+    <div class="col-auto">
+      <h2 class="m-0">Realtime Statistics</h2>
+    </div>
+    <div class="col-auto">
+      <mat-form-field appearance="outline">
+        <input matInput [matDatepicker]="picker" [(ngModel)]="selectedDate" (dateChange)="onDateChange($event)">
+        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-datepicker #picker></mat-datepicker>
+      </mat-form-field>
     </div>
   </div>
-  
+
+  <!-- KPI Cards -->
+  <div class="row">
+    <div class="col-md-3">
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Daily Revenue</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="h3">₹{{ dailyReport?.dailyRevenue?.toLocaleString() || '0' }}</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <div class="col-md-3">
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Monthly Revenue</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="h3">₹{{ dailyReport?.monthlyRevenue?.toLocaleString() || '0' }}</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <div class="col-md-3">
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Monthly Bills</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="h3">{{ dailyReport?.monthlyBillCount || '0' }}</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <div class="col-md-3">
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Avg Bill Value</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="h3">₹{{ dailyReport?.averageBillValue?.toLocaleString() || '0' }}</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row mt-4 chartpanel">
+    <div class="col-md-6">
+      <mat-card class="chart-card">
+        <h2 class="px-3">Revenue Overview</h2>
+        <mat-card-content>
+          <canvas baseChart
+            [data]="revenueChartData"
+            [options]="barChartOptions"
+            [type]="'bar'">
+          </canvas>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <div class="col-md-6">
+      <mat-card class="chart-card">
+              <h2 class="px-3">Daily Order Trends</h2>
+        <mat-card-content>
+            <ng-container *ngIf="weeklyReport?.dailyOrderCounts; else noData">
+              <canvas baseChart
+                [type]="'line'"
+                [data]="orderChartData"
+                [options]="lineChartOptions">
+              </canvas>
+            </ng-container>
+            <ng-template #noData>
+              <div class="no-data-message">
+                No order data available for the selected period
+              </div>
+            </ng-template>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Top Selling Items -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <mat-card>
+        <h2 class="px-3">Top Selling Items</h2>
+        <mat-card-content>
+          <table mat-table [dataSource]="dailyReport?.topSellingItems || []" class="w-100">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Item Name</th>
+              <td mat-cell *matCellDef="let item">{{ item._id }}</td>
+            </ng-container>
+            <ng-container matColumnDef="quantity">
+              <th mat-header-cell *matHeaderCellDef>Quantity Sold</th>
+              <td mat-cell *matCellDef="let item">{{ item.totalQuantity }}</td>
+            </ng-container>
+            <ng-container matColumnDef="revenue">
+              <th mat-header-cell *matHeaderCellDef>Revenue</th>
+              <td mat-cell *matCellDef="let item">₹{{ item.totalRevenue?.toLocaleString() }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="['name', 'quantity', 'revenue']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['name', 'quantity', 'revenue'];"></tr>
+
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell text-center" colspan="3">No data available</td>
+            </tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

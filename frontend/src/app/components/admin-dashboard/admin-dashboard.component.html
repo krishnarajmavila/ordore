@@ -250,7 +250,7 @@
           </div>
           
           <div *ngIf="activeView === 'Reporting'">
-          <app-reporting></app-reporting>
+            <app-reporting [restaurantId]="currentRestaurant?._id || ''"></app-reporting>
           </div>
           
           <div *ngIf="activeView === 'Configuration'">

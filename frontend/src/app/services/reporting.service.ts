@@ -210,7 +210,10 @@ export class ReportingService {
       catchError(this.handleError)
     );
   }
-
+  getReportbillData(date: Date, restaurantId: string): Observable<any> {
+    const formattedDate = date.toISOString().split('T')[0];
+    return this.http.get<any>(`${this.apiUrl}?date=${formattedDate}&restaurantId=${restaurantId}`);
+  }
   getMostOrderedItems(restaurantId: string, date?: Date): Observable<TopSellingItem[]> {
     let params = new HttpParams().set('restaurantId', restaurantId);
     
