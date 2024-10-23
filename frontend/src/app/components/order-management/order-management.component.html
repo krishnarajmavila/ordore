@@ -1,6 +1,6 @@
 <div class="container" style="margin: 0;">
   <div class="headvals row mt-3 mb-1 px-1 align-items-center">
-    <div class="col d-flex align-items-center">
+    <div class="col ps-0 d-flex align-items-center">
       <mat-icon (click)="showCart ? goBackToMenu() : goBackToTableSelection()" class="mx-2">keyboard_backspace</mat-icon>
       <h2 class="text-danger m-0">MENU</h2>
     </div>
@@ -10,29 +10,31 @@
   </div>
 
   <ng-container *ngIf="!showCart; else cartView">
-    <div class="row mt-3 mb-3 px-1 align-items-center">
-      <div class="col">
-        <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()"
-          class="form-control ds-input" id="search-input" placeholder="Search..." dir="auto">
-      </div>
-      <div class="col-auto">
-        <mat-slide-toggle [checked]="isVegetarian" (change)="toggleVegetarian()">
-          VEG
-        </mat-slide-toggle>
-      </div>
+<div class="head-legend">
+  <div class="row mt-3 mb-3 px-1 align-items-center">
+    <div class="col">
+      <input type="search" style="outline: 0;" [(ngModel)]="searchQuery" (input)="onSearch()"
+        class="form-control ds-input" id="search-input" placeholder="Search..." dir="auto">
     </div>
+    <div class="col-auto">
+      <mat-slide-toggle [checked]="isVegetarian" (change)="toggleVegetarian()">
+        VEG
+      </mat-slide-toggle>
+    </div>
+  </div>
 
-    <div class="tab-scroll-container animate__animated animate__fadeInRight animate__faster">
-      <div class="tab-scroll" #tabScroll>
-        <button 
-          *ngFor="let category of categories; let i = index" 
-          class="tab-button" 
-          [class.active]="isCategorySelected(category)"
-          (click)="selectCategory(category)">
-          {{ category.name }}
-        </button>
-      </div>
+  <div class="tab-scroll-container animate__animated animate__fadeInRight animate__faster">
+    <div class="tab-scroll" #tabScroll>
+      <button 
+        *ngFor="let category of categories; let i = index" 
+        class="tab-button" 
+        [class.active]="isCategorySelected(category)"
+        (click)="selectCategory(category)">
+        {{ category.name }}
+      </button>
     </div>
+  </div>
+</div>
     
     <mat-tab-group 
       #tabGroup 
@@ -84,21 +86,22 @@
     <div class="cart-items mt-4">
       <h2 class="m-0">Checkout</h2>
       <hr>
-      <div class="row" *ngFor="let item of currentOrder.items" style="padding: 7px 0; border-bottom: 1px solid #e7e7e7;">
+      <div class="row" *ngFor="let item of currentOrder.items" style="padding: 13px 0; border-bottom: 1px solid #e7e7e7;">
         <div class="col">
           <h3 class="m-0">{{ item.name }}</h3>
+          <small *ngIf="item.notes">Notes: {{item.notes}}</small>
           <h3 class="m-0">₹{{ item.price }} x {{ item.quantity }}</h3>
-          <div class="item-notes">
-            <a class="text-left mt-2 p-0 text-danger" color="text-danger" (click)="openItemNotesSheet(item)">
-              {{ item.notes ? 'Edit Notes' : 'Add Notes' }}
-            </a>
-          </div>
         </div>
-        <div class="col-auto">
+        <div class="col-auto carts">
           <div class="col-auto text-end action-space">
             <button mat-mini-fab color="warn" (click)="decrementCartItem(item)">－</button>
             <span class="mx-2">{{ item.quantity }}</span>
             <button mat-mini-fab color="warn" (click)="incrementCartItem(item)">＋</button>
+          </div>
+          <div class="item-notes">
+            <a class="text-left mt-2 p-0 text-danger" color="text-danger" (click)="openItemNotesSheet(item)">
+              {{ item.notes ? 'Edit Notes' : 'Add Notes' }}
+            </a>
           </div>
         </div>
       </div>

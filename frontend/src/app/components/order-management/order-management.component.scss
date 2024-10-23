@@ -16,7 +16,7 @@ mat-form-field {
 }
 
 .menu-items {
-  max-height: calc(100vh - 200px);
+  // max-height: calc(100vh - 200px);
   overflow-y: auto;
   padding-bottom: 5rem;
 }
@@ -24,7 +24,13 @@ mat-form-field {
 .mat-mdc-card {
   margin-bottom: 16px;
 }
-
+.head-legend{
+  position: sticky;
+    background: #fff;
+    top: 0;
+    z-index: 999;
+    padding-top: 1px;
+}
 .mat-mdc-card-content {
   padding: 16px;
 }
@@ -104,3 +110,30 @@ mat-form-field {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+.tab-button {
+  padding: 8px 16px;
+  margin-right: 8px;
+  border: none;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+::ng-deep{
+  .carts{
+    .action-space{
+      background-color: #fff !important;
+      color: #c80000 !important;
+      height: 29px;
+      align-items: center;
+      display: flex;
+      justify-content: center;
+      .mdc-fab{
+        background: transparent !important;
+        color: #c80000 !important;
+        width: 29px !important;
+        height: 29px !important;
+      }
+    }
+  }
+ }

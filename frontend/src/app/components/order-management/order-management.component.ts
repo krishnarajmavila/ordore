@@ -231,7 +231,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     
     if (existingItemIndex > -1) {
       this.currentOrder.items[existingItemIndex].quantity += 1;
-      this.openItemNotesSheet(this.currentOrder.items[existingItemIndex]);
+      // this.openItemNotesSheet(this.currentOrder.items[existingItemIndex]);
     } else {
       const newItem: OrderItem = {
         name: item.name,
