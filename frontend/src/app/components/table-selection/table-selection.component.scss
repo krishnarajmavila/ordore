@@ -43,3 +43,183 @@
       background-color: #d4edda !important; // This ensures 'paid' status overrides other statuses
     }
   }
+
+  :host {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  
+  mat-sidenav-container {
+    flex: 1;
+    height: 100%;
+  }
+  
+  mat-sidenav {
+    width: 300px;
+  }
+  
+  mat-sidenav-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .container-fluid {
+    flex: 1;
+    overflow-y: auto;
+  }
+  
+  .mat-tab-body-wrapper {
+    flex: 1;
+  }
+
+
+  .order-notifications {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px 10px;
+    padding-bottom: 200px;
+  
+    .order-card {
+      background-color: #fff;
+      border-radius: 3px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      border-bottom: 1px solid rgb(235, 241, 245);
+      margin-bottom: 20px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+  
+  
+  
+      &.pending { border-left: 3px solid #ffc107; }
+      &.preparing { border-left: 3px solid #2196f3; }
+      &.ready { border-left: 3px solid #4caf50; }
+      &.completed { border-left: 3px solid #9e9e9e; }
+  
+      .order-header {
+        background-color: #f8f9fa;
+        padding: 8px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+  
+        h3 {
+          margin: 0;
+          font-size: 1.2rem;
+        }
+  
+        .status-badge {
+          padding: 5px 10px;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+      }
+  
+      .order-details {
+        padding: 7px 15px;
+  
+        p {
+          margin: 5px 0;
+          display: flex;
+          align-items: center;
+  
+          i {
+            margin-right: 10px;
+            color: #757575;
+          }
+        }
+      }
+  
+      .item-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+  
+        li {
+          padding: 10px 15px;
+          border-top: 1px solid #eee;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+  
+          .item-name {
+            font-weight: normal;
+            color: rgb(23, 25, 28);
+          }
+  
+          .item-details {
+            display: flex;
+            align-items: center;
+  
+            > span {
+              margin-left: 15px;
+            }
+  
+            .item-status {
+              font-size: 0.8rem;
+              padding: 2px 5px;
+              border-radius: 3px;
+              background-color: #eee;
+              min-width: 84px;
+              text-align: center;
+              padding: 3px;
+              &.pending { background-color: #fff9c4; }
+              &.preparing { background-color: #e3f2fd; }
+              &.ready { background-color: #e8f5e9; }
+            }
+          }
+        }
+      }
+    }
+  
+    .no-orders {
+      text-align: center;
+      color: #757575;
+      font-style: italic;
+    }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .order-card {
+    animation: fadeIn 0.5s ease-out;
+  }
+  .sidnavs{
+    width: 100% !important;
+  }
+
+  .sidenav-container {
+    height: 100vh;
+  }
+  
+  .sidnavs {
+    width: 80%;
+    max-width: 400px;
+  }
+  
+  .sidenav-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .main-content {
+    height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  

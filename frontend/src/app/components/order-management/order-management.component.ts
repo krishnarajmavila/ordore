@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -20,6 +20,12 @@ import { CartFilterPipe } from '../../pipe/cart-filter.pipe';
 import { MatSnackBar, MatSnackBarHorizontalPosition, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { InhouseConfirmationComponent } from '../inhouse-confirmation/inhouse-confirmation.component';
+import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
+import { ItemNotesSheetComponent } from '../item-notes-sheet/item-notes-sheet.component';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { BehaviorSubject, Subscription } from 'rxjs';
+import { WebSocketService } from '../../services/web-socket.service';
+import { MenuUpdateService } from '../../services/menu-update.service';
 
 interface OrderItem {
   name: string;
@@ -27,6 +33,7 @@ interface OrderItem {
   price: number;
   imageUrl?: string;
   category: string;
+  notes?: string;
 }
 
 interface Order {
@@ -47,14 +54,15 @@ interface FoodType {
   __v: number;
 }
 
-interface MenuItem {
+export interface MenuItem {
   _id?: string;
   name: string;
   category: FoodType;
   price: number;
   description?: string;
   imageUrl?: string;
-  isVegetarian: boolean;
+  isVegetarian?: boolean;
+  isInStock?: boolean;
 }
 
 @Component({
@@ -74,12 +82,15 @@ interface MenuItem {
     MatSlideToggleModule,
     MatTabsModule,
     CartFilterPipe,
-    InhouseConfirmationComponent
+    InhouseConfirmationComponent,
+    MatBottomSheetModule,
+    ItemNotesSheetComponent,
+    MatProgressSpinnerModule
   ],
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
 })
-export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit {
+export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input() table!: Table;
   @Output() backToTableSelection = new EventEmitter<void>();
   @Output() viewOrders = new EventEmitter<string>();
@@ -88,7 +99,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   private dialogRef: MatDialogRef<InhouseConfirmationComponent> | null = null;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
-  menuItems: MenuItem[] = [];
+  selectedTabIndex: number = 0;
   orders: Order[] = [];
   categories: FoodType[] = [];
   selectedCategory: string = 'All';
@@ -105,6 +116,11 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   displayedColumns: string[] = ['name', 'quantity', 'price', 'actions'];
   showCart: boolean = false;
   restaurantId: string | null = this.getSelectedRestaurantId();
+  menuLoaded: boolean = false;
+
+  private menuItemsSubject = new BehaviorSubject<MenuItem[]>([]);
+  menuItems$ = this.menuItemsSubject.asObservable();
+  private menuUpdateSubscription!: Subscription;
 
   constructor(
     private http: HttpClient,
@@ -112,15 +128,20 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     private router: Router,
     private authService: AuthService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private bottomSheet: MatBottomSheet,
+    private webSocketService: WebSocketService,
+    private menuUpdateService: MenuUpdateService
   ) {}
 
   ngOnInit() {
+    this.updateSelectedTabIndex();
     this.loadCategories();
     if (this.table && this.table.otp) {
       this.loadExistingOrders();
     }
-    this.currentOrder.customerName = `${this.authService.getUsername()}(DS)`;
+    this.currentOrder.customerName = `${this.authService.getUsernameSync()}(DS)`;
+    this.subscribeToMenuUpdates();
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -131,6 +152,12 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
 
   ngAfterViewInit() {
     this.enableSwipeGesture();
+  }
+
+  ngOnDestroy() {
+    if (this.menuUpdateSubscription) {
+      this.menuUpdateSubscription.unsubscribe();
+    }
   }
 
   loadCategories() {
@@ -145,7 +172,8 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       next: (types) => {
         this.categories = [
           { _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 }, 
-          ...types
+          ...types,
+          { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 }
         ];
         this.loadMenuItems();
       },
@@ -155,9 +183,6 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       }
     });
   }
-  
-
-  
 
   loadMenuItems() {
     const restaurantId = this.getSelectedRestaurantId();
@@ -169,7 +194,14 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
       next: (items) => {
-        this.menuItems = items;
+        const menuItems = items.map(item => {
+          if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
+            return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
+          }
+          return item;
+        });
+        this.menuItemsSubject.next(menuItems);
+        this.menuLoaded = true;
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
@@ -199,14 +231,16 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     
     if (existingItemIndex > -1) {
       this.currentOrder.items[existingItemIndex].quantity += 1;
+      // this.openItemNotesSheet(this.currentOrder.items[existingItemIndex]);
     } else {
-      this.currentOrder.items.push({
+      const newItem: OrderItem = {
         name: item.name,
         quantity: 1,
         price: item.price,
         imageUrl: item.imageUrl,
         category: item.category._id
-      });
+      };
+      this.currentOrder.items.push(newItem);
     }
     
     this.calculateTotalPrice();
@@ -273,9 +307,13 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   
     const orderData = {
       ...this.currentOrder,
+      items: this.currentOrder.items.map(item => ({
+        ...item,
+        notes: item.notes || ''
+      })),
       tableOtp: this.table.otp,
       customerName: this.currentOrder.customerName || `${this.authService.getUsername()}(DS)`,
-      restaurant: restaurantId  // Include the restaurantId in the order data
+      restaurant: restaurantId
     };
   
     this.http.post<Order>(`${environment.apiUrl}/orders`, orderData).subscribe({
@@ -330,6 +368,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   private getSelectedRestaurantId(): string | null {
     return localStorage.getItem('selectedRestaurantId');
   }
+
   refreshTableData() {
     if (!this.table._id) return;
 
@@ -354,22 +393,35 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
 
   selectCategory(category: FoodType) {
     this.selectedCategory = category.name;
+    this.updateSelectedTabIndex();
+  }
+
+  updateSelectedTabIndex() {
+    const index = this.categories.findIndex(cat => cat.name === this.selectedCategory);
+    this.selectedTabIndex = index !== -1 ? index : 0;
   }
 
   toggleVegetarian() {
     this.isVegetarian = !this.isVegetarian;
   }
 
+  isCategorySelected(category: FoodType): boolean {
+    return this.selectedCategory === category.name;
+  }
+
   getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) {
       return 'assets/default-food-image.jpg';
     }
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
+    if (imageUrl.includes('cloudinary.com')) {
+      return imageUrl;
+    }
+    return `${environment.cloudinaryUrl}/image/upload/${imageUrl}`;
   }
 
   onTabChange(index: number) {
-    this.selectCategory(this.categories[index]);
+    const category = this.categories[index];
+    this.selectCategory(category);
   }
 
   onSwipe(event: TouchEvent, direction: string) {
@@ -407,14 +459,18 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   }
 
   onSearch() {
-    // Implement search functionality
+    // Implement search functionality if needed
+    // This method is currently empty as per the original code
   }
 
   getFilteredMenuItems(): MenuItem[] {
-    return this.menuItems.filter(item => 
-      (this.selectedCategory === 'All' || item.category.name === this.selectedCategory) &&
+    return this.menuItemsSubject.getValue().filter(item => 
+      (this.selectedCategory === 'All' || 
+       this.selectedCategory === item.category.name || 
+       (this.selectedCategory === 'Uncategorized' && item.category.name === 'Uncategorized')) &&
       (!this.isVegetarian || item.isVegetarian === true) &&
-      item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+      item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
+      item.isInStock === true
     );
   }
 
@@ -458,6 +514,48 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     } else {
       console.error('Table OTP is missing');
       this.showErrorSnackBar('Unable to view orders. Table information is missing.');
+    }
+  }
+
+  openItemNotesSheet(item: OrderItem) {
+    const bottomSheetRef = this.bottomSheet.open(ItemNotesSheetComponent, {
+      data: { itemName: item.name, existingNotes: item.notes }
+    });
+  
+    bottomSheetRef.afterDismissed().subscribe((notes: string | undefined) => {
+      if (notes !== undefined) {
+        const index = this.currentOrder.items.findIndex(i => i.name === item.name);
+        if (index !== -1) {
+          this.currentOrder.items[index].notes = notes;
+        }
+      }
+    });
+  }
+
+  private subscribeToMenuUpdates() {
+    this.menuUpdateSubscription = this.webSocketService.listen('menuUpdate').subscribe(
+      (updatedItem: MenuItem) => {
+        this.updateMenuItem(updatedItem);
+      }
+    );
+
+    this.menuUpdateService.menuUpdate$.subscribe(updatedItem => {
+      this.updateMenuItem(updatedItem);
+    });
+  }
+
+  private updateMenuItem(updatedItem: MenuItem) {
+    const currentItems = this.menuItemsSubject.getValue();
+    const index = currentItems.findIndex(item => item._id === updatedItem._id);
+    if (index !== -1) {
+      currentItems[index] = {
+        ...currentItems[index],
+        ...updatedItem,
+        category: currentItems[index].category, // Preserve the existing category
+        isVegetarian: updatedItem.isVegetarian ?? currentItems[index].isVegetarian, // Handle potential undefined
+        isInStock: updatedItem.isInStock ?? currentItems[index].isInStock // Handle potential undefined
+      };
+      this.menuItemsSubject.next([...currentItems]);
     }
   }
 }

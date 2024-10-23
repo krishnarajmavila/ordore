@@ -10,7 +10,7 @@
 
 <div class="container-fluid px-4">
   <div class="row">
-    <div class="col-3 p-3" style="border-right: 1px solid #ccc;">
+    <div class="col-3 p-3 sticky-column" style="border-right: 1px solid #ccc;">
       <h3>Update Bill</h3>
       <form [formGroup]="billForm" (ngSubmit)="updateBill()">   
         <mat-form-field appearance="outline">
@@ -48,16 +48,19 @@
           <input matInput formControlName="gstin">
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" >
           <mat-label>Cashier Name</mat-label>
           <input matInput formControlName="cashierName">
         </mat-form-field>
 
-        <button mat-raised-button color="primary" type="submit" [disabled]="!isFormValid()">Update</button>
+        <button mat-raised-button color="primary" type="submit" 
+        [disabled]="!isFormValid() || paymentCompleted || billExists || !hasOrders()">
+  {{ billExists ? 'Bill Exists' : (hasOrders() ? 'Update' : 'No Orders') }}
+</button>
       </form>
     </div>
     <div class="col position-relative">
-      <img *ngIf="confirmBill" src="assets/img/paid.png" class="paid-seal animate__animated animate__bounceIn">
+      <img *ngIf="paymentCompleted" src="assets/img/paid.png" class="paid-seal animate__animated animate__bounceIn">
       <div class="bill-container">
         <div class="bill">
           <div class="logo">≈≈≈</div>
@@ -80,7 +83,7 @@
           </div>
           <div class="divider"></div>
           <div class="items">
-            <ng-container *ngIf="orders && orders.length > 0; else noOrders">
+            <ng-container *ngIf="hasOrders(); else noOrders">
               <ng-container *ngFor="let order of orders">
                 <ng-container *ngFor="let item of order.items">
                   <div class="item">
@@ -94,6 +97,9 @@
                 </ng-container>
               </ng-container>
             </ng-container>
+            <ng-template #noOrders>
+              <div class="no-orders-message">No orders found for this bill.</div>
+            </ng-template>
           </div>
           <div class="divider"></div>
           <div class="total">
@@ -148,7 +154,7 @@
           color="warn" 
           (click)="onPaymentCompleted();"
           class="pay-button mt-2 w-100"  
-          [disabled]="!isAuthorized">
+          [disabled]="!isAuthorized || paymentCompleted">
           Payment Completed
         </button>
       </div>

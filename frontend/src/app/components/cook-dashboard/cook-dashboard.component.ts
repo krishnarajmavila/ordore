@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,12 +14,14 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { WebSocketService } from '../../services/web-socket.service';
 import { HttpClient } from '@angular/common/http';
 import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSort, MatSortModule } from '@angular/material/sort';
+import { MatTableDataSource } from '@angular/material/table';
 
 interface FoodType {
   _id: string;
@@ -29,13 +31,16 @@ interface FoodType {
   __v: number;
 }
 
-interface AggregatedItem {
+interface OrderItem {
+  id: string;
   name: string;
-  totalQuantity: number;
-  tables: { tableNumber: string; quantity: number }[];
+  quantity: number;
+  tableNumber: string;
   category: string;
   status: string;
   orderId: string;
+  itemIndex: number;
+  notes?: string;
 }
 
 @Component({
@@ -54,25 +59,32 @@ interface AggregatedItem {
     MatSlideToggleModule,
     MatButtonToggleModule,
     MatTableModule,
-    MatSelectModule
+    MatSelectModule,
+    MatSortModule
   ],
   templateUrl: './cook-dashboard.component.html',
   styleUrls: ['./cook-dashboard.component.scss']
 })
-export class CookDashboardComponent implements OnInit, OnDestroy {
+export class CookDashboardComponent implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild('sidenav') sidenav!: MatSidenav;
   menuItems$ = new BehaviorSubject<MenuItem[]>([]);
   orders$ = new BehaviorSubject<Order[]>([]);
   orderStatuses: string[] = ['pending', 'preparing', 'ready', 'completed'];
-  ordersByStatus: { [key: string]: Order[] } = {};
-  ordersByFoodType: { [key: string]: any[] } = {};
+  orderItemsByStatus: { [key: string]: OrderItem[] } = {};
+  allOrderItems: OrderItem[] = [];
   activeView = 'orders';
   viewMode: 'kanban' | 'itemType' = 'kanban';
   private subscriptions: Subscription[] = [];
   private ordersMap = new Map<string, Order>();
   restaurantId: string | null = null;
   categories: FoodType[] = [];
-  items: AggregatedItem[] = [];
-  displayedColumns: string[] = ['category', 'name', 'quantity', 'tables', 'status', 'actions'];
+  items: MatTableDataSource<OrderItem>;
+  displayedColumns: string[] = ['category', 'name', 'quantity', 'tableNumber', 'notes', 'status'];
+  isMinimized = false;
+  sidenavMode: 'side' | 'over' = 'side';
+  sidenavOpened = true;
+
+  @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     private menuService: MenuService,
@@ -82,7 +94,9 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     private webSocketService: WebSocketService,
     private cdr: ChangeDetectorRef,
     private http: HttpClient
-  ) {}
+  ) {
+    this.items = new MatTableDataSource<OrderItem>([]);
+  }
 
   ngOnInit() {
     this.loadViewMode();
@@ -94,6 +108,10 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     } else {
       this.handleError('Restaurant ID is not available');
     }
+  }
+
+  ngAfterViewInit() {
+    this.items.sort = this.sort;
   }
 
   ngOnDestroy() {
@@ -143,7 +161,7 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
           { _id: 'all', name: 'All', createdAt: '', updatedAt: '', __v: 0 },
           ...types
         ];
-        this.updateOrdersByFoodType();
+        this.updateOrderItemsByStatus();
       },
       error: (error) => {
         console.error('Error loading categories:', error);
@@ -155,65 +173,42 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     this.ordersMap.clear();
     orders.forEach(order => this.ordersMap.set(order._id, order));
     this.orders$.next(Array.from(this.ordersMap.values()));
-    this.updateOrdersByStatus();
-    this.updateOrdersByFoodType();
+    this.updateOrderItemsByStatus();
   }
 
-  updateOrdersByStatus() {
+  updateOrderItemsByStatus() {
     const orders = Array.from(this.ordersMap.values());
-    this.ordersByStatus = {};
+    this.orderItemsByStatus = {};
     this.orderStatuses.forEach(status => {
-      this.ordersByStatus[status] = orders.filter(order => order.status === status);
-    });
-  }
-
-  updateOrdersByFoodType() {
-    const orders = Array.from(this.ordersMap.values());
-    this.ordersByFoodType = {};
-    
-    this.categories.forEach(category => {
-      if (category._id !== 'all') {
-        const itemsOfCategory: AggregatedItem[] = [];
-        
-        orders.forEach(order => {
-          order.items.forEach(item => {
-            if (item.category === category._id) {
-              const existingItem = itemsOfCategory.find(i => i.name === item.name);
-              // Ensure orderId is captured properly
-              const orderId = order._id; // Make sure this is defined
-              
-              if (existingItem) {
-                existingItem.totalQuantity += item.quantity;
-                const existingTable = existingItem.tables.find(t => t.tableNumber === order.tableNumber);
-                if (existingTable) {
-                  existingTable.quantity += item.quantity;
-                } else {
-                  existingItem.tables.push({ tableNumber: order.tableNumber, quantity: item.quantity });
-                }
-              } else {
-                itemsOfCategory.push({
-                  name: item.name,
-                  totalQuantity: item.quantity,
-                  tables: [{ tableNumber: order.tableNumber, quantity: item.quantity }],
-                  category: category.name,
-                  status: order.status,
-                  orderId: orderId // Add orderId here
-                });
-              }
-            }
-          });
-        });
-        
-        this.ordersByFoodType[category.name] = itemsOfCategory;
-      }
+      this.orderItemsByStatus[status] = [];
     });
 
-    // Convert ordersByFoodType into a flat array for mat-table
-    this.items = Object.values(this.ordersByFoodType).flat();
+    this.allOrderItems = [];
+
+    orders.forEach(order => {
+      order.items.forEach((item, index) => {
+        const category = this.categories.find(c => c._id === item.category)?.name || 'Uncategorized';
+        const orderItem: OrderItem = {
+          id: `${order._id}-${index}`,
+          name: item.name,
+          quantity: item.quantity,
+          tableNumber: order.tableNumber,
+          category: category,
+          status: item.status || order.status, // Use item status if available, otherwise use order status
+          orderId: order._id,
+          itemIndex: index,
+          notes: item.notes
+        };
+        this.orderItemsByStatus[orderItem.status].push(orderItem);
+        this.allOrderItems.push(orderItem);
+      });
+    });
+
+    this.items.data = this.allOrderItems;
     this.cdr.detectChanges();
   }
 
-  drop(event: CdkDragDrop<Order[]>) {
+  drop(event: CdkDragDrop<OrderItem[]>) {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
@@ -223,11 +218,11 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
         event.previousIndex,
         event.currentIndex
       );
-
-      const draggedOrder = event.container.data[event.currentIndex];
+  
+      const draggedItem = event.container.data[event.currentIndex];
       const newStatus = this.getStatusFromContainerId(event.container.id);
       
-      this.updateOrderStatus(draggedOrder._id, newStatus);
+      this.updateItemStatus(draggedItem.id, newStatus);
     }
   }
 
@@ -235,83 +230,97 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     return containerId.split('-')[1];
   }
 
-  updateOrderStatus(orderId: string, newStatus: string) {
-    console.log('Updating order status for orderId:', orderId); // Log the orderId
-    if (!orderId) {
-      console.error('orderId is undefined or null');
-      return; // Exit if orderId is not valid
-    }
-  
-    this.orderService.updateOrderStatus(orderId, newStatus).subscribe({
+  updateItemStatus(itemId: string, newStatus: string) {
+    const [orderId, itemIndexStr] = itemId.split('-');
+    const itemIndex = parseInt(itemIndexStr, 10);
+    
+    this.orderService.updateItemStatus(orderId, itemIndex, newStatus).subscribe({
       next: (updatedOrder) => {
-        const order = this.ordersMap.get(updatedOrder._id);
-        if (order) {
-          order.status = updatedOrder.status;
-          this.updateOrdersByStatus();
-          this.updateOrdersByFoodType();
+        // Update the specific item in allOrderItems
+        const updatedItem = this.allOrderItems.find(item => item.id === itemId);
+        if (updatedItem) {
+          updatedItem.status = newStatus;
         }
+
+        // Update the order in ordersMap
+        this.ordersMap.set(updatedOrder._id, updatedOrder);
+
+        // Refresh the view
+        this.updateOrderItemsByStatus();
       },
       error: (error) => {
-        console.error('Error updating order status:', error);
+        console.error('Error updating item status:', error);
         this.loadInitialData();
       }
     });
   }
+  toggleSidenav() {
+    this.isMinimized = !this.isMinimized;
+    // this.sidenav.toggle();
+  }
+  deleteOrder(itemId: string) {
+    const [orderId, itemIndexStr] = itemId.split('-');
+    const itemIndex = parseInt(itemIndexStr, 10);
   
-  
-
-  deleteOrder(orderId: string) {
-    if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
-      this.orderService.deleteOrder(orderId).subscribe({
+    if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+      this.orderService.deleteOrderItem(orderId, itemIndex).subscribe({
+        next: (updatedOrder) => {
+          if (updatedOrder) {
+            // Update the order in the local map
+            this.ordersMap.set(updatedOrder._id, updatedOrder);
+          } else {
+            // If the order is now empty, remove it from the map
+            this.ordersMap.delete(orderId);
+          }
+          // Update the orders list and view
+          this.updateOrdersList(Array.from(this.ordersMap.values()));
+          console.log('Order item deleted successfully');
+        },
         error: (error) => {
-          console.error('Failed to delete order:', error);
-          alert(`Failed to delete order. ${error.message}`);
+          console.error('Failed to delete order item:', error);
+          alert(`Failed to delete order item. ${error.message}`);
         }
       });
     }
   }
+
+
   loadViewMode() {
     const savedViewMode = localStorage.getItem('viewMode');
     if (savedViewMode) {
-      this.viewMode = savedViewMode as 'kanban' | 'itemType'; // Ensure correct type
+      this.viewMode = savedViewMode as 'kanban' | 'itemType';
     }
   }
 
   onViewModeChange(mode: 'kanban' | 'itemType') {
-    this.viewMode = mode; // Update viewMode
-    localStorage.setItem('viewMode', mode); // Save to local storage
+    this.viewMode = mode;
+    localStorage.setItem('viewMode', mode);
   }
+
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
+
   private setupWebSocketListeners() {
     this.subscriptions.push(
       this.webSocketService.listen('orderUpdate').subscribe((updatedOrder: Order) => {
         this.ordersMap.set(updatedOrder._id, updatedOrder);
-        this.orders$.next(Array.from(this.ordersMap.values()));
-        this.updateOrdersByStatus();
-        this.updateOrdersByFoodType();
-        this.cdr.detectChanges();
+        this.updateOrdersList(Array.from(this.ordersMap.values()));
       }),
 
       this.webSocketService.listen('newOrder').subscribe((newOrder: Order) => {
         this.ordersMap.set(newOrder._id, newOrder);
-        this.orders$.next(Array.from(this.ordersMap.values()));
-        this.updateOrdersByStatus();
-        this.updateOrdersByFoodType();
-        this.cdr.detectChanges();
+        this.updateOrdersList(Array.from(this.ordersMap.values()));
       }),
 
       this.webSocketService.listen('orderDeleted').subscribe((deletedOrderId: string) => {
         this.ordersMap.delete(deletedOrderId);
-        this.orders$.next(Array.from(this.ordersMap.values()));
-        this.updateOrdersByStatus();
-        this.updateOrdersByFoodType();
-        this.cdr.detectChanges();
+        this.updateOrdersList(Array.from(this.ordersMap.values()));
       })
     );
   }
+
   getUniqueCategories(): string[] {
     return Array.from(new Set(this.menuItems$.value.map(item => item.category.name)));
   }
@@ -320,8 +329,10 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
     if (!imageUrl) {
       return 'assets/default-food-image.jpg';
     }
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
+    if (imageUrl.includes('cloudinary.com')) {
+      return imageUrl;
+    }
+    return `${environment.cloudinaryUrl}/image/upload/${imageUrl}`;
   }
 
   toggleStockStatus(item: MenuItem) {
@@ -333,7 +344,7 @@ export class CookDashboardComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error updating stock status:', error);
-        item.isInStock = !newStockStatus; // Revert the local change if the API call fails
+        item.isInStock = !newStockStatus;
       }
     });
   }

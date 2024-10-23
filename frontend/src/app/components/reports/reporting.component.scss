@@ -1,0 +1,57 @@
+:host {
+    display: block;
+    padding: 20px;
+  }
+
+  .chart-card {
+    max-width: unset;
+  }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+  }
+  .chartpanel .mat-mdc-card-content{
+    max-height: 254px !important;
+    height: 254px;
+  }
+  .no-data-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #666;
+    font-style: italic;
+  }
+
+  mat-card {
+    max-width: unset !important;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .h3 {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 10px 0;
+    color: #2c3e50;
+  }
+
+  table {
+    width: 100%;
+  }
+
+  .mat-mdc-table {
+    width: 100%;
+    background: white;
+  }
+
+  .mat-mdc-header-cell {
+    font-weight: bold;
+    color: #2c3e50;
+  }
+
+  .mat-mdc-cell {
+    color: #34495e;
+  }

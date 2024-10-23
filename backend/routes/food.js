@@ -4,7 +4,19 @@ const mongoose = require('mongoose');
 const Food = require('../models/Food');
 const FoodType = require('../models/FoodType');
 const auth = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const cloudinary = require('../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'food-images',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif']
+  },
+});
+
+const upload = multer({ storage: storage });
 
 // Get all food items for a restaurant
 router.get('/', async (req, res) => {
@@ -93,7 +105,10 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       categoryId = foodType._id;
     }
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    let imageUrl = null;
+    if (req.file) {
+      imageUrl = req.file.path; // Cloudinary URL
+    }
     
     const newFood = new Food({
       name,
@@ -151,7 +166,7 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     };
     
     if (req.file) {
-      updateData.imageUrl = `/uploads/${req.file.filename}`;
+      updateData.imageUrl = req.file.path; // Cloudinary URL
     }
     
     const updatedFood = await Food.findOneAndUpdate(
@@ -185,6 +200,13 @@ router.delete('/:id', auth, async (req, res) => {
     if (!deletedFood) {
       return res.status(404).json({ message: 'Food item not found' });
     }
+
+    // If there's an image associated with this food item, delete it from Cloudinary
+    if (deletedFood.imageUrl) {
+      const publicId = deletedFood.imageUrl.split('/').pop().split('.')[0];
+      await cloudinary.uploader.destroy(publicId);
+    }
+
     console.log('Food item deleted successfully:', deletedFood);
     res.json({ message: 'Food item deleted successfully' });
   } catch (error) {

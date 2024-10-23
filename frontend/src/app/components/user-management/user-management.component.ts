@@ -146,7 +146,8 @@ export class UserManagementComponent implements OnInit {
 
   showSnackBar(message: string) {
     this.snackBar.open(message, 'Close', {
-      duration: 3000,
+      duration: 5000,     horizontalPosition: 'center',
+      verticalPosition: 'top'
     });
   }
 }

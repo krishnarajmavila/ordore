@@ -12,12 +12,11 @@ const BillSchema = new mongoose.Schema({
   },
   tableOtp: { 
     type: String, 
-    required: true, 
-    unique: true 
-  },
-  customerName: { 
-    type: String, 
     required: true 
+  },
+  customerName: {
+    type: String,
+    required: true
   },
   phoneNumber: {
     type: String
@@ -72,10 +71,6 @@ const BillSchema = new mongoose.Schema({
   notes: {
     type: String
   },
-  date: { 
-    type: Date, 
-    default: Date.now 
-  },
   restaurant: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Restaurant',
@@ -83,16 +78,6 @@ const BillSchema = new mongoose.Schema({
   }
 }, { 
   timestamps: true 
-});
-
-// Add any pre-save hooks or methods here if needed
-BillSchema.pre('save', function(next) {
-  // You can add any pre-save logic here
-  // For example, calculating totals if not provided
-  if (!this.total) {
-    this.total = this.subTotal + this.serviceCharge + this.gst;
-  }
-  next();
 });
 
 module.exports = mongoose.model('Bill', BillSchema);

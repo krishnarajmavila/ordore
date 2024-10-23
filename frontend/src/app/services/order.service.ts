@@ -10,6 +10,9 @@ export interface CartItem {
   price: number;
   quantity: number;
   category: string; 
+  status?: string; 
+  _id?: string;
+  notes?: string;
 }
 
 export interface Order {
@@ -52,27 +55,36 @@ export class OrderService {
   }
 
   private getSelectedRestaurantId(): string | null {
-    return localStorage.getItem('selectedRestaurantId');
+    const id = localStorage.getItem('selectedRestaurantId');
+    console.log('Selected restaurant ID:', id);
+    return id;
+}
+
+fetchOrders(): void {
+  const restaurantId = this.getSelectedRestaurantId();
+  console.log('Fetching orders for restaurant ID:', restaurantId); // Log the restaurant ID
+  if (!restaurantId) {
+    console.error('Restaurant ID not set');
+    return;
   }
+  const params = new HttpParams().set('restaurantId', restaurantId);
+  console.log('Fetching from API:', this.apiUrl, 'with params:', params.toString()); // Log the API call
+  this.http.get<Order[]>(this.apiUrl, { params }).pipe(
+    catchError(this.handleError)
+  ).subscribe(
+    orders => {
+      console.log('Orders fetched:', orders); // Log the orders fetched
+      this.ordersSubject.next(orders);
+    },
+    error => {
+      console.error('Error fetching orders:', error); // Log any error encountered
+    }
+  );
+}
 
   getOrders(): Observable<Order[]> {
     return this.ordersSubject.asObservable();
   }
-
-  fetchOrders(): void {
-    const restaurantId = this.getSelectedRestaurantId();
-    if (!restaurantId) {
-      console.error('Restaurant ID not set');
-      return;
-    }
-    const params = new HttpParams().set('restaurantId', restaurantId);
-    this.http.get<Order[]>(this.apiUrl, { params }).pipe(
-      catchError(this.handleError)
-    ).subscribe(
-      orders => this.ordersSubject.next(orders)
-    );
-  }
-
   submitOrder(cartItems: CartItem[], totalPrice: number, customerInfo: { name: string, phoneNumber: string, tableOtp: string }): Observable<Order> {
     const restaurantId = this.getSelectedRestaurantId();
     if (!restaurantId) {
@@ -83,7 +95,8 @@ export class OrderService {
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        category: item.category // Include category in the order data
+        category: item.category,
+        notes: item.notes || ''
       })),
       totalPrice: totalPrice,
       customerName: customerInfo.name,
@@ -110,7 +123,6 @@ export class OrderService {
       catchError(this.handleError)
     );
   }
-
   updateOrderStatus(orderId: string, newStatus: string): Observable<Order> {
     const restaurantId = this.getSelectedRestaurantId();
     if (!restaurantId) {
@@ -129,7 +141,24 @@ export class OrderService {
       catchError(this.handleError)
     );
   }
-
+  updateItemStatus(orderId: string, itemIndex: number, newStatus: string): Observable<Order> {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
+    const params = new HttpParams().set('restaurantId', restaurantId);
+    return this.http.patch<Order>(`${this.apiUrl}/${orderId}/item/${itemIndex}`, { status: newStatus }, { params }).pipe(
+      tap(updatedOrder => {
+        const currentOrders = this.ordersSubject.value;
+        const updatedOrders = currentOrders.map(order =>
+          order._id === updatedOrder._id ? updatedOrder : order
+        );
+        this.ordersSubject.next(updatedOrders);
+        this.webSocketService.emit('orderUpdate', updatedOrder);
+      }),
+      catchError(this.handleError)
+    );
+  }
   deleteOrder(orderId: string): Observable<void> {
     const restaurantId = this.getSelectedRestaurantId();
     if (!restaurantId) {
@@ -146,17 +175,68 @@ export class OrderService {
       catchError(this.handleError)
     );
   }
-
-  startOrderRefresh(intervalMs: number = 30000): void {
-    this.stopOrderRefresh();
-    this.refreshInterval = setInterval(() => this.fetchOrders(), intervalMs);
+  deleteOrderItem(orderId: string, itemIndex: number): Observable<Order | null> {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      return throwError(() => new Error('Restaurant ID not set'));
+    }
+    const params = new HttpParams().set('restaurantId', restaurantId);
+    return this.http.delete<Order | null>(`${this.apiUrl}/${orderId}/items/${itemIndex}`, { params }).pipe(
+      tap((updatedOrder) => {
+        if (updatedOrder) {
+          const currentOrders = this.ordersSubject.value;
+          const updatedOrders = currentOrders.map(order => 
+            order._id === updatedOrder._id ? updatedOrder : order
+          );
+          this.ordersSubject.next(updatedOrders);
+        } else {
+          // If the order is now empty and deleted
+          const currentOrders = this.ordersSubject.value;
+          const updatedOrders = currentOrders.filter(order => order._id !== orderId);
+          this.ordersSubject.next(updatedOrders);
+        }
+        this.webSocketService.emit('orderUpdated', orderId);
+      }),
+      catchError(this.handleError)
+    );
   }
-
+  startOrderRefresh(): void {
+    // Stop any previous refresh logic (if using polling or WebSockets)
+    this.stopOrderRefresh();
+  
+    // Set up WebSocket listeners for real-time order updates
+    this.webSocketService.listen('orderUpdate').subscribe((updatedOrder: Order) => {
+      const restaurantId = this.getSelectedRestaurantId();
+      if (updatedOrder.restaurant === restaurantId) {
+        const currentOrders = this.ordersSubject.value;
+        const updatedOrders = currentOrders.map(order =>
+          order._id === updatedOrder._id ? updatedOrder : order
+        );
+        this.ordersSubject.next(updatedOrders);
+      }
+    });
+  
+    this.webSocketService.listen('newOrder').subscribe((newOrder: Order) => {
+      const restaurantId = this.getSelectedRestaurantId();
+      if (newOrder.restaurant === restaurantId) {
+        const currentOrders = this.ordersSubject.value;
+        this.ordersSubject.next([...currentOrders, newOrder]);
+      }
+    });
+  
+    this.webSocketService.listen('orderDeleted').subscribe((deletedOrderId: string) => {
+      const currentOrders = this.ordersSubject.value;
+      const updatedOrders = currentOrders.filter(order => order._id !== deletedOrderId);
+      this.ordersSubject.next(updatedOrders);
+    });
+  }
+  
   stopOrderRefresh(): void {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
     }
   }
+  
 
   getOrdersByTableOtp(tableOtp: string): Observable<Order[]> {
     const restaurantId = this.getSelectedRestaurantId();

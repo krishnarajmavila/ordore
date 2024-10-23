@@ -29,7 +29,7 @@
   box-shadow: 10px 10px 21px 30px #fff;
   position: fixed;
   right: 10px;
-  bottom: 10px;
+  bottom: 25px;
   left: 10px;
   z-index: 9;
   border-radius: 8px;
@@ -82,4 +82,47 @@
 .sidenav-body li {
   padding: 0.5rem 0;
   border-bottom: 1px solid #ddd;
+}
+
+
+.tab-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin-bottom: 16px;
+}
+
+.tab-scroll {
+  display: inline-flex;
+  padding: 8px 0;
+  button{
+    color: #303030;
+  }
+}
+
+.tab-button {
+  padding: 8px 16px;
+  margin-right: 8px;
+  border: none;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.tab-button.active {
+  background-color: #ffffff;
+  color: #c80000 !important;
+  box-shadow: 0 3px 8px 0 rgba(13, 19, 35, .15) !important;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.tab-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.tab-scroll-container {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

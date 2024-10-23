@@ -23,6 +23,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { BillConfirmationDialogComponent } from '../bill-confirmation-dialog/bill-confirmation-dialog.component';
+import { TableStatusService } from '../../services/table-status.service';
+import { WebSocketService } from '../../services/web-socket.service';
 
 interface Table {
   _id?: string;
@@ -80,6 +82,9 @@ export class BillViewComponent implements OnInit {
   isBillSaved: boolean = false;
   paymentMethod: string = 'cash';
   notes: string = '';
+  paymentCompleted: boolean = false;
+  billId: string | null = null;
+  billExists: boolean = false;
 
   constructor(
     private orderService: OrderService,
@@ -90,7 +95,9 @@ export class BillViewComponent implements OnInit {
     private fb: FormBuilder,
     private dialog: MatDialog,
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private tableStatusService: TableStatusService,
+    private webSocketService: WebSocketService
   ) {
     this.billForm = this.fb.group({
       restaurantName: ['Ordore - Restaurant', Validators.required],
@@ -121,20 +128,119 @@ export class BillViewComponent implements OnInit {
   }
 
   checkExistingBill(tableOtp: string) {
+    const restaurantId = this.getSelectedRestaurantId();
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
-    this.http.get<any>(`${environment.apiUrl}/bills/check/${tableOtp}`, { headers }).subscribe(
+    this.http.get<any>(`${environment.apiUrl}/bills/check/${tableOtp}?restaurantId=${restaurantId}`, { headers }).subscribe(
       response => {
         if (response.exists) {
+          this.billExists = true;
           this.isBillSaved = true;
-          this.disableBillForm();
-          this.snackBar.open('A bill for this table already exists.', 'Close', { duration: 5000 });
+          this.paymentCompleted = response.status === 'paid';
+          this.billId = response.billId;
+          
+          if (this.billId) {
+            this.fetchBillDetails(this.billId);
+          }
+          
+          this.billForm.get('cashierName')?.disable();
+          
+          if (this.paymentCompleted) {
+            this.disableBillForm();
+          }
+          
+          this.snackBar.open(`A bill for this table already exists. Status: ${response.status}`, 'Close', {
+            duration: 5000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          });
+        } else {
+          this.resetBillState();
         }
       },
       error => {
         console.error('Error checking existing bill:', error);
-        this.snackBar.open('Error checking bill status', 'Close', { duration: 5000 });
+        this.snackBar.open('Error checking bill status', 'Close', {
+          duration: 5000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top'
+        });
       }
     );
+  }
+
+  resetBillState() {
+    this.billExists = false;
+    this.isBillSaved = false;
+    this.paymentCompleted = false;
+    this.billId = null;
+    this.billForm.enable();
+    this.billForm.reset({
+      restaurantName: 'Ordore - Restaurant',
+      companyName: '(A UNIT OF CLAST ORDORE LLP)',
+      addressLine1: 'No. 605, Prestige Shnathinikethan, ITPL',
+      addressLine2: 'Hudi Main Road, ITPL',
+      addressLine3: 'Next to ICICI Shanthinikethan, ITPL, Bangalore',
+      pincode: '560037',
+      gstin: '55AASFC9301J1WW',
+      cashierName: '',
+      paymentMethod: 'cash',
+      notes: ''
+    });
+  }
+
+  fetchBillDetails(billId: string) {
+    const restaurantId = this.getSelectedRestaurantId();
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
+    this.http.get<any>(`${environment.apiUrl}/bills/${billId}?restaurantId=${restaurantId}`, { headers }).subscribe(
+      billDetails => {
+        this.populateFormWithBillDetails(billDetails);
+      },
+      error => {
+        console.error('Error fetching bill details:', error);
+        this.snackBar.open('Error fetching bill details', 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+      }
+    );
+  }
+
+  populateFormWithBillDetails(billDetails: any) {
+    this.billForm.patchValue({
+      restaurantName: billDetails.restaurantInfo.name,
+      companyName: billDetails.restaurantInfo.companyName,
+      addressLine1: billDetails.restaurantInfo.addressLine1,
+      addressLine2: billDetails.restaurantInfo.addressLine2,
+      addressLine3: billDetails.restaurantInfo.addressLine3,
+      pincode: billDetails.restaurantInfo.pincode,
+      gstin: billDetails.restaurantInfo.gstin,
+      cashierName: billDetails.cashierName,
+      paymentMethod: billDetails.paymentMethod,
+      notes: billDetails.notes
+    });
+
+    this.billNumber = billDetails.billNumber;
+    this.kotNumber = billDetails.kotNumber;
+    this.currentDate = new Date(billDetails.date);
+    
+    if (billDetails.status === 'paid') {
+      this.paymentCompleted = true;
+      this.disableBillForm();
+    } else {
+      this.billForm.disable();
+    }
+
+    if (billDetails.items && Array.isArray(billDetails.items)) {
+      this.orders = [{
+        _id: billDetails._id,
+        items: billDetails.items,
+        totalPrice: billDetails.total,
+        customerName: billDetails.customerName,
+        phoneNumber: billDetails.phoneNumber,
+        tableOtp: billDetails.tableOtp,
+        tableNumber: billDetails.tableNumber,
+        status: billDetails.status,
+        createdAt: new Date(billDetails.date),
+        restaurant: billDetails.restaurant
+      }];
+    }
   }
 
   generateBillNumber() {
@@ -238,24 +344,22 @@ export class BillViewComponent implements OnInit {
   }
 
   isFormValid(): boolean {
-    return this.billForm.valid && !this.isBillSaved;
+    return this.billForm.valid && !this.paymentCompleted && !this.billExists && this.hasOrders();
+  }
+
+  hasOrders(): boolean {
+    return this.orders.length > 0 && this.orders.some(order => order.items.length > 0);
   }
 
   updateBill() {
     if (this.isFormValid()) {
-      const updatedBillData = this.billForm.value;
-      console.log('Bill updated with:', updatedBillData);
-      this.updateComponentWithFormData(updatedBillData);
-      this.snackBar.open('Bill updated successfully', 'Close', { duration: 3000 });
+      this.saveBillToDatabase();
     } else {
-      console.error('Form is invalid or bill is already saved');
-      this.snackBar.open('Cannot update: Form is invalid or bill is already saved', 'Close', { duration: 3000 });
+      console.error('Form is invalid or payment is completed');
+      this.snackBar.open('Cannot update: Form is invalid or payment is completed', 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
     }
   }
 
-  private updateComponentWithFormData(data: any) {
-    Object.assign(this, data);
-  }
   printBill() {
     const printContents = document.querySelector('.bill-container')?.innerHTML;
   
@@ -350,6 +454,7 @@ export class BillViewComponent implements OnInit {
       popup.document.close();
     }
   }
+
   onPaymentCompleted() {
     const dialogRef = this.dialog.open(BillConfirmationDialogComponent, {
       width: '250px',
@@ -358,18 +463,48 @@ export class BillViewComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.saveBillToDatabase();
+        this.updateBillStatus('paid');
       }
     });
   }
 
-  saveBillToDatabase() {
-    const restaurantId = this.getSelectedRestaurantId();
-    if (!restaurantId) {
-      this.snackBar.open('Error: Restaurant ID not found', 'Close', { duration: 5000 });
+  updateBillStatus(status: string) {
+    if (!this.billId) {
+      this.snackBar.open('Error: Bill ID not found', 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
   
+    const restaurantId = this.getSelectedRestaurantId();
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
+  
+    this.http.patch(`${environment.apiUrl}/bills/${this.billId}`, { status, restaurantId }, { headers }).subscribe(
+      response => {
+        console.log('Bill status updated successfully', response);
+        this.paymentCompleted = status === 'paid';
+        this.disableBillForm();
+        if (this.paymentCompleted && this.tableOtp) {
+          this.tableStatusService.updateTableStatus(this.tableOtp, this.paymentCompleted);
+          this.webSocketService.emit('paymentCompleted', { tableOtp: this.tableOtp, restaurantId });
+        }
+        this.snackBar.open(`Bill ${status === 'paid' ? 'paid' : 'updated'} successfully`, 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+      },
+      error => {
+        console.error('Error updating bill status', error);
+        this.snackBar.open('Error updating bill status: ' + (error.error?.message || 'Unknown error'), 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+      }
+    );
+  }
+  
+  saveBillToDatabase() {
+    const restaurantId = this.getSelectedRestaurantId();
+    if (!restaurantId) {
+      this.snackBar.open('Error: Restaurant ID not found', 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+    if (!this.hasOrders()) {
+      this.snackBar.open('Cannot save bill: No orders found', 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
     const billData = {
       billNumber: this.billNumber,
       tableNumber: this.tableNumber,
@@ -396,31 +531,55 @@ export class BillViewComponent implements OnInit {
       status: 'pending',
       notes: this.billForm.get('notes')?.value,
       date: this.currentDate,
-      restaurant: restaurantId  // Add this line
+      restaurant: restaurantId
     };
   
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
   
-    this.http.post(`${environment.apiUrl}/bills`, billData, { headers }).subscribe(
-      response => {
-        console.log('Bill saved successfully', response);
-        this.confirmBill = true;
-        this.isBillSaved = true;
-        this.disableBillForm();
-        this.snackBar.open('Bill saved successfully', 'Close', { duration: 5000 });
-      },
-      error => {
-        console.error('Error saving bill', error);
-        this.snackBar.open('Error saving bill: ' + (error.error?.message || 'Unknown error'), 'Close', { duration: 5000 });
-      }
-    );
+    if (this.billId) {
+      // Update existing bill
+      this.http.patch(`${environment.apiUrl}/bills/${this.billId}`, billData, { headers }).subscribe(
+        response => {
+          console.log('Bill updated successfully', response);
+          this.snackBar.open('Bill updated successfully', 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+        },
+        error => {
+          console.error('Error updating bill', error);
+          this.snackBar.open('Error updating bill: ' + (error.error?.message || 'Unknown error'), 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+        }
+      );
+    } else {
+      // Create new bill
+      this.http.post(`${environment.apiUrl}/bills`, billData, { headers }).subscribe(
+        response => {
+          console.log('Bill saved successfully', response);
+          this.confirmBill = true;
+          this.isBillSaved = true;
+          this.billId = (response as any)._id;
+          this.disableBillForm();
+          this.snackBar.open('Bill saved successfully', 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+        },
+        error => {
+          console.error('Error saving bill', error);
+          this.snackBar.open('Error saving bill: ' + (error.error?.message || 'Unknown error'), 'Close', { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });
+        }
+      );
+    }
   }
   
   private getSelectedRestaurantId(): string | null {
     return localStorage.getItem('selectedRestaurantId');
   }
-
+  
   disableBillForm() {
-    this.billForm.disable();
+    if (this.paymentCompleted) {
+      this.billForm.disable();
+    } else {
+      // Keep the form enabled but mark it as saved
+      this.billForm.enable();
+      this.billForm.get('cashierName')?.disable(); // Optionally disable cashier name field
+    }
+    this.isBillSaved = true;
+    this.confirmBill = true;
   }
 }

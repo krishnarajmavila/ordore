@@ -1,0 +1,147 @@
+
+.parcel-order-container {
+  height: 100vh;
+  overflow: hidden;
+
+  .menu-section, .cart-section {
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .menu-section {
+    padding: 20px;
+  }
+
+  .cart-section {
+    padding: 20px;
+    border-left: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+  }
+
+  .search-bar {
+    .mat-slide-toggle {
+      margin-left: 10px;
+    }
+  }
+
+  .category-slider-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .category-slider-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .category-slider {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    &::-webkit-scrollbar { /* WebKit */
+      width: 0;
+      height: 0;
+    }
+    scroll-behavior: smooth;
+    padding: 6px 60px; // Make room for arrows
+
+    button {
+      width: 100px;
+      flex: 0 0 auto;
+      margin-right: 8px;
+      white-space: nowrap;
+
+      &.active {
+        background-color: #ffffff;
+        color: #c80000 !important;
+        box-shadow: 0 3px 8px 0 rgba(13, 19, 35, .15) !important;
+      }
+    }
+  }
+
+  .slider-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.8);
+    z-index: 1;
+
+    &.left {
+      left: 0;
+    }
+
+    &.right {
+      right: 0;
+    }
+
+    &.hidden {
+      display: none;
+    }
+  }
+
+  .menu-item-image {
+    height: 100px;
+    object-fit: cover;
+  }
+
+  mat-card {
+    transition: transform 0.2s;
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+  }
+
+  .cart-items {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+  }
+
+  .cart-item {
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px 0;
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .price {
+    font-weight: bold;
+    color: #28a745;
+  }
+
+  .quantity {
+    padding: 0 10px;
+  }
+}
+
+.add-table-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .parcel-order-container {
+    .menu-section, .cart-section {
+      height: auto;
+    }
+
+    .cart-section {
+      border-left: none;
+      border-top: 1px solid #dee2e6;
+    }
+  }
+
+  .add-table-fab {
+    bottom: 10px;
+    right: 10px;
+  }
+}
+.itembt{
+  button{
+    width: 100px !important;
+  }
+}

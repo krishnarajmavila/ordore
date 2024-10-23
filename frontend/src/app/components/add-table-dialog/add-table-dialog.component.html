@@ -13,6 +13,7 @@
         
         <mat-dialog-actions>
           <button mat-raised-button color="primary" type="submit" [disabled]="addTableForm.invalid">Create</button>
+          <button mat-stroked-button class="m-0 mt-3" (click)="onCancel()">Cancel</button>
         </mat-dialog-actions>
       </form>
     </mat-dialog-content>

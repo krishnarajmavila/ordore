@@ -52,6 +52,7 @@ export class LoginComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.authService.shouldPreventLoginPageAccess();
     console.log('LoginComponent initialized');
     this.onUserTypeChange();
   }
@@ -60,7 +61,6 @@ export class LoginComponent implements OnInit {
     console.log('Submit button clicked');
     console.log('User type:', this.user.userType);
     console.log('Selected restaurant:', this.selectedRestaurant);
-  
     this.authService.login(this.user).subscribe({
       next: (response) => {
         console.log('Login successful');

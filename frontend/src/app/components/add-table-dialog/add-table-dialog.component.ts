@@ -62,4 +62,7 @@ export class AddTableDialogComponent {
       });
     }
   }
+  onCancel() {
+    this.dialogRef.close();
+  }
 }
