@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -23,6 +23,9 @@ import { InhouseConfirmationComponent } from '../inhouse-confirmation/inhouse-co
 import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
 import { ItemNotesSheetComponent } from '../item-notes-sheet/item-notes-sheet.component';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { BehaviorSubject, Subscription } from 'rxjs';
+import { WebSocketService } from '../../services/web-socket.service';
+import { MenuUpdateService } from '../../services/menu-update.service';
 
 interface OrderItem {
   name: string;
@@ -51,14 +54,15 @@ interface FoodType {
   __v: number;
 }
 
-interface MenuItem {
+export interface MenuItem {
   _id?: string;
   name: string;
   category: FoodType;
   price: number;
   description?: string;
   imageUrl?: string;
-  isVegetarian: boolean;
+  isVegetarian?: boolean;
+  isInStock?: boolean;
 }
 
 @Component({
@@ -86,7 +90,7 @@ interface MenuItem {
   templateUrl: './order-management.component.html',
   styleUrls: ['./order-management.component.scss']
 })
-export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit {
+export class OrderManagementComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input() table!: Table;
   @Output() backToTableSelection = new EventEmitter<void>();
   @Output() viewOrders = new EventEmitter<string>();
@@ -95,7 +99,6 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   private dialogRef: MatDialogRef<InhouseConfirmationComponent> | null = null;
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
-  menuItems: MenuItem[] = [];
   selectedTabIndex: number = 0;
   orders: Order[] = [];
   categories: FoodType[] = [];
@@ -115,6 +118,10 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   restaurantId: string | null = this.getSelectedRestaurantId();
   menuLoaded: boolean = false;
 
+  private menuItemsSubject = new BehaviorSubject<MenuItem[]>([]);
+  menuItems$ = this.menuItemsSubject.asObservable();
+  private menuUpdateSubscription!: Subscription;
+
   constructor(
     private http: HttpClient,
     private orderService: OrderService,
@@ -122,7 +129,9 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
     private authService: AuthService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private bottomSheet: MatBottomSheet
+    private bottomSheet: MatBottomSheet,
+    private webSocketService: WebSocketService,
+    private menuUpdateService: MenuUpdateService
   ) {}
 
   ngOnInit() {
@@ -132,6 +141,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       this.loadExistingOrders();
     }
     this.currentOrder.customerName = `${this.authService.getUsernameSync()}(DS)`;
+    this.subscribeToMenuUpdates();
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -142,6 +152,12 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
 
   ngAfterViewInit() {
     this.enableSwipeGesture();
+  }
+
+  ngOnDestroy() {
+    if (this.menuUpdateSubscription) {
+      this.menuUpdateSubscription.unsubscribe();
+    }
   }
 
   loadCategories() {
@@ -178,12 +194,13 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
   
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
       next: (items) => {
-        this.menuItems = items.map(item => {
+        const menuItems = items.map(item => {
           if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
             return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized', createdAt: '', updatedAt: '', __v: 0 } };
           }
           return item;
         });
+        this.menuItemsSubject.next(menuItems);
         this.menuLoaded = true;
       },
       error: (error) => {
@@ -443,15 +460,17 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
 
   onSearch() {
     // Implement search functionality if needed
+    // This method is currently empty as per the original code
   }
 
   getFilteredMenuItems(): MenuItem[] {
-    return this.menuItems.filter(item => 
+    return this.menuItemsSubject.getValue().filter(item => 
       (this.selectedCategory === 'All' || 
        this.selectedCategory === item.category.name || 
        (this.selectedCategory === 'Uncategorized' && item.category.name === 'Uncategorized')) &&
       (!this.isVegetarian || item.isVegetarian === true) &&
-      item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+      item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
+      item.isInStock === true
     );
   }
 
@@ -497,6 +516,7 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
       this.showErrorSnackBar('Unable to view orders. Table information is missing.');
     }
   }
+
   openItemNotesSheet(item: OrderItem) {
     const bottomSheetRef = this.bottomSheet.open(ItemNotesSheetComponent, {
       data: { itemName: item.name, existingNotes: item.notes }
@@ -510,5 +530,32 @@ export class OrderManagementComponent implements OnInit, OnChanges, AfterViewIni
         }
       }
     });
+  }
+
+  private subscribeToMenuUpdates() {
+    this.menuUpdateSubscription = this.webSocketService.listen('menuUpdate').subscribe(
+      (updatedItem: MenuItem) => {
+        this.updateMenuItem(updatedItem);
+      }
+    );
+
+    this.menuUpdateService.menuUpdate$.subscribe(updatedItem => {
+      this.updateMenuItem(updatedItem);
+    });
+  }
+
+  private updateMenuItem(updatedItem: MenuItem) {
+    const currentItems = this.menuItemsSubject.getValue();
+    const index = currentItems.findIndex(item => item._id === updatedItem._id);
+    if (index !== -1) {
+      currentItems[index] = {
+        ...currentItems[index],
+        ...updatedItem,
+        category: currentItems[index].category, // Preserve the existing category
+        isVegetarian: updatedItem.isVegetarian ?? currentItems[index].isVegetarian, // Handle potential undefined
+        isInStock: updatedItem.isInStock ?? currentItems[index].isInStock // Handle potential undefined
+      };
+      this.menuItemsSubject.next([...currentItems]);
+    }
   }
 }

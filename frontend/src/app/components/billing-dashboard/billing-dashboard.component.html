@@ -1,18 +1,35 @@
 <mat-sidenav-container class="sidenav-container w-100">
   <mat-sidenav mode="side" opened>
-    <img class="p-3 pt-4 mt-2 d-flex mx-auto align-items-center" width="50%" src="assets/img/ordore.png" alt="Ordore Logo" />
+    <img
+      class="p-3 pt-4 mt-2 d-flex mx-auto align-items-center"
+      width="80%"
+      src="assets/img/ordore.png"
+      alt="Ordore Logo"
+    />
     <mat-nav-list class="mx-2">
-      <mat-list-item (click)="activeView = 'billing'" [class.active]="activeView === 'billing'">
+      <mat-list-item
+        (click)="activeView = 'billing'"
+        [class.active]="activeView === 'billing'"
+        class="mt-2"
+      >
         <div class="d-flex align-items-center">
           <mat-icon class="me-1">attach_money</mat-icon> Bill Dashboard
         </div>
       </mat-list-item>
-      <mat-list-item (click)="activeView = 'managebill'" [class.active]="activeView === 'managebill'">
+      <mat-list-item
+        (click)="activeView = 'managebill'"
+        [class.active]="activeView === 'managebill'"
+        class="mt-2"
+      >
         <div class="d-flex align-items-center">
           <mat-icon class="me-1">assignment</mat-icon> Manage Bill
         </div>
       </mat-list-item>
-      <mat-list-item (click)="onParcelOrderSelected()" [class.active]="activeView === 'orders'">
+      <mat-list-item
+        (click)="onParcelOrderSelected()"
+        [class.active]="activeView === 'orders'"
+        class="mt-2"
+      >
         <div class="d-flex align-items-center">
           <mat-icon class="me-1">local_shipping</mat-icon> Orders (Parcel)
         </div>
@@ -21,138 +38,146 @@
   </mat-sidenav>
   <mat-sidenav-content>
     <div *ngIf="activeView === 'billing'">
-      <div class="headers d-flex align-items-center justify-content-between mb-4">
+      <div
+        class="headers d-flex align-items-center justify-content-between mb-4"
+      >
         <h2 class="m-0">Bill Dashboard</h2>
-        <div class="d-flex align-items-center"> 
-          <button (click)="logout()" class="lgout-button" mat-raised-button color="warn">Logout</button>
+        <div class="d-flex align-items-center">
+          <button
+            (click)="logout()"
+            class="lgout-button"
+            mat-raised-button
+            color="warn"
+          >
+            Logout
+          </button>
         </div>
       </div>
       <div class="container-fluid px-4">
-        <div class="row">
+        <div class="row justify-content-between align-items-baseline">
           <div class="col-auto">
-            <h2 class="m-0">Billing Statistics</h2>
+            <h2 class="m-0">Realtime Statistics</h2>
           </div>
           <div class="col-auto">
-            <mat-form-field>
-              <mat-label>Choose a date</mat-label>
+            <mat-form-field appearance="outline">
               <input matInput [matDatepicker]="picker" [(ngModel)]="selectedDate" (dateChange)="onDateChange($event)">
               <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
               <mat-datepicker #picker></mat-datepicker>
             </mat-form-field>
           </div>
         </div>
-
-        <!-- KPIs -->
-        <div class="row mt-4">
-          <div class="col-md-3" *ngIf="dailyReport">
+  
+        <!-- KPI Cards -->
+        <div class="row">
+          <div class="col-md-3">
             <mat-card>
               <mat-card-header>
                 <mat-card-title>Daily Revenue</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <p>{{ dailyReport.dailyRevenue | currency }}</p>
+                <p class="h3">₹{{ dailyReport?.dailyRevenue?.toLocaleString() || '0' }}</p>
               </mat-card-content>
             </mat-card>
           </div>
-          <div class="col-md-3" *ngIf="weeklyReport">
+          <div class="col-md-3">
             <mat-card>
               <mat-card-header>
-                <mat-card-title>Weekly Revenue</mat-card-title>
+                <mat-card-title>Monthly Revenue</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <p>{{ weeklyReport.totalRevenue | currency }}</p>
+                <p class="h3">₹{{ dailyReport?.monthlyRevenue?.toLocaleString() || '0' }}</p>
               </mat-card-content>
             </mat-card>
           </div>
-          <div class="col-md-3" *ngIf="dailyReport">
+          <div class="col-md-3">
             <mat-card>
               <mat-card-header>
-                <mat-card-title>Daily Order Count</mat-card-title>
+                <mat-card-title>Monthly Bills</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <p>{{ dailyReport.dailyOrderCount }}</p>
+                <p class="h3">{{ dailyReport?.monthlyBillCount || '0' }}</p>
               </mat-card-content>
             </mat-card>
           </div>
-          <div class="col-md-3" *ngIf="dailyReport">
+          <div class="col-md-3">
             <mat-card>
               <mat-card-header>
-                <mat-card-title>Avg Order Value</mat-card-title>
+                <mat-card-title>Avg Bill Value</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <p>{{ dailyReport.averageOrderValue | currency }}</p>
+                <p class="h3">₹{{ dailyReport?.averageBillValue?.toLocaleString() || '0' }}</p>
               </mat-card-content>
             </mat-card>
           </div>
         </div>
-
+  
         <!-- Charts -->
-        <div class="mt-4 mb-5">
-          <div class="row mt-5">
-            <div class="col-md-6">
-              <h2>Revenue Breakdown</h2>
-              <div style="height: 300px;">
+        <div class="row mt-4">
+          <div class="col-md-6">
+            <mat-card style="max-width: unset; min-height: 200px;">
+              <mat-card-header>
+                <mat-card-title>Revenue Overview</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
                 <canvas baseChart
                   [data]="revenueChartData"
                   [options]="barChartOptions"
                   [type]="'bar'">
                 </canvas>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <h2>Order Metrics Over Time</h2>
-              <div style="height: 300px;">
-                <canvas baseChart
-                  [data]="orderChartData"
-                  [options]="lineChartOptions"
-                  [type]="'line'">
-                </canvas>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Most Ordered Items -->
-        <div class="row mt-4">
-          <div class="col-md-6">
-            <mat-card>
-              <mat-card-header>
-                <mat-card-title>Most Ordered Items</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <mat-list>
-                  <mat-list-item *ngFor="let item of mostOrderedItems">
-                    {{ item.name }} - {{ item.count }} orders
-                  </mat-list-item>
-                </mat-list>
               </mat-card-content>
             </mat-card>
           </div>
           <div class="col-md-6">
-            <mat-card>
+            <mat-card style="max-width: unset; min-height: 200px;">
               <mat-card-header>
-                <mat-card-title>Recent Bills</mat-card-title>
+                <mat-card-title>Daily Order Trends</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <table mat-table [dataSource]="recentBills">
-                  <ng-container matColumnDef="billNumber">
-                    <th mat-header-cell *matHeaderCellDef> Bill Number </th>
-                    <td mat-cell *matCellDef="let bill"> {{bill.billNumber}} </td>
+                <div class="chart-container">
+                  <ng-container *ngIf="weeklyReport?.dailyOrderCounts; else noData">
+                    <canvas baseChart
+                      [type]="'line'"
+                      [data]="orderChartData"
+                      [options]="lineChartOptions">
+                    </canvas>
                   </ng-container>
-                  <ng-container matColumnDef="tableNumber">
-                    <th mat-header-cell *matHeaderCellDef> Table </th>
-                    <td mat-cell *matCellDef="let bill"> {{bill.tableNumber}} </td>
+                  <ng-template #noData>
+                    <div class="no-data-message">
+                      No order data available for the selected period
+                    </div>
+                  </ng-template>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </div>
+  
+        <!-- Top Selling Items -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <mat-card style="max-width: unset;">
+        <h2 class="px-3">Top Selling Items</h2>
+              <mat-card-content>
+                <table mat-table [dataSource]="dailyReport?.topSellingItems || []" class="w-100">
+                  <ng-container matColumnDef="name">
+                    <th mat-header-cell *matHeaderCellDef>Item Name</th>
+                    <td mat-cell *matCellDef="let item">{{ item._id }}</td>
                   </ng-container>
-                  <ng-container matColumnDef="total">
-                    <th mat-header-cell *matHeaderCellDef> Amount </th>
-                    <td mat-cell *matCellDef="let bill"> {{bill.total | currency}} </td>
+                  <ng-container matColumnDef="quantity">
+                    <th mat-header-cell *matHeaderCellDef>Quantity Sold</th>
+                    <td mat-cell *matCellDef="let item">{{ item.totalQuantity }}</td>
                   </ng-container>
-                  <ng-container matColumnDef="status">
-                    <th mat-header-cell *matHeaderCellDef> Status </th>
-                    <td mat-cell *matCellDef="let bill"> {{bill.status}} </td>
+                  <ng-container matColumnDef="revenue">
+                    <th mat-header-cell *matHeaderCellDef>Revenue</th>
+                    <td mat-cell *matCellDef="let item">₹{{ item.totalRevenue?.toLocaleString() }}</td>
                   </ng-container>
-                  <tr mat-header-row *matHeaderRowDef="['billNumber', 'tableNumber', 'total', 'status']"></tr>
-                  <tr mat-row *matRowDef="let row; columns: ['billNumber', 'tableNumber', 'total', 'status'];"></tr>
+  
+                  <tr mat-header-row *matHeaderRowDef="['name', 'quantity', 'revenue']"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['name', 'quantity', 'revenue'];"></tr>
+  
+                  <tr class="mat-row" *matNoDataRow>
+                    <td class="mat-cell text-center" colspan="3">No data available</td>
+                  </tr>
                 </table>
               </mat-card-content>
             </mat-card>
@@ -162,9 +187,10 @@
     </div>
     <div *ngIf="activeView === 'managebill'">
       <div *ngIf="!selectedTable">
-        <app-dining-area-overview 
-          [tables]="tables" 
-          (tableSelected)="onTableSelected($event)">
+        <app-dining-area-overview
+          [tables]="tables"
+          (tableSelected)="onTableSelected($event)"
+        >
         </app-dining-area-overview>
       </div>
       <div *ngIf="selectedTable">
@@ -172,19 +198,27 @@
           *ngIf="showOrderCheck"
           [tableOtp]="selectedTableOtp"
           [tableNumber]="selectedTableNumber"
-          (backToOrderManagement)="onBackToOrderManagement()">
+          (backToOrderManagement)="onBackToOrderManagement()"
+        >
         </app-bill-view>
       </div>
     </div>
-    <div class="ordersforbiller" *ngIf="activeView === 'orders'">
-      <div class="headers d-flex align-items-center justify-content-between mb-4">  
-        <div class="d-flex align-items-center">   
-          <h2 class="m-0 mx-3">Create Take Away Orders</h2>  
-        </div>   
-        <div class="d-flex align-items-center">     
-          <button (click)="logout()" class="logout-button" mat-raised-button color="warn">Logout</button>   
+    <div class="ordersforbiller" *ngIf="activeView === 'orders'" style="height: inherit; overflow: hidden">
+      <div class="headers d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center">
+          <h2 class="m-0 mx-3">Create Take Away Orders</h2>
         </div>
-      </div> 
+        <div class="d-flex align-items-center">
+          <button
+            (click)="logout()"
+            class="logout-button"
+            mat-raised-button
+            color="warn"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
       <app-parcel-order></app-parcel-order>
     </div>
   </mat-sidenav-content>

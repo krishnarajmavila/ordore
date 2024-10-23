@@ -31,7 +31,7 @@
 
       <!-- Menu Items -->
       <div class="row menu-items pb-5">
-        <div class="col-md-3 mb-4" *ngFor="let item of getFilteredMenuItems()">
+        <div class="col-md-4 mb-4" *ngFor="let item of getFilteredMenuItems()">
           <mat-card class="h-100">
             <img mat-card-image [src]="getImageUrl(item.imageUrl)" [alt]="item.name" class="menu-item-image">
             <mat-card-content>

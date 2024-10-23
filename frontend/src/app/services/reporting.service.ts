@@ -4,6 +4,7 @@ import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
 import { tap, catchError, map, switchMap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { WebSocketService } from './web-socket.service';
+import { Point } from 'chart.js';
 
 export interface CartItem {
   name: string;
@@ -22,18 +23,29 @@ export interface Order {
   createdAt: Date;
 }
 
+export interface TopSellingItem {
+  _id: string;
+  name: string;
+  totalQuantity: number;
+  totalRevenue: number;
+  averagePrice: number;
+}
+
+// Update the DailyReport interface to use the new TopSellingItem
 export interface DailyReport {
   dailyRevenue: number;
-  dailyOrderCount: number;
-  averageOrderValue: number;
-  topSellingItems: { _id: string; totalQuantity: number }[];
+  monthlyRevenue: number;
+  dailyBillCount: number;
+  monthlyBillCount: number;
+  averageBillValue: number;
+  topSellingItems: TopSellingItem[];
 }
 
 export interface WeeklyReport {
   totalBills: number;
   totalRevenue: number;
   averageDailyRevenue: number;
-  dailyOrderCounts: { [date: string]: number };
+  dailyOrderCounts: Record<string, number>;
 }
 
 export interface MostOrderedItem {
@@ -172,12 +184,24 @@ export class ReportingService {
 
   // Report related methods
   getDailyReport(date: Date, restaurantId: string): Observable<DailyReport> {
+    const formattedDate = this.formatDateForApi(date);
     const params = new HttpParams()
-      .set('date', date.toISOString().split('T')[0])
+      .set('date', formattedDate)
       .set('restaurantId', restaurantId);
+
+    console.log('Fetching daily report for date:', formattedDate);
+
     return this.http.get<DailyReport>(`${this.reportsApiUrl}`, { params }).pipe(
-      catchError(this.handleError)
+      tap(response => console.log('Daily report response:', response)),
+      catchError(error => {
+        console.error('Error in getDailyReport:', error);
+        return throwError(() => error);
+      })
     );
+  }
+
+  private formatDateForApi(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
   getWeeklyReport(restaurantId: string): Observable<WeeklyReport> {
@@ -187,10 +211,20 @@ export class ReportingService {
     );
   }
 
-  getMostOrderedItems(restaurantId: string): Observable<MostOrderedItem[]> {
-    const params = new HttpParams().set('restaurantId', restaurantId);
-    return this.http.get<MostOrderedItem[]>(`${this.reportsApiUrl}/most-ordered`, { params }).pipe(
-      catchError(this.handleError)
+  getMostOrderedItems(restaurantId: string, date?: Date): Observable<TopSellingItem[]> {
+    let params = new HttpParams().set('restaurantId', restaurantId);
+    
+    if (date) {
+      const formattedDate = this.formatDateForApi(date);
+      params = params.set('date', formattedDate);
+    }
+  
+    return this.http.get<TopSellingItem[]>(`${this.reportsApiUrl}/most-ordered`, { params }).pipe(
+      tap(items => console.log('Most ordered items response:', items)),
+      catchError(error => {
+        console.error('Error in getMostOrderedItems:', error);
+        return of([]);
+      })
     );
   }
 

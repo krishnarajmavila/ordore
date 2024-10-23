@@ -11,6 +11,7 @@
       <div class="table-grid mt-4" *ngIf="!(isLoading$ | async); else loading">
         <mat-card *ngFor="let table of dineInTables$ | async"
                   (click)="onTableSelect(table)"
+                  [class.billdone]="table.paymentCompleted"
                   [class.occupied]="table.isOccupied"
                   [class.has-orders]="table.hasOrders"
                   [class.payment-completed]="table.paymentCompleted"
@@ -39,10 +40,12 @@
       <div class="table-grid mt-4" *ngIf="!(isLoading$ | async); else loading">
         <mat-card *ngFor="let table of parcelTables$ | async"
                   (click)="onTableSelect(table)"
+                  [class.billdone]="table.paymentCompleted"
                   [class.occupied]="table.isOccupied"
                   [class.has-orders]="table.hasOrders"
                   [matTooltip]="getTableTooltip(table)">
           <mat-card-content>
+            <img *ngIf="table.paymentCompleted" src="assets/img/paid.png" class="paid-seal animate__animated animate__bounceIn">
             <div class="table-info">
               <h2>{{table.number}}</h2>
               <p>Capacity: {{table.capacity}}</p>

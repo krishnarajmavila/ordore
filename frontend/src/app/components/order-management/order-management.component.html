@@ -42,32 +42,41 @@
       <mat-tab *ngFor="let category of categories" [label]="category.name">
       </mat-tab>
     </mat-tab-group>
+
     <mat-spinner *ngIf="!menuLoaded" class="faster-spinner"></mat-spinner>
+
     <div *ngIf="menuLoaded" class="menu-items mt-3">
-      <mat-card *ngFor="let item of getFilteredMenuItems()" class="p-0 mb-3">
-        <mat-card-content>
-          <div class="row">
-            <div class="col-8">
-              <h3 class="mb-1"><strong>{{ item.name }}</strong></h3>
-              <p>{{ item.description }}</p>
-              <h4>₹{{ item.price }}</h4>
-            </div>
-            <div class="col-4">
-              <img [src]="getImageUrl(item.imageUrl)" [alt]="item.name" class="img-fluid rounded">
-              <div class="action-space d-flex justify-content-between align-items-center mt-2">
-                <ng-container *ngIf="getOrderItemQuantity(item) === 0; else quantityControl">
-                  <button mat-raised-button color="warn" (click)="addItemToOrder(item)">ADD</button>
-                </ng-container>
-                <ng-template #quantityControl>
-                  <button mat-mini-fab color="warn" (click)="removeItemFromOrder(item)">－</button>
-                  <span>{{ getOrderItemQuantity(item) }}</span>
-                  <button mat-mini-fab color="warn" (click)="addItemToOrder(item)">＋</button>
-                </ng-template>
+      <ng-container *ngIf="menuItems$ | async as menuItems">
+        <mat-card *ngFor="let item of getFilteredMenuItems()" class="p-0 mb-3">
+          <mat-card-content>
+            <div class="row">
+              <div class="col-8">
+                <h3 class="mb-1"><strong>{{ item.name }}</strong></h3>
+                <p>{{ item.description }}</p>
+                <h4>₹{{ item.price }}</h4>
+              </div>
+              <div class="col-4">
+                <img [src]="getImageUrl(item.imageUrl)" [alt]="item.name" class="img-fluid rounded">
+                <div class="action-space d-flex justify-content-between align-items-center mt-2">
+                  <ng-container *ngIf="item.isInStock; else outOfStock">
+                    <ng-container *ngIf="getOrderItemQuantity(item) === 0; else quantityControl">
+                      <button mat-raised-button color="warn" (click)="addItemToOrder(item)">ADD</button>
+                    </ng-container>
+                    <ng-template #quantityControl>
+                      <button mat-mini-fab color="warn" (click)="removeItemFromOrder(item)">－</button>
+                      <span>{{ getOrderItemQuantity(item) }}</span>
+                      <button mat-mini-fab color="warn" (click)="addItemToOrder(item)">＋</button>
+                    </ng-template>
+                  </ng-container>
+                  <ng-template #outOfStock>
+                    <button mat-raised-button disabled>OUT OF STOCK</button>
+                  </ng-template>
+                </div>
               </div>
             </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
+          </mat-card-content>
+        </mat-card>
+      </ng-container>
     </div>
   </ng-container>
 
@@ -75,8 +84,7 @@
     <div class="cart-items mt-4">
       <h2 class="m-0">Checkout</h2>
       <hr>
-      <div class="row " *ngFor="let item of currentOrder.items" style="padding: 7px 0;
-    border-bottom: 1px solid #e7e7e7;">
+      <div class="row" *ngFor="let item of currentOrder.items" style="padding: 7px 0; border-bottom: 1px solid #e7e7e7;">
         <div class="col">
           <h3 class="m-0">{{ item.name }}</h3>
           <h3 class="m-0">₹{{ item.price }} x {{ item.quantity }}</h3>
@@ -94,7 +102,6 @@
           </div>
         </div>
       </div>
-
 
       <div *ngIf="currentOrder.items.length === 0" class="text-center mt-5">
         <h3>Your cart is empty</h3>

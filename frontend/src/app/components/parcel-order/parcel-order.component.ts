@@ -99,6 +99,9 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
   isLeftArrowHidden: boolean = true;
   isRightArrowHidden: boolean = false;
   currentParcelTable: Table | null = null;
+  isLoading: boolean = false;
+  initialized: boolean = false;
+
   currentOrder: Order = {
     customerName: '',
     phoneNumber: '',
@@ -122,64 +125,88 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
     private bottomSheet: MatBottomSheet,
     private cdr: ChangeDetectorRef
   ) {}
+
+  ngOnInit() {
+    // Only set initial values, don't load data
+    this.currentOrder.customerName = `${this.authService.getUsernameSync()}(DS)`;
+    this.restaurantId = this.getSelectedRestaurantId();
+  }
+
   ngAfterViewInit() {
     this.checkArrowVisibility();
+  }
+
+  initializeComponent() {
+    if (!this.initialized) {
+      console.log('Initializing ParcelOrder component');
+      this.isLoading = true;
+      this.loadCategories();
+      this.initialized = true;
+    }
   }
 
   @HostListener('window:resize')
   onResize() {
     this.checkArrowVisibility();
   }
-  ngOnInit() {
-    this.loadCategories();
-    this.currentOrder.customerName = `${this.authService.getUsernameSync()}(DS)`;
-    this.restaurantId = this.getSelectedRestaurantId();
-  }
 
   loadCategories() {
+    console.log('Loading categories...');
     const restaurantId = this.getSelectedRestaurantId();
     if (!restaurantId) {
       console.error('Restaurant ID is missing. Unable to load categories.');
       this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      this.isLoading = false;
       return;
     }
 
     this.http.get<FoodType[]>(`${environment.apiUrl}/food-types?restaurantId=${restaurantId}`).subscribe({
       next: (types) => {
+        console.log('Categories loaded:', types);
         this.categories = [
           { _id: 'all', name: 'All' },
           ...types,
           { _id: 'uncategorized', name: 'Uncategorized' }
         ];
         this.loadMenuItems();
+        this.cdr.markForCheck();
       },
       error: (error) => {
         console.error('Error loading categories:', error);
         this.showErrorSnackBar('Error loading categories. Please try again.');
+        this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }
 
   loadMenuItems() {
+    console.log('Loading menu items...');
     const restaurantId = this.getSelectedRestaurantId();
     if (!restaurantId) {
       console.error('Restaurant ID is missing. Unable to load menu items.');
       this.showErrorSnackBar('Restaurant ID is missing. Please select a restaurant.');
+      this.isLoading = false;
       return;
     }
 
     this.http.get<MenuItem[]>(`${environment.apiUrl}/food?restaurantId=${restaurantId}`).subscribe({
       next: (items) => {
+        console.log('Menu items loaded:', items.length);
         this.menuItems = items.map(item => {
           if (!item.category || !this.categories.some(cat => cat._id === item.category._id)) {
             return { ...item, category: { _id: 'uncategorized', name: 'Uncategorized' } };
           }
           return item;
         });
+        this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
         console.error('Error loading menu items:', error);
         this.showErrorSnackBar('Error loading menu items. Please try again.');
+        this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -222,6 +249,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
     }
     
     this.calculateTotalPrice();
+    this.cdr.markForCheck();
   }
 
   removeItemFromOrder(item: OrderItem) {
@@ -235,6 +263,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
       }
   
       this.calculateTotalPrice();
+      this.cdr.markForCheck();
     }
   }
 
@@ -299,9 +328,6 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
         if (this.confirmationDialogRef) {
           this.confirmationDialogRef.close();
         }
-        setTimeout(() => {
-          // this.openAddTableDialog();
-        }, 0);
       },
       error: (error) => {
         console.error('Error submitting take away order:', error);
@@ -327,7 +353,8 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
     this.snackBar.open(message, 'Close', {
       duration: 5000,
       horizontalPosition: 'center',
-      verticalPosition: 'top'
+      verticalPosition: 'top',
+      panelClass: ['success-snackbar']
     });
   }
 
@@ -335,7 +362,8 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
     this.snackBar.open(message, 'Close', {
       duration: 5000,
       horizontalPosition: 'center',
-      verticalPosition: 'top'
+      verticalPosition: 'top',
+      panelClass: ['error-snackbar']
     });
   }
 
@@ -345,6 +373,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
 
   toggleVegetarian() {
     this.isVegetarian = !this.isVegetarian;
+    this.cdr.markForCheck();
   }
 
   getImageUrl(imageUrl: string | undefined): string {
@@ -358,7 +387,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
   }
 
   onSearch() {
-    // Implement search functionality if needed
+    this.cdr.markForCheck();
   }
 
   getFilteredMenuItems(): MenuItem[] {
@@ -372,6 +401,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
   incrementCartItem(item: OrderItem) {
     item.quantity++;
     this.calculateTotalPrice();
+    this.cdr.markForCheck();
   }
 
   decrementCartItem(item: OrderItem) {
@@ -381,6 +411,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
       this.removeItemFromOrder(item);
     }
     this.calculateTotalPrice();
+    this.cdr.markForCheck();
   }
 
   openItemNotesSheet(item: OrderItem) {
@@ -393,6 +424,7 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
         const index = this.currentOrder.items.findIndex(i => i.name === item.name);
         if (index !== -1) {
           this.currentOrder.items[index].notes = notes;
+          this.cdr.markForCheck();
         }
       }
     });
@@ -411,30 +443,45 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
   }
 
   refreshMenuItems() {
+    console.log('Refreshing menu items...');
+    this.isLoading = true;
     this.loadMenuItems();
+    this.cdr.markForCheck();
   }
 
   clearParcelTable() {
+    console.log('Clearing parcel table...');
     this.currentParcelTable = null;
+    this.cdr.markForCheck();
   }
 
   private handleError(error: any) {
     console.error('An error occurred:', error);
     this.showErrorSnackBar('An unexpected error occurred. Please try again.');
+    this.isLoading = false;
+    this.cdr.markForCheck();
   }
 
   selectCategory(category: FoodType) {
+    console.log('Selecting category:', category.name);
     this.selectedCategory = category;
+    this.cdr.markForCheck();
   }
 
   scrollCategories(direction: 'left' | 'right') {
     const slider = this.categorySlider.nativeElement;
     const scrollAmount = slider.offsetWidth / 2;
+    
     if (direction === 'left') {
       slider.scrollLeft -= scrollAmount;
     } else {
       slider.scrollLeft += scrollAmount;
     }
+    
+    // Check arrow visibility after scrolling
+    setTimeout(() => {
+      this.checkArrowVisibility();
+    }, 100);
   }
 
   checkArrowVisibility() {
@@ -443,5 +490,4 @@ export class ParcelOrderComponent implements OnInit, AfterViewInit {
     this.isRightArrowHidden = slider.scrollLeft + slider.offsetWidth >= slider.scrollWidth;
     this.cdr.detectChanges();
   }
-
 }

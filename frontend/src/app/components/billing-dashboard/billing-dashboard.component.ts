@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ChangeDetectionStrategy, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -11,7 +11,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
-import { ReportingService, DailyReport, WeeklyReport, MostOrderedItem, Bill } from '../../services/reporting.service';
+import { 
+  ReportingService, 
+  DailyReport, 
+  WeeklyReport, 
+  TopSellingItem,
+  Bill 
+} from '../../services/reporting.service';
 import { OrderService, Order } from '../../services/order.service';
 import { WebSocketService } from '../../services/web-socket.service';
 import { Subscription } from 'rxjs';
@@ -63,28 +69,36 @@ interface Table {
     ParcelOrderComponent
   ],
   templateUrl: './billing-dashboard.component.html',
-  styleUrls: ['./billing-dashboard.component.scss']
+  styleUrls: ['./billing-dashboard.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class BillingDashboardComponent implements OnInit, OnDestroy {
+export class BillingDashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild(BaseChartDirective) chart: BaseChartDirective | undefined;
-
+  @ViewChild(ParcelOrderComponent) parcelOrderComponent?: ParcelOrderComponent;
+  // Basic component properties
   tables: Table[] = [];
   selectedTable: Table | null = null;
   activeView: 'billing' | 'managebill' | 'orders' = 'billing';
   selectedDate: Date = new Date();
-  restaurantId: string = ''; // You need to set this based on the logged-in user's restaurant
+  restaurantId: string = '';
+  isLoading = true;
+  error: string | null = null;
 
+  // Report data
   dailyReport: DailyReport | null = null;
   weeklyReport: WeeklyReport | null = null;
-  mostOrderedItems: MostOrderedItem[] = [];
+  topSellingItems: TopSellingItem[] = [];
   recentBills: Bill[] = [];
 
+  // Table properties
   showOrderCheck = false;
   selectedTableOtp: string | null = null;
   selectedTableNumber: string | null = null;
+  displayedColumns: string[] = ['name', 'quantity', 'revenue', 'averagePrice'];
 
-  revenueChartData: ChartData<'bar'> = {
-    labels: ['Daily Revenue', 'Weekly Revenue'],
+  // Chart configurations
+  revenueChartData: ChartData<'bar', number[], string> = {
+    labels: ['Daily Revenue', 'Monthly Revenue'],
     datasets: [
       { 
         data: [0, 0], 
@@ -96,23 +110,35 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
 
   orderChartData: ChartData<'line'> = {
     labels: [],
-    datasets: [{
-      data: [],
-      label: 'Order Count',
-      borderColor: 'rgba(75, 192, 192, 1)',
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      tension: 0.1
-    }]
+    datasets: [
+      {
+        data: [],
+        label: 'Daily Orders',
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.4,
+        fill: true,
+        pointStyle: 'circle',
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }
+    ]
   };
 
   barChartOptions: ChartConfiguration['options'] = {
     responsive: true,
+    maintainAspectRatio: false,
     scales: {
       y: {
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Amount ($)'
+          text: 'Amount (₹)'
+        },
+        ticks: {
+          callback: function(value) {
+            return '₹' + value.toLocaleString();
+          }
         }
       }
     },
@@ -128,7 +154,7 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
               label += ': ';
             }
             if (context.parsed.y !== null) {
-              label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+              label += '₹' + context.parsed.y.toLocaleString();
             }
             return label;
           }
@@ -139,6 +165,7 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
 
   lineChartOptions: ChartConfiguration['options'] = {
     responsive: true,
+    maintainAspectRatio: false,
     scales: {
       y: {
         beginAtZero: true,
@@ -156,16 +183,16 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
     },
     plugins: {
       legend: {
-        display: true,
+        display: true
       },
       tooltip: {
         mode: 'index',
-        intersect: false,
+        intersect: false
       }
     }
   };
 
-  private subscriptions: Subscription[] = [];
+  private subscriptions: Array<Subscription & { subType?: string }> = [];
 
   constructor(
     private reportingService: ReportingService,
@@ -176,115 +203,343 @@ export class BillingDashboardComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
+    console.log('Component initializing...');
     this.restaurantId = this.getSelectedRestaurantId();
+    this.initializeData();
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => {
+      this.updateCharts();
+      this.cdr.detectChanges();
+    });
+  }
+
+  private initializeData(): void {
+    this.isLoading = true;
     this.loadReports();
     this.setupRealtimeBillUpdates();
     this.subscribeToWebSockets();
-  }
-
-  ngOnDestroy() {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
-    this.reportingService.stopRealTimeBillsRefresh();
+    this.cdr.detectChanges();
   }
 
   private getSelectedRestaurantId(): string {
-    // Implement this method to get the restaurant ID from wherever it's stored
-    // (e.g., localStorage, a service, etc.)
     return localStorage.getItem('selectedRestaurantId') || '';
   }
 
-  loadReports() {
-    this.subscriptions.push(
-      this.reportingService.getDailyReport(this.selectedDate, this.restaurantId).subscribe(
-        report => {
-          this.dailyReport = report;
-          this.updateRevenueChart();
-        },
-        error => console.error('Error fetching daily report:', error)
-      ),
-      this.reportingService.getWeeklyReport(this.restaurantId).subscribe(
-        report => {
-          this.weeklyReport = report;
-          this.updateOrderChart();
-        },
-        error => console.error('Error fetching weekly report:', error)
-      ),
-      this.reportingService.getMostOrderedItems(this.restaurantId).subscribe(
-        items => this.mostOrderedItems = items,
-        error => console.error('Error fetching most ordered items:', error)
-      )
-    );
+  loadReports(): void {
+    this.loadDailyReport();
+    this.loadWeeklyReport();
+    this.loadTopSellingItems();
   }
 
-  setupRealtimeBillUpdates() {
+  private loadDailyReport(): void {
+    const existingSub = this.subscriptions.find(sub => sub.subType === 'dailyReport');
+    if (existingSub) {
+      const index = this.subscriptions.indexOf(existingSub);
+      existingSub.unsubscribe();
+      this.subscriptions.splice(index, 1);
+    }
+
+    const dailySub = this.reportingService.getDailyReport(this.selectedDate, this.restaurantId).subscribe({
+      next: (report) => {
+        console.log('Daily Report Updated:', report);
+        this.dailyReport = report;
+        this.updateRevenueChart();
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error fetching daily report:', error);
+        this.error = 'Failed to load daily report';
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+
+    Object.defineProperty(dailySub, 'subType', { value: 'dailyReport', writable: false });
+    this.subscriptions.push(dailySub);
+  }
+
+  private loadWeeklyReport(): void {
+    const weeklySub = this.reportingService.getWeeklyReport(this.restaurantId).subscribe({
+      next: (report) => {
+        console.log('Weekly Report:', report);
+        this.weeklyReport = report;
+        this.updateOrderChart();
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error fetching weekly report:', error);
+        this.cdr.markForCheck();
+      }
+    });
+
+    Object.defineProperty(weeklySub, 'subType', { value: 'weeklyReport', writable: false });
+    this.subscriptions.push(weeklySub);
+  }
+
+  private loadTopSellingItems(): void {
+    const itemsSub = this.reportingService.getMostOrderedItems(this.restaurantId).subscribe({
+      next: (items) => {
+        console.log('Top Selling Items:', items);
+        this.topSellingItems = items;
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error fetching top selling items:', error);
+        this.topSellingItems = [];
+        this.cdr.markForCheck();
+      }
+    });
+
+    Object.defineProperty(itemsSub, 'subType', { value: 'mostOrderedItems', writable: false });
+    this.subscriptions.push(itemsSub);
+  }
+
+  setupRealtimeBillUpdates(): void {
     this.reportingService.startRealTimeBillsRefresh();
-    this.subscriptions.push(
-      this.reportingService.getRealTimeBills().subscribe(
-        bills => this.recentBills = bills
-      )
-    );
+    const billsSub = this.reportingService.getRealTimeBills().subscribe({
+      next: (bills) => {
+        console.log('Real-time Bills:', bills);
+        const selectedDateStr = this.formatDateForApi(this.selectedDate);
+        this.recentBills = bills.filter(bill => {
+          const billDate = this.formatDateForApi(new Date(bill.createdAt));
+          return billDate === selectedDateStr;
+        });
+        this.loadDailyReport();
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error getting real-time bills:', error);
+        this.cdr.markForCheck();
+      }
+    });
+
+    Object.defineProperty(billsSub, 'subType', { value: 'bills', writable: false });
+    this.subscriptions.push(billsSub);
   }
 
-  subscribeToWebSockets() {
-    this.subscriptions.push(
-      this.webSocketService.listen('orderUpdate').subscribe(() => {
-        this.loadReports();
-      }),
-      this.webSocketService.listen('newBill').subscribe(() => {
-        this.loadReports();
-      })
-    );
+  private updateCharts(): void {
+    this.updateRevenueChart();
+    this.updateOrderChart();
+    this.cdr.markForCheck();
   }
 
-  onTableSelected(table: Table) {
+  private updateRevenueChart(): void {
+    if (this.dailyReport) {
+      this.revenueChartData.datasets[0].data = [
+        this.dailyReport.dailyRevenue || 0,
+        this.dailyReport.monthlyRevenue || 0
+      ];
+
+      if (this.chart) {
+        this.chart.chart?.update('active');
+      }
+      this.cdr.markForCheck();
+    }
+  }
+
+  private updateOrderChart(): void {
+    if (this.weeklyReport?.dailyOrderCounts) {
+      // Sort dates to ensure chronological order
+      const sortedDates = Object.keys(this.weeklyReport.dailyOrderCounts).sort();
+      const counts = sortedDates.map(date => this.weeklyReport!.dailyOrderCounts[date]);
+
+      // Format dates for display
+      const formattedDates = sortedDates.map(date => 
+        new Date(date).toLocaleDateString('en-IN', {
+          month: 'short',
+          day: 'numeric'
+        })
+      );
+
+      // Update chart data
+      this.orderChartData.labels = formattedDates;
+      if (this.orderChartData.datasets && this.orderChartData.datasets[0]) {
+        this.orderChartData.datasets[0].data = counts;
+      }
+
+      console.log('Updated chart data:', {
+        labels: this.orderChartData.labels,
+        data: this.orderChartData.datasets[0].data
+      });
+
+      // Ensure chart updates
+      if (this.chart) {
+        this.chart.update();
+      }
+      this.cdr.markForCheck();
+    }
+  }
+
+  subscribeToWebSockets(): void {
+    const orderUpdateSub = this.webSocketService.listen('orderUpdate').subscribe({
+      next: () => {
+        console.log('Order Update Received');
+        this.loadDailyReport();
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('WebSocket order update error:', error);
+        this.cdr.markForCheck();
+      }
+    });
+
+    const newBillSub = this.webSocketService.listen('newBill').subscribe({
+      next: () => {
+        console.log('New Bill Received');
+        this.loadDailyReport();
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('WebSocket new bill error:', error);
+        this.cdr.markForCheck();
+      }
+    });
+
+    this.subscriptions.push(orderUpdateSub, newBillSub);
+  }
+
+  onTableSelected(table: Table): void {
+    console.log('Selected Table:', table);
     this.selectedTable = table;
     this.selectedTableOtp = table.otp;
     this.selectedTableNumber = table.number;
     this.showOrderCheck = true;
     this.activeView = 'managebill';
+    this.cdr.markForCheck();
   }
 
-  onParcelOrderSelected() {
+  onParcelOrderSelected(): void {
+    console.log('Parcel Order Selected');
     this.activeView = 'orders';
+    setTimeout(() => {
+      if (this.parcelOrderComponent) {
+        this.parcelOrderComponent.initializeComponent();
+      }
+    });
+    this.cdr.markForCheck();
   }
 
-  onDateChange(event: any) {
+  onDateChange(event: any): void {
+    console.log('Date Changed:', event.value);
     this.selectedDate = event.value;
-    this.loadReports();
+    this.isLoading = true;
+    this.loadDailyReport();
+    this.loadTopSellingItems();
+    this.cdr.markForCheck();
   }
 
-  logout() {
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
-
-  private updateRevenueChart() {
-    if (this.dailyReport && this.weeklyReport) {
-      this.revenueChartData.datasets[0].data = [
-        this.dailyReport.dailyRevenue,
-        this.weeklyReport.totalRevenue
-      ];
-      this.chart?.update();
-    }
-  }
-
-  private updateOrderChart() {
-    if (this.weeklyReport && this.weeklyReport.dailyOrderCounts) {
-      const dates = Object.keys(this.weeklyReport.dailyOrderCounts);
-      const counts = Object.values(this.weeklyReport.dailyOrderCounts);
-      
-      this.orderChartData.labels = dates;
-      this.orderChartData.datasets[0].data = counts;
-      
-      this.chart?.update();
-    }
-  }
-
-  onBackToOrderManagement() {
+  onBackToOrderManagement(): void {
+    console.log('Navigating back to Order Management');
     this.selectedTable = null;
     this.showOrderCheck = false;
     this.selectedTableNumber = null;
     this.activeView = 'managebill';
+    this.cdr.markForCheck();
+  }
+
+  private formatDateForApi(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  formatCurrency(value: number): string {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
+  formatNumber(value: number): string {
+    return new Intl.NumberFormat('en-IN').format(value);
+  }
+
+  calculatePercentage(value: number, total: number): string {
+    if (!total) return '0%';
+    return `${((value / total) * 100).toFixed(1)}%`;
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
+  ngOnDestroy(): void {
+    console.log('Component destroying...');
+    this.subscriptions.forEach(sub => {
+      if (sub) {
+        sub.unsubscribe();
+      }
+    });
+    this.reportingService.stopRealTimeBillsRefresh();
+    this.cdr.detach();
+  }
+
+  refreshData(): void {
+    console.log('Refreshing dashboard data...');
+    this.isLoading = true;
+    this.error = null;
+    this.loadReports();
+    this.cdr.markForCheck();
+  }
+
+  formatDate(date: Date | string): string {
+    return new Date(date).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  isToday(date: Date | string): boolean {
+    const today = new Date();
+    const compareDate = new Date(date);
+    return (
+      compareDate.getDate() === today.getDate() &&
+      compareDate.getMonth() === today.getMonth() &&
+      compareDate.getFullYear() === today.getFullYear()
+    );
+  }
+
+  getStatusColor(status: string): string {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return 'text-success';
+      case 'pending':
+        return 'text-warning';
+      case 'cancelled':
+        return 'text-danger';
+      default:
+        return '';
+    }
+  }
+
+  getTotalAmount(): number {
+    return this.recentBills.reduce((sum, bill) => sum + (bill.total || 0), 0);
+  }
+
+  getAverageAmount(): number {
+    if (this.recentBills.length === 0) return 0;
+    return this.getTotalAmount() / this.recentBills.length;
+  }
+
+  resetView(): void {
+    this.activeView = 'billing';
+    this.selectedTable = null;
+    this.selectedTableOtp = null;
+    this.selectedTableNumber = null;
+    this.showOrderCheck = false;
+    this.loadReports();
+    this.cdr.markForCheck();
+  }
+
+  trackByFn(index: number, item: any): any {
+    return item._id || index;
   }
 }
